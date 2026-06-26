@@ -1,4 +1,8 @@
 const CLAVE = "oh-ma-belle-agenda-v1";
+const SUPABASE_URL = "https://vgmyzhmbuteixvlvwxjc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_5b7OS0T91SbgnCog14YXEw_tr7lD3WT";
+const SUPABASE_TABLA = "agenda_estado";
+const SUPABASE_ID = "principal";
 const usuariosBase = [
   { usuario: "maria", clave: "1234", rol: "soloVista", nombre: "Maestra Maria" },
   { usuario: "rosa", clave: "0000", rol: "editora", nombre: "Rosa Polet" }
@@ -31,6 +35,8 @@ let citas = cargar("citas") || [];
 let bloqueos = cargar("bloqueos") || [];
 let personal = cargar("personal") || [];
 let modoOscuro = cargar("modoOscuro") || false;
+let remotoListo = false;
+let guardandoRemoto = false;
 
 normalizarDatos();
 
@@ -46,6 +52,72 @@ function guardar() {
   localStorage.setItem(`${CLAVE}-bloqueos`, JSON.stringify(bloqueos));
   localStorage.setItem(`${CLAVE}-personal`, JSON.stringify(personal));
   localStorage.setItem(`${CLAVE}-modoOscuro`, JSON.stringify(modoOscuro));
+  if (remotoListo) guardarRemoto();
+}
+
+function estadoActual() {
+  return { usuarios, servicios, citas, bloqueos, personal, modoOscuro, actualizadoEn: new Date().toISOString() };
+}
+
+function aplicarEstado(datos) {
+  if (!datos) return;
+  usuarios = Array.isArray(datos.usuarios) ? datos.usuarios : usuarios;
+  servicios = Array.isArray(datos.servicios) ? datos.servicios : servicios;
+  citas = Array.isArray(datos.citas) ? datos.citas : citas;
+  bloqueos = Array.isArray(datos.bloqueos) ? datos.bloqueos : bloqueos;
+  personal = Array.isArray(datos.personal) ? datos.personal : personal;
+  modoOscuro = typeof datos.modoOscuro === "boolean" ? datos.modoOscuro : modoOscuro;
+  normalizarDatos();
+  aplicarModoOscuro();
+}
+
+async function supabaseRest(ruta, opciones = {}) {
+  const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${ruta}`, {
+    ...opciones,
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+      ...(opciones.headers || {})
+    }
+  });
+  if (!respuesta.ok) throw new Error(await respuesta.text());
+  if (respuesta.status === 204) return null;
+  return respuesta.json();
+}
+
+async function cargarRemoto() {
+  try {
+    const filas = await supabaseRest(`${SUPABASE_TABLA}?id=eq.${SUPABASE_ID}&select=datos`);
+    if (filas?.[0]?.datos) aplicarEstado(filas[0].datos);
+    remotoListo = true;
+    await guardarRemoto();
+    mostrarMensaje("Datos conectados", "La agenda ya esta sincronizada.", "ok");
+    return true;
+  } catch (error) {
+    remotoListo = false;
+    console.warn("Supabase aun no esta listo:", error);
+    mostrarMensaje("Falta conectar base", "Crea la tabla en Supabase para guardar compartido.", "alerta");
+    return false;
+  }
+}
+
+async function guardarRemoto() {
+  if (guardandoRemoto) return;
+  guardandoRemoto = true;
+  try {
+    await supabaseRest(`${SUPABASE_TABLA}?on_conflict=id`, {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify([{ id: SUPABASE_ID, datos: estadoActual() }])
+    });
+  } catch (error) {
+    remotoListo = false;
+    console.warn("No se pudo guardar en Supabase:", error);
+  } finally {
+    guardandoRemoto = false;
+  }
 }
 
 function normalizarDatos() {
@@ -119,7 +191,7 @@ function usuarioSeleccionado() {
   mensaje.textContent = "";
 }
 
-function iniciarSesion() {
+async function iniciarSesion() {
   const usuario = document.getElementById("usuario").value;
   const clave = document.getElementById("clave").value.trim();
   const existe = usuarios.find(item => item.usuario === usuario && item.clave === clave);
@@ -133,6 +205,7 @@ function iniciarSesion() {
   document.getElementById("rolActual").textContent = puedeEditar() ? "Rosa Polet" : "Maestra Maria";
   document.getElementById("pantallaLogin").style.display = "none";
   document.getElementById("sistema").style.display = "flex";
+  await cargarRemoto();
   mostrarInicio();
 }
 
