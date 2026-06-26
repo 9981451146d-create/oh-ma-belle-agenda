@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oh, ma belle | Agenda</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <section class="login" id="pantallaLogin">
+    <div class="login-card">
+      <img class="login-logo" src="assets/logo-oh-ma-belle-transparent.png" alt="Oh, ma belle Belleza y Spa">
+      <img class="avatar-img" src="assets/user-icon-transparent.png" alt="">
+
+      <label for="usuario">Usuario</label>
+      <select id="usuario" onchange="usuarioSeleccionado()">
+        <option value="">Selecciona usuario</option>
+        <option value="maria">Maestra Maria</option>
+        <option value="rosa">Rosa Polet</option>
+      </select>
+
+      <div id="campoClave" class="campo-clave">
+        <label for="clave">Contrasena</label>
+        <input id="clave" type="password" placeholder="Contrasena" autocomplete="current-password" onkeydown="if(event.key === 'Enter') iniciarSesion()">
+      </div>
+
+      <button type="button" onclick="iniciarSesion()">Entrar</button>
+      <div class="login-options">
+        <label><input type="checkbox" checked> Recordarme</label>
+        <span>Oh, ma belle</span>
+      </div>
+      <p class="error" id="mensaje"></p>
+    </div>
+  </section>
+
+  <section id="sistema" class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="assets/logo-oh-ma-belle-transparent.png" alt="Oh, ma belle">
+        <div>
+          <strong>Oh, ma belle</strong>
+          <span id="rolActual">Agenda</span>
+        </div>
+      </div>
+
+      <button class="nav-activo" type="button" data-seccion="inicio" onclick="mostrarInicio()"><img class="menu-icon" src="assets/icons/inicio.png" alt="">Inicio</button>
+      <button type="button" data-seccion="estadisticas" onclick="mostrarEstadisticas()"><img class="menu-icon" src="assets/icons/estadisticas.png" alt="">Estadisticas</button>
+      <button type="button" data-seccion="servicios" onclick="mostrarServicios()"><img class="menu-icon" src="assets/icons/servicios.png" alt="">Servicios</button>
+      <button type="button" data-seccion="configuracion" onclick="mostrarConfiguracion()"><img class="menu-icon" src="assets/icons/configuracion.png" alt="">Configuracion</button>
+      <button class="salir" type="button" onclick="cerrarSesion()"><img class="menu-icon" src="assets/icons/cerrar-sesion.png" alt="">Cerrar sesion</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p>ohmabelle.local/agenda</p>
+          <span class="premium">Agenda</span>
+        </div>
+        <button type="button" onclick="mostrarServicios('personal')" title="Personal"><img src="assets/icons/personal.png" alt=""></button>
+        <button type="button" onclick="mostrarConfiguracion()" title="Configuracion"><img src="assets/icons/configuracion.png" alt=""></button>
+        <button type="button" onclick="cerrarSesion()" title="Salir"><img src="assets/icons/cerrar-sesion.png" alt=""></button>
+      </header>
+
+      <section id="contenido" class="content"></section>
+    </main>
+  </section>
+
+  <div id="mensajeGuardado" class="modal" role="status" aria-live="polite">
+    <div class="modal-box">
+      <h2 id="tituloMensaje">Listo</h2>
+      <p id="textoMensaje"></p>
+    </div>
+  </div>
+
+  <div id="modalFormulario" class="modal">
+    <div class="modal-form">
+      <button class="modal-close" type="button" onclick="cerrarModalFormulario()">×</button>
+      <div id="modalContenido"></div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
