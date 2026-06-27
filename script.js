@@ -38,6 +38,7 @@ let modoOscuro = cargar("modoOscuro") || false;
 let remotoListo = false;
 let guardandoRemoto = false;
 let guardadoRemotoPendiente = false;
+let reintentoRemoto = null;
 
 normalizarDatos();
 
@@ -47,13 +48,17 @@ function cargar(nombre) {
 }
 
 function guardar() {
+  guardarLocal();
+  if (remotoListo) guardarRemoto();
+}
+
+function guardarLocal() {
   localStorage.setItem(`${CLAVE}-usuarios`, JSON.stringify(usuarios));
   localStorage.setItem(`${CLAVE}-servicios`, JSON.stringify(servicios));
   localStorage.setItem(`${CLAVE}-citas`, JSON.stringify(citas));
   localStorage.setItem(`${CLAVE}-bloqueos`, JSON.stringify(bloqueos));
   localStorage.setItem(`${CLAVE}-personal`, JSON.stringify(personal));
   localStorage.setItem(`${CLAVE}-modoOscuro`, JSON.stringify(modoOscuro));
-  if (remotoListo) guardarRemoto();
 }
 
 function estadoActual() {
@@ -82,46 +87,64 @@ async function supabaseRest(ruta, opciones = {}) {
       ...(opciones.headers || {})
     }
   });
-  if (!respuesta.ok) throw new Error(await respuesta.text());
-  if (respuesta.status === 204) return null;
-  return respuesta.json();
+  const texto = await respuesta.text();
+  if (!respuesta.ok) {
+    throw new Error(`Supabase ${respuesta.status}: ${texto || respuesta.statusText}`);
+  }
+  if (!texto) return null;
+  return JSON.parse(texto);
 }
 
 async function cargarRemoto() {
   try {
     const filas = await supabaseRest(`${SUPABASE_TABLA}?id=eq.${SUPABASE_ID}&select=datos`);
-    if (filas?.[0]?.datos) aplicarEstado(filas[0].datos);
     remotoListo = true;
-    await guardarRemoto();
+    if (filas?.[0]?.datos) {
+      aplicarEstado(filas[0].datos);
+      guardarLocal();
+    } else {
+      await guardarRemoto();
+    }
     mostrarMensaje("Datos conectados", "La agenda ya esta sincronizada.", "ok");
     return true;
   } catch (error) {
     remotoListo = false;
     console.warn("Supabase aun no esta listo:", error);
-    mostrarMensaje("Falta conectar base", "Crea la tabla en Supabase para guardar compartido.", "alerta");
+    mostrarMensaje("Sin conexion a la agenda", "No se pudo leer Supabase. Revisa la tabla y sus permisos.", "alerta");
     return false;
   }
 }
 
 async function guardarRemoto() {
+  if (!remotoListo) return false;
   if (guardandoRemoto) {
     guardadoRemotoPendiente = true;
-    return;
+    return false;
   }
   guardandoRemoto = true;
+  let guardadoExitoso = false;
   try {
-    await supabaseRest(`${SUPABASE_TABLA}?on_conflict=id`, {
+    const filas = await supabaseRest(`${SUPABASE_TABLA}?on_conflict=id`, {
       method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates" },
+      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
       body: JSON.stringify([{ id: SUPABASE_ID, datos: estadoActual() }])
     });
+    if (!filas?.[0]?.datos) throw new Error("Supabase no confirmo el guardado.");
+    guardadoExitoso = true;
+    clearTimeout(reintentoRemoto);
+    return true;
   } catch (error) {
-    remotoListo = false;
+    guardadoRemotoPendiente = true;
     console.warn("No se pudo guardar en Supabase:", error);
-    mostrarMensaje("No se guardo en internet", "Revisa la conexion y vuelve a intentarlo.", "alerta");
+    mostrarMensaje("No se guardo en internet", "Reintentaremos automaticamente en unos segundos.", "alerta");
+    clearTimeout(reintentoRemoto);
+    reintentoRemoto = setTimeout(() => {
+      if (remotoListo) guardarRemoto();
+    }, 5000);
+    return false;
   } finally {
     guardandoRemoto = false;
-    if (guardadoRemotoPendiente && remotoListo) {
+    if (guardadoExitoso && guardadoRemotoPendiente && remotoListo) {
       guardadoRemotoPendiente = false;
       guardarRemoto();
     }
