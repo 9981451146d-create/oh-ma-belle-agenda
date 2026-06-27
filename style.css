@@ -771,6 +771,29 @@ table button {
   z-index: 20;
 }
 
+#modalFormulario {
+  z-index: 30;
+}
+
+#mensajeGuardado {
+  z-index: 80;
+  place-items: start center;
+  padding: max(20px, env(safe-area-inset-top)) 16px 16px;
+  background: transparent;
+  pointer-events: none;
+}
+
+#mensajeGuardado .modal-box {
+  pointer-events: auto;
+  box-shadow: 0 18px 55px rgba(17, 24, 39, 0.28);
+}
+
+.modal-stack .campo-error {
+  border-color: #dc264d !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 77, 0.14) !important;
+  background: #fff7f8;
+}
+
 .modal-box {
   width: min(420px, calc(100% - 32px));
   padding: 28px;
@@ -933,7 +956,8 @@ table button {
 }
 
 .cal-cita span,
-.cal-cita small {
+.cal-cita small,
+.cal-cita em {
   display: block;
 }
 
@@ -944,6 +968,31 @@ table button {
 .cal-cita small {
   color: #596171;
   font-weight: 700;
+}
+
+.cal-cita em {
+  margin-top: 4px;
+  font-size: 10px;
+  font-style: normal;
+  line-height: 1.25;
+}
+
+.cal-cita.cita-rojo {
+  background: #fff0f3;
+  color: #b31d3d;
+  box-shadow: inset 3px 0 #db3658;
+}
+
+.cal-cita.cita-amarillo {
+  background: #fff8dc;
+  color: #8a6200;
+  box-shadow: inset 3px 0 #e5b82e;
+}
+
+.cal-cita.cita-verde {
+  background: #eafaf3;
+  color: #167854;
+  box-shadow: inset 3px 0 #32ad7e;
 }
 
 .modal-form {
@@ -1125,6 +1174,38 @@ table button {
   margin-bottom: 22px;
 }
 
+.stats-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.stats-title-row h2,
+.stats-title-row p {
+  margin-top: 0;
+}
+
+.stats-actions,
+.config-buttons,
+.table-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stats-actions button,
+.config-buttons button,
+.table-actions button {
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid #e1e6ef;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4b5563;
+  font-weight: 800;
+}
+
 .stats-picker {
   display: grid;
   grid-template-columns: repeat(2, minmax(210px, 280px));
@@ -1158,6 +1239,12 @@ table button {
   grid-template-columns: repeat(2, minmax(280px, 1fr));
   gap: 22px;
   margin-bottom: 22px;
+}
+
+.stats-tables {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 22px;
 }
 
 .chart-card {
@@ -1242,13 +1329,58 @@ table button {
 
 .pago-item {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) auto auto auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(160px, auto) auto auto auto;
   gap: 16px;
   align-items: center;
   padding: 16px;
   border: 1px solid #ece4ef;
   border-radius: 12px;
   background: #fffafd;
+}
+
+.pago-item.pago-rojo {
+  border-left: 5px solid #db3658;
+}
+
+.pago-item.pago-amarillo {
+  border-left: 5px solid #e5b82e;
+}
+
+.pago-item.pago-verde {
+  border-left: 5px solid #32ad7e;
+}
+
+.cita-status,
+.pago-estado {
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.cita-status {
+  margin-bottom: 18px;
+}
+
+.status-rojo {
+  background: #fff0f3;
+  color: #b31d3d !important;
+}
+
+.status-amarillo {
+  background: #fff8dc;
+  color: #8a6200 !important;
+}
+
+.status-verde {
+  background: #eafaf3;
+  color: #167854 !important;
+}
+
+.add-user-button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .pago-item strong,
@@ -1277,6 +1409,112 @@ table button {
   border: 1px solid #e3e7ee;
   color: #4b5563;
   font-weight: 800;
+}
+
+.ticket-pago {
+  width: min(360px, 100%);
+  margin: 24px auto 0;
+  padding: 24px;
+  position: relative;
+  border: 1px solid #e8dfeb;
+  background: #fffdfd;
+  color: #30293a;
+  box-shadow: 0 14px 35px rgba(55, 39, 70, 0.1);
+}
+
+.ticket-pago::before,
+.ticket-pago::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: radial-gradient(circle at 8px 0, transparent 7px, #fffdfd 7.5px) 0 0 / 16px 8px repeat-x;
+}
+
+.ticket-pago::before {
+  top: -1px;
+  transform: rotate(180deg);
+}
+
+.ticket-pago::after {
+  bottom: -1px;
+}
+
+.ticket-brand {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.ticket-brand img {
+  width: 150px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.ticket-brand strong {
+  font-size: 20px;
+}
+
+.ticket-brand span,
+.ticket-pago > p {
+  color: #807688;
+  font-size: 13px;
+}
+
+.ticket-status {
+  width: fit-content;
+  margin: 16px auto;
+  padding: 5px 14px;
+  border: 1px solid #4dbb91;
+  border-radius: 20px;
+  background: #effcf6;
+  color: #167854;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.ticket-line,
+.ticket-total {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 6px 0;
+}
+
+.ticket-line span {
+  color: #807688;
+}
+
+.ticket-line b {
+  max-width: 62%;
+  text-align: right;
+}
+
+.ticket-divider {
+  margin: 10px 0;
+  border-top: 1px dashed #cabfd0;
+}
+
+.ticket-total {
+  align-items: center;
+  font-weight: 900;
+}
+
+.ticket-total strong {
+  color: #6d54b5;
+  font-size: 22px;
+}
+
+.ticket-pago > p {
+  margin: 18px 0 2px;
+  text-align: center;
+}
+
+.ticket-actions {
+  justify-content: center;
 }
 
 .servicios-page {
@@ -1621,12 +1859,62 @@ table button {
   margin-top: 18px;
 }
 
-.config-form input {
+.config-form input,
+.config-form select {
   width: 100%;
   min-height: 46px;
   padding: 0 14px;
   border-radius: 10px;
   border: 1px solid #e3e7ee;
+  background: #ffffff;
+  color: #202538;
+}
+
+.logo-config-preview {
+  width: 100%;
+  height: 120px;
+  display: grid;
+  place-items: center;
+  margin-top: 14px;
+  border: 1px dashed #d9ddea;
+  border-radius: 10px;
+  background: #fbfbfd;
+  overflow: hidden;
+}
+
+.logo-config-preview img {
+  width: 90%;
+  height: 100px;
+  object-fit: contain;
+}
+
+.exchange-box {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #f6f4ff;
+  color: #4e4672;
+}
+
+.exchange-box strong {
+  font-size: 18px;
+}
+
+.exchange-box small {
+  color: #747087;
+}
+
+.users-panel {
+  margin-top: 22px;
+}
+
+.users-panel .section-head {
+  justify-content: space-between;
+}
+
+.users-panel .section-head p {
+  margin: 6px 0 0;
 }
 
 .switch-line {
@@ -1708,6 +1996,21 @@ body.modo-oscuro .config-form input {
   border-color: #30384c;
 }
 
+body.modo-oscuro .logo-config-preview,
+body.modo-oscuro .exchange-box {
+  background: #111522;
+  color: #eef2ff;
+  border-color: #30384c;
+}
+
+body.modo-oscuro .stats-actions button,
+body.modo-oscuro .config-buttons button,
+body.modo-oscuro .table-actions button {
+  background: #111522;
+  color: #eef2ff;
+  border-color: #30384c;
+}
+
 body.modo-oscuro th,
 body.modo-oscuro .calendar-weekdays,
 body.modo-oscuro .cal-empty {
@@ -1744,6 +2047,35 @@ body.modo-oscuro .pago-actions button {
 body.modo-oscuro .pago-item {
   background: #151927;
   border-color: #30384c;
+}
+
+body.modo-oscuro .status-rojo,
+body.modo-oscuro .cal-cita.cita-rojo {
+  background: #3a1721;
+  color: #ff9caf !important;
+}
+
+body.modo-oscuro .status-amarillo,
+body.modo-oscuro .cal-cita.cita-amarillo {
+  background: #352d12;
+  color: #ffd86b !important;
+}
+
+body.modo-oscuro .status-verde,
+body.modo-oscuro .cal-cita.cita-verde {
+  background: #123327;
+  color: #7ce0b8 !important;
+}
+
+body.modo-oscuro .ticket-pago {
+  background: #111522;
+  color: #eef2ff;
+  border-color: #30384c;
+}
+
+body.modo-oscuro .ticket-pago::before,
+body.modo-oscuro .ticket-pago::after {
+  background: radial-gradient(circle at 8px 0, transparent 7px, #111522 7.5px) 0 0 / 16px 8px repeat-x;
 }
 
 body.modo-oscuro .pago-item strong,
@@ -1797,6 +2129,10 @@ body.modo-oscuro .kpi i {
   }
 
   .stats-charts {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-tables {
     grid-template-columns: 1fr;
   }
 
@@ -2025,10 +2361,38 @@ body.modo-oscuro .kpi i {
     display: none;
   }
 
+  .cal-cita em {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 8px;
+    line-height: 1.15;
+  }
+
+  .add-user-button {
+    width: 100%;
+  }
+
   .stats-picker,
   .pie-layout,
   .pago-item {
     grid-template-columns: 1fr;
+  }
+
+  .stats-title-row,
+  .users-panel .section-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .stats-actions,
+  .config-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .stats-actions button,
+  .config-buttons button {
+    width: 100%;
   }
 
   .pie-3d {
@@ -2111,5 +2475,11 @@ body.modo-oscuro .kpi i {
 
   .modal-actions button {
     flex: 1 1 140px;
+  }
+
+  .ticket-pago {
+    width: 100%;
+    margin-top: 18px;
+    padding: 20px 16px;
   }
 }

@@ -3,6 +3,14 @@ const SUPABASE_URL = "https://vgmyzhmbuteixvlvwxjc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5b7OS0T91SbgnCog14YXEw_tr7lD3WT";
 const SUPABASE_TABLA = "agenda_estado";
 const SUPABASE_ID = "principal";
+const CODIGO_ADMINISTRACION = "2009";
+const configuracionBase = {
+  logo: "",
+  moneda: "MXN",
+  tipoCambio: 17.6087,
+  tipoCambioFecha: "",
+  tipoCambioConsultadoEn: ""
+};
 const usuariosBase = [
   { usuario: "maria", clave: "1234", rol: "soloVista", nombre: "Maestra Maria" },
   { usuario: "rosa", clave: "0000", rol: "editora", nombre: "Rosa Polet" }
@@ -11,7 +19,7 @@ const usuariosBase = [
 const serviciosBase = [
   { nombre: "Pedicure", duracion: 60, precio: 350, color: "rosa" },
   { nombre: "Manicure", duracion: 45, precio: 280, color: "dorado" },
-  { nombre: "Pestanas", duracion: 90, precio: 650, color: "uva" },
+  { nombre: "Pestañas", duracion: 90, precio: 650, color: "uva" },
   { nombre: "Masajes", duracion: 60, precio: 500, color: "verde" },
   { nombre: "Cejas", duracion: 30, precio: 180, color: "rosa" },
   { nombre: "Peinados", duracion: 75, precio: 450, color: "dorado" },
@@ -21,6 +29,7 @@ const serviciosBase = [
 const imagenesServiciosBase = {
   Pedicure: "assets/services/pedicure.jpg",
   Manicure: "assets/services/manicure.jpg",
+  Pestañas: "assets/services/pestanas.jpg",
   Pestanas: "assets/services/pestanas.jpg",
   Masajes: "assets/services/masajes.jpg",
   Cejas: "assets/services/cejas.jpg",
@@ -35,6 +44,7 @@ let citas = cargar("citas") || [];
 let bloqueos = cargar("bloqueos") || [];
 let personal = cargar("personal") || [];
 let modoOscuro = cargar("modoOscuro") || false;
+let configuracion = cargar("configuracion") || { ...configuracionBase };
 let remotoListo = false;
 let guardandoRemoto = false;
 let guardadoRemotoPendiente = false;
@@ -59,10 +69,11 @@ function guardarLocal() {
   localStorage.setItem(`${CLAVE}-bloqueos`, JSON.stringify(bloqueos));
   localStorage.setItem(`${CLAVE}-personal`, JSON.stringify(personal));
   localStorage.setItem(`${CLAVE}-modoOscuro`, JSON.stringify(modoOscuro));
+  localStorage.setItem(`${CLAVE}-configuracion`, JSON.stringify(configuracion));
 }
 
 function estadoActual() {
-  return { usuarios, servicios, citas, bloqueos, personal, modoOscuro, actualizadoEn: new Date().toISOString() };
+  return { usuarios, servicios, citas, bloqueos, personal, modoOscuro, configuracion, actualizadoEn: new Date().toISOString() };
 }
 
 function aplicarEstado(datos) {
@@ -73,8 +84,11 @@ function aplicarEstado(datos) {
   bloqueos = Array.isArray(datos.bloqueos) ? datos.bloqueos : bloqueos;
   personal = Array.isArray(datos.personal) ? datos.personal : personal;
   modoOscuro = typeof datos.modoOscuro === "boolean" ? datos.modoOscuro : modoOscuro;
+  configuracion = datos.configuracion && typeof datos.configuracion === "object" ? datos.configuracion : configuracion;
   normalizarDatos();
   aplicarModoOscuro();
+  aplicarConfiguracion();
+  actualizarSelectorUsuarios();
 }
 
 async function supabaseRest(ruta, opciones = {}) {
@@ -95,7 +109,7 @@ async function supabaseRest(ruta, opciones = {}) {
   return JSON.parse(texto);
 }
 
-async function cargarRemoto() {
+async function cargarRemoto(silencioso = false) {
   try {
     const filas = await supabaseRest(`${SUPABASE_TABLA}?id=eq.${SUPABASE_ID}&select=datos`);
     remotoListo = true;
@@ -105,12 +119,12 @@ async function cargarRemoto() {
     } else {
       await guardarRemoto();
     }
-    mostrarMensaje("Datos conectados", "La agenda ya esta sincronizada.", "ok");
+    if (!silencioso) mostrarMensaje("Datos conectados", "La agenda ya está sincronizada.", "ok");
     return true;
   } catch (error) {
     remotoListo = false;
-    console.warn("Supabase aun no esta listo:", error);
-    mostrarMensaje("Sin conexion a la agenda", "No se pudo leer Supabase. Revisa la tabla y sus permisos.", "alerta");
+    console.warn("Supabase aún no está listo:", error);
+    if (!silencioso) mostrarMensaje("Sin conexión a la agenda", "No se pudo leer Supabase. Revisa la tabla y sus permisos.", "alerta");
     return false;
   }
 }
@@ -136,7 +150,7 @@ async function guardarRemoto() {
   } catch (error) {
     guardadoRemotoPendiente = true;
     console.warn("No se pudo guardar en Supabase:", error);
-    mostrarMensaje("No se guardo en internet", "Reintentaremos automaticamente en unos segundos.", "alerta");
+    mostrarMensaje("No se guardó en internet", "Reintentaremos automáticamente en unos segundos.", "alerta");
     clearTimeout(reintentoRemoto);
     reintentoRemoto = setTimeout(() => {
       if (remotoListo) guardarRemoto();
@@ -152,12 +166,23 @@ async function guardarRemoto() {
 }
 
 function normalizarDatos() {
-  usuarios = usuariosBase.map(base => {
-    const guardado = usuarios.find(item => item.usuario === base.usuario);
-    return { ...base, clave: guardado?.clave || base.clave };
-  });
+  const usuariosGuardados = Array.isArray(usuarios) ? usuarios : [];
+  if (!usuariosGuardados.length) usuariosGuardados.push(...usuariosBase.map(base => ({ ...base })));
+  usuarios = usuariosGuardados
+    .filter((item, indice, lista) => item?.usuario && lista.findIndex(otro => otro.usuario === item.usuario) === indice)
+    .map(item => ({
+      usuario: String(item.usuario).trim().toLowerCase(),
+      clave: String(item.clave || "1234"),
+      rol: item.rol === "editora" ? "editora" : "soloVista",
+      nombre: String(item.nombre || item.usuario).trim()
+    }));
+  configuracion = {
+    ...configuracionBase,
+    ...(configuracion && typeof configuracion === "object" ? configuracion : {}),
+    tipoCambio: Number(configuracion?.tipoCambio || configuracionBase.tipoCambio)
+  };
   servicios = servicios.map((servicio, indice) => ({
-    nombre: servicio.nombre || "Servicio",
+    nombre: servicio.nombre === "Pestanas" ? "Pestañas" : (servicio.nombre || "Servicio"),
     descripcion: servicio.descripcion || "",
     confirmacion: servicio.confirmacion || "",
     imagen: servicio.imagen || imagenesServiciosBase[servicio.nombre] || "",
@@ -169,7 +194,7 @@ function normalizarDatos() {
     pagoTransferencia: !!servicio.pagoTransferencia,
     color: servicio.color || ["rosa", "dorado", "uva", "verde"][indice % 4],
     personalAsignado: Array.isArray(servicio.personalAsignado) ? servicio.personalAsignado : [],
-    horarios: servicio.horarios || horariosBase()
+    horarios: normalizarHorarios(servicio.horarios)
   }));
   personal = personal.map(persona => ({
     id: persona.id || idNuevo(),
@@ -179,22 +204,31 @@ function normalizarDatos() {
     foto: persona.foto || "",
     fraccion: Number(persona.fraccion || 30),
     activo: persona.activo !== false,
-    horarios: persona.horarios || horariosBase()
+    horarios: normalizarHorarios(persona.horarios)
   }));
   citas = citas.map(cita => ({
     ...cita,
+    servicio: cita.servicio === "Pestanas" ? "Pestañas" : cita.servicio,
     abonos: Array.isArray(cita.abonos) ? cita.abonos : [],
     liquidada: !!cita.liquidada || (Number(cita.anticipo || 0) >= Number(cita.precio || 0) && Number(cita.precio || 0) > 0)
   }));
-  guardar();
+  guardarLocal();
 }
 
 function horariosBase() {
-  return ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"].map(dia => ({
+  return ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].map(dia => ({
     dia,
     activo: !["Domingo"].includes(dia),
     inicio: "09:00",
     fin: "18:00"
+  }));
+}
+
+function normalizarHorarios(horarios) {
+  const lista = Array.isArray(horarios) ? horarios : horariosBase();
+  return lista.map(item => ({
+    ...item,
+    dia: item.dia === "Miercoles" ? "Miércoles" : item.dia === "Sabado" ? "Sábado" : item.dia
   }));
 }
 
@@ -212,6 +246,19 @@ function idNuevo() {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
 
+function actualizarSelectorUsuarios() {
+  const selector = document.getElementById("usuario");
+  if (!selector) return;
+  const seleccionado = selector.value;
+  selector.innerHTML = `<option value="">Selecciona un usuario</option>${usuarios.map(item => `<option value="${item.usuario}">${item.nombre}</option>`).join("")}`;
+  if (usuarios.some(item => item.usuario === seleccionado)) selector.value = seleccionado;
+}
+
+function aplicarConfiguracion() {
+  const logo = configuracion.logo || "assets/logo-oh-ma-belle-transparent.png";
+  document.querySelectorAll(".login-logo, .brand img").forEach(imagen => imagen.src = logo);
+}
+
 function usuarioSeleccionado() {
   const usuario = document.getElementById("usuario").value;
   const campoClave = document.getElementById("campoClave");
@@ -223,17 +270,18 @@ function usuarioSeleccionado() {
 }
 
 async function iniciarSesion() {
+  if (!remotoListo) await cargarRemoto(true);
   const usuario = document.getElementById("usuario").value;
   const clave = document.getElementById("clave").value.trim();
   const existe = usuarios.find(item => item.usuario === usuario && item.clave === clave);
   if (!existe) {
-    document.getElementById("mensaje").textContent = "Usuario o contrasena incorrectos";
+    document.getElementById("mensaje").textContent = "Usuario o contraseña incorrectos";
     return;
   }
 
   usuarioActual = existe;
   document.body.classList.toggle("modo-solo-ver", !puedeEditar());
-  document.getElementById("rolActual").textContent = puedeEditar() ? "Rosa Polet" : "Maestra Maria";
+  document.getElementById("rolActual").textContent = existe.nombre;
   document.getElementById("pantallaLogin").style.display = "none";
   document.getElementById("sistema").style.display = "flex";
   await cargarRemoto();
@@ -266,7 +314,7 @@ function mostrarMensaje(titulo, texto = "", tipo = "ok") {
   document.getElementById("textoMensaje").textContent = texto;
   modal.className = `modal ${tipo}`;
   modal.style.display = "grid";
-  setTimeout(() => modal.style.display = "none", 1700);
+  setTimeout(() => modal.style.display = "none", tipo === "ok" ? 2200 : 4200);
 }
 
 function activarMenu(seccion) {
@@ -282,7 +330,26 @@ function formatoFecha(fecha) {
 }
 
 function dinero(valor) {
-  return `$${Number(valor || 0).toFixed(0)}`;
+  const montoPesos = Number(valor || 0);
+  if (configuracion.moneda === "USD") {
+    const tasa = Number(configuracion.tipoCambio || configuracionBase.tipoCambio);
+    return `US$${(montoPesos / tasa).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `$${montoPesos.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} MXN`;
+}
+
+function valorParaEntrada(valorEnPesos) {
+  if (configuracion.moneda !== "USD") return Number(valorEnPesos || 0);
+  return Number((Number(valorEnPesos || 0) / Number(configuracion.tipoCambio || configuracionBase.tipoCambio)).toFixed(2));
+}
+
+function valorDesdeEntrada(valorMostrado) {
+  const valor = Number(valorMostrado || 0);
+  return configuracion.moneda === "USD" ? Number((valor * Number(configuracion.tipoCambio || configuracionBase.tipoCambio)).toFixed(2)) : valor;
+}
+
+function simboloMoneda() {
+  return configuracion.moneda === "USD" ? "US$" : "$";
 }
 
 function citasDeFecha(fecha) {
@@ -327,13 +394,13 @@ function mostrarInicio(fecha = hoy()) {
     <div class="kpi-grid">
       ${kpi("Turnos de Hoy", resumen.activas.length, "Reservas para hoy", "turnos-hoy", "morado")}
       ${kpi("Cancelaciones Hoy", resumen.canceladasHoy.length, "Cancelaciones realizadas hoy", "cancelaciones-hoy", "dorado")}
-      ${kpi("Turnos Pendientes", resumen.pendientes.length, "Total de proximos turnos", "turnos-pendientes", "morado")}
-      ${kpi("Ingresos del Dia", dinero(resumen.ingresos), "Pagos estimados por revisar", "ingresos-dia", "verde")}
+      ${kpi("Turnos pendientes", resumen.pendientes.length, "Total de próximos turnos", "turnos-pendientes", "morado")}
+      ${kpi("Ingresos del día", dinero(resumen.ingresos), "Pagos estimados por revisar", "ingresos-dia", "verde")}
     </div>
 
     <section class="panel soft">
-      <h2>Ultimas Cancelaciones</h2>
-      <p>Listado de reservas canceladas recientemente. Puedes contactar rapidamente a las clientas para reprogramar.</p>
+      <h2>Últimas cancelaciones</h2>
+      <p>Listado de reservas canceladas recientemente. Puedes contactar rápidamente a las clientas para reprogramar.</p>
       <table>
         <thead><tr><th>Cliente</th><th>Contacto</th><th>Servicio</th><th>Personal</th><th>Fecha/Hora Original</th><th>Cancelado</th></tr></thead>
         <tbody>${canceladas.map(cita => `<tr><td>${cita.cliente}</td><td>${cita.telefono || "-"}</td><td>${cita.servicio}</td><td>${cita.personal || "Maestra"}</td><td>${formatoFecha(cita.fecha)} ${cita.hora}</td><td>${cita.canceladaEn || "-"}</td></tr>`).join("") || `<tr><td colspan="6" class="vacio">No hay cancelaciones recientes</td></tr>`}</tbody>
@@ -367,7 +434,7 @@ function formularioCita(fecha) {
     <input type="date" id="citaFecha" value="${fecha}">
     <input type="time" id="citaHora" value="${horaActual()}">
     <input id="citaCliente" placeholder="Cliente">
-    <input id="citaTelefono" placeholder="Telefono">
+    <input id="citaTelefono" placeholder="Teléfono">
     <select id="citaServicio" onchange="actualizarPrecioServicio()">${servicios.map(s => `<option>${s.nombre}</option>`).join("")}</select>
     <input id="citaPrecio" type="number" min="0" placeholder="Precio" value="${servicios[0]?.precio || 0}">
     <select id="citaEstado"><option>Pendiente</option><option>Confirmada</option><option>Atendida</option></select>
@@ -380,13 +447,13 @@ function pintarCitas(lista) {
     <time>${cita.hora}</time>
     <div>
       <strong>${cita.cliente}</strong>
-      <span>${cita.servicio} · ${cita.telefono || "Sin telefono"}</span>
+      <span>${cita.servicio} · ${cita.telefono || "Sin teléfono"}</span>
       <small>${cita.estado} · ${dinero(cita.precio)}</small>
     </div>
     <div class="acciones-cita">
       ${puedeEditar() && cita.estado !== "Cancelada" ? `<button type="button" onclick="marcarAtendida(${cita.id})">Atendida</button><button type="button" onclick="cancelarCita(${cita.id})">Cancelar</button><button type="button" onclick="eliminarCita(${cita.id})">Eliminar</button>` : ""}
     </div>
-  </article>`).join("") || `<div class="vacio agenda-vacia">No hay citas para este dia.</div>`;
+  </article>`).join("") || `<div class="vacio agenda-vacia">No hay citas para este día.</div>`;
 }
 
 function cambiarDia(fecha, dias) {
@@ -426,19 +493,23 @@ function guardarCita(event) {
     personal: "Maestra"
   };
   if (!cita.fecha || !cita.hora || !cita.cliente) return mostrarMensaje("Faltan datos", "Agrega fecha, hora y cliente.", "alerta");
-  if (bloqueos.some(b => b.fecha === cita.fecha && b.hora === cita.hora)) return mostrarMensaje("Horario bloqueado", "Ese horario no esta disponible.", "alerta");
+  if (bloqueos.some(b => b.fecha === cita.fecha && b.hora === cita.hora)) return mostrarMensaje("Horario bloqueado", "Ese horario no está disponible.", "alerta");
   citas.push(cita);
   guardar();
-  mostrarMensaje("Cita guardada", "La reserva quedo registrada.");
+  mostrarMensaje("Cita guardada", "La reserva quedó registrada.");
   mostrarInicio(cita.fecha);
 }
 
 function marcarAtendida(id) {
   if (!exigirEdicion()) return;
   const cita = citas.find(item => item.id === id);
-  if (cita) cita.estado = "Atendida";
+  if (!cita) return;
+  cita.estado = "Atendida";
+  cita.servicioRealizadoEn = new Date().toISOString();
   guardar();
-  mostrarInicio(cita?.fecha || hoy());
+  mostrarInicio(cita.fecha || hoy());
+  if (saldoCita(cita) <= 0) mostrarTicketPago(cita.id);
+  else mostrarMensaje("Servicio realizado", "La cita seguirá en rojo hasta completar el pago.", "alerta");
 }
 
 function cancelarCita(id) {
@@ -462,37 +533,100 @@ function eliminarCita(id) {
 
 function mostrarEstadisticas(tipoPeriodo = "mes", valor = hoy().slice(0, 7)) {
   activarMenu("estadisticas");
-  const activas = citasActivas().filter(cita => citaEnPeriodo(cita, tipoPeriodo, valor));
-  const ingresos = activas.reduce((s, c) => s + Number(c.precio || 0), 0);
-  const canceladasPeriodo = citasCanceladas().filter(cita => citaEnPeriodo(cita, tipoPeriodo, valor));
-  const datosServicio = servicios.map(servicio => {
-    const citasServicio = activas.filter(cita => cita.servicio === servicio.nombre);
-    return {
-      nombre: servicio.nombre,
-      total: citasServicio.length,
-      dinero: citasServicio.reduce((s, cita) => s + Number(cita.precio || 0), 0)
-    };
-  });
-  const porServicio = datosServicio.map(servicio => `<tr><td>${servicio.nombre}</td><td>${servicio.total}</td><td>${dinero(servicio.dinero)}</td></tr>`).join("");
+  const datos = calcularEstadisticas(tipoPeriodo, valor);
+  const porServicio = datos.porServicio.map(item => `<tr><td>${item.nombre}</td><td>${item.total}</td><td>${dinero(item.dinero)}</td></tr>`).join("");
+  const porPersonal = datos.porPersonal.map(item => `<tr><td>${item.nombre}</td><td>${item.total}</td><td>${dinero(item.dinero)}</td></tr>`).join("");
   document.getElementById("contenido").innerHTML = `
     <section class="panel stats-filter">
-      <h2>Estadisticas por periodo</h2>
+      <div class="stats-title-row"><div><h2>Estadísticas por periodo</h2><p>Consulta el trabajo realizado y los ingresos estimados.</p></div><div class="stats-actions"><button type="button" onclick="exportarEstadisticasExcel()">Exportar a Excel</button><button class="primary-action" type="button" onclick="imprimirEstadisticas()">Imprimir reporte</button></div></div>
       <div class="stats-picker">
-        <div><label>Periodo</label><select id="statsTipo" onchange="cambiarFiltroEstadisticas()"><option value="mes" ${tipoPeriodo === "mes" ? "selected" : ""}>Mes completo</option><option value="dia" ${tipoPeriodo === "dia" ? "selected" : ""}>Dia exacto</option></select></div>
-        <div><label>${tipoPeriodo === "dia" ? "Dia" : "Mes"}</label><input id="statsFecha" type="${tipoPeriodo === "dia" ? "date" : "month"}" value="${valor}" onchange="cambiarFiltroEstadisticas()"></div>
+        <div><label>Periodo</label><select id="statsTipo" onchange="cambiarFiltroEstadisticas()"><option value="mes" ${tipoPeriodo === "mes" ? "selected" : ""}>Mes completo</option><option value="dia" ${tipoPeriodo === "dia" ? "selected" : ""}>Día exacto</option></select></div>
+        <div><label>${tipoPeriodo === "dia" ? "Día" : "Mes"}</label><input id="statsFecha" type="${tipoPeriodo === "dia" ? "date" : "month"}" value="${valor}" onchange="cambiarFiltroEstadisticas()"></div>
       </div>
     </section>
     <div class="kpi-grid">
-      ${kpi("Citas activas", activas.length, "Reservas no canceladas", "citas-activas")}
-      ${kpi("Canceladas", canceladasPeriodo.length, "Historial del periodo", "canceladas", "dorado")}
-      ${kpi("Ingresos estimados", dinero(ingresos), "Segun precio de citas", "ingresos-estimados", "verde")}
-      ${kpi("Servicios", servicios.length, "Catalogo disponible", "servicios-card")}
+      ${kpi("Citas activas", datos.activas.length, "Reservas no canceladas", "citas-activas")}
+      ${kpi("Canceladas", datos.canceladas.length, "Historial del periodo", "canceladas", "dorado")}
+      ${kpi("Ingresos estimados", dinero(datos.ingresos), "Según el precio de las citas", "ingresos-estimados", "verde")}
+      ${kpi("Personal activo", datos.porPersonal.filter(item => item.total > 0).length, "Con trabajo en el periodo", "personal")}
     </div>
     <section class="stats-charts">
-      ${graficaPastel3D("Servicios mas vendidos", datosServicio.map(item => ({ nombre: item.nombre, valor: item.total })), "citas")}
-      ${graficaPastel3D("Servicios que generaron mas dinero", datosServicio.map(item => ({ nombre: item.nombre, valor: item.dinero })), "dinero")}
+      ${graficaPastel3D("Servicios más vendidos", datos.porServicio.map(item => ({ nombre: item.nombre, valor: item.total })), "citas")}
+      ${graficaPastel3D("Servicios que generaron más ingresos", datos.porServicio.map(item => ({ nombre: item.nombre, valor: item.dinero })), "dinero")}
     </section>
-    <section class="panel"><h2>Estadisticas por servicio</h2><table><thead><tr><th>Servicio</th><th>Citas</th><th>Estimado</th></tr></thead><tbody>${porServicio}</tbody></table></section>`;
+    <section class="stats-charts">
+      ${graficaPastel3D("Personal con más citas", datos.porPersonal.map(item => ({ nombre: item.nombre, valor: item.total })), "citas")}
+      ${graficaPastel3D("Personal que generó más ingresos", datos.porPersonal.map(item => ({ nombre: item.nombre, valor: item.dinero })), "dinero")}
+    </section>
+    <section class="stats-tables">
+      <article class="panel"><h2>Estadísticas por servicio</h2><table><thead><tr><th>Servicio</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${porServicio || `<tr><td colspan="3" class="vacio">No hay datos en este periodo.</td></tr>`}</tbody></table></article>
+      <article class="panel"><h2>Estadísticas por personal</h2><table><thead><tr><th>Personal</th><th>Citas realizadas</th><th>Ingresos generados</th></tr></thead><tbody>${porPersonal || `<tr><td colspan="3" class="vacio">No hay datos en este periodo.</td></tr>`}</tbody></table></article>
+    </section>`;
+}
+
+function calcularEstadisticas(tipoPeriodo, valor) {
+  const activas = citasActivas().filter(cita => citaEnPeriodo(cita, tipoPeriodo, valor));
+  const canceladas = citasCanceladas().filter(cita => citaEnPeriodo(cita, tipoPeriodo, valor));
+  const ingresos = activas.reduce((suma, cita) => suma + Number(cita.precio || 0), 0);
+  const nombresServicios = [...new Set([...servicios.map(item => item.nombre), ...activas.map(item => item.servicio).filter(Boolean)])];
+  const nombresPersonal = [...new Set([...personal.map(item => item.nombre), ...activas.map(item => item.personal || "Sin asignar")])];
+  const resumir = (nombres, propiedad) => nombres.map(nombre => {
+    const lista = activas.filter(cita => (cita[propiedad] || "Sin asignar") === nombre);
+    return { nombre, total: lista.length, dinero: lista.reduce((suma, cita) => suma + Number(cita.precio || 0), 0) };
+  }).sort((a, b) => b.total - a.total || b.dinero - a.dinero);
+  return {
+    activas,
+    canceladas,
+    ingresos,
+    porServicio: resumir(nombresServicios, "servicio"),
+    porPersonal: resumir(nombresPersonal, "personal")
+  };
+}
+
+function periodoEstadisticasActual() {
+  const tipo = document.getElementById("statsTipo")?.value || "mes";
+  const valor = document.getElementById("statsFecha")?.value || (tipo === "mes" ? hoy().slice(0, 7) : hoy());
+  return { tipo, valor, datos: calcularEstadisticas(tipo, valor) };
+}
+
+function etiquetaPeriodo(tipo, valor) {
+  return tipo === "mes" ? nombreMes(`${valor}-01`) : formatoFecha(valor);
+}
+
+function exportarEstadisticasExcel() {
+  const { tipo, valor, datos } = periodoEstadisticasActual();
+  const filas = [
+    ["OH, MA BELLE - REPORTE DE ESTADÍSTICAS"],
+    ["Periodo", etiquetaPeriodo(tipo, valor)],
+    ["Citas activas", datos.activas.length],
+    ["Canceladas", datos.canceladas.length],
+    ["Ingresos", dinero(datos.ingresos)],
+    [],
+    ["ESTADÍSTICAS POR PERSONAL"],
+    ["Personal", "Citas realizadas", "Ingresos generados"],
+    ...datos.porPersonal.map(item => [item.nombre, item.total, dinero(item.dinero)]),
+    [],
+    ["ESTADÍSTICAS POR SERVICIO"],
+    ["Servicio", "Citas", "Ingresos"],
+    ...datos.porServicio.map(item => [item.nombre, item.total, dinero(item.dinero)])
+  ];
+  const csv = `\uFEFF${filas.map(fila => fila.map(valorCelda => `"${String(valorCelda ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n")}`;
+  const enlace = document.createElement("a");
+  enlace.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  enlace.download = `estadisticas-oh-ma-belle-${valor}.csv`;
+  enlace.click();
+  URL.revokeObjectURL(enlace.href);
+  mostrarMensaje("Reporte preparado", "El archivo puede abrirse directamente en Excel.", "ok");
+}
+
+function imprimirEstadisticas() {
+  const { tipo, valor, datos } = periodoEstadisticasActual();
+  const filas = lista => lista.map(item => `<tr><td>${item.nombre}</td><td>${item.total}</td><td>${dinero(item.dinero)}</td></tr>`).join("");
+  const ventana = window.open("", "_blank", "width=960,height=720");
+  if (!ventana) return mostrarMensaje("No se pudo abrir", "Permite las ventanas emergentes para imprimir el reporte.", "alerta");
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reporte Oh, ma belle</title><style>body{font-family:Arial,sans-serif;color:#28233b;margin:36px}header{display:flex;align-items:center;gap:18px;border-bottom:3px solid #6d63ef;padding-bottom:18px}header img{width:120px;height:70px;object-fit:contain}h1{margin:0;font-size:28px}h2{margin-top:30px;color:#513c75}.resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.dato{padding:16px;border:1px solid #ddd5e8;border-radius:8px}.dato strong{display:block;font-size:22px;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:11px;border-bottom:1px solid #e8e3ee;text-align:left}th{background:#f4f0fb}@media print{body{margin:14mm}.no-print{display:none}}</style></head><body><header>${configuracion.logo ? `<img src="${configuracion.logo}" alt="Logo">` : ""}<div><h1>Oh, ma belle</h1><p>Reporte de estadísticas · ${etiquetaPeriodo(tipo, valor)}</p></div></header><section class="resumen"><div class="dato">Citas activas<strong>${datos.activas.length}</strong></div><div class="dato">Canceladas<strong>${datos.canceladas.length}</strong></div><div class="dato">Ingresos<strong>${dinero(datos.ingresos)}</strong></div></section><h2>Resultados por personal</h2><table><thead><tr><th>Personal</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porPersonal)}</tbody></table><h2>Resultados por servicio</h2><table><thead><tr><th>Servicio</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porServicio)}</tbody></table></body></html>`);
+  ventana.document.close();
+  setTimeout(() => ventana.print(), 300);
 }
 
 function citaEnPeriodo(cita, tipoPeriodo, valor) {
@@ -502,7 +636,11 @@ function citaEnPeriodo(cita, tipoPeriodo, valor) {
 
 function cambiarFiltroEstadisticas() {
   const tipo = document.getElementById("statsTipo").value;
-  const valor = document.getElementById("statsFecha").value || (tipo === "mes" ? hoy().slice(0, 7) : hoy());
+  const campo = document.getElementById("statsFecha");
+  let valor = campo.value;
+  if (tipo === "dia" && campo.type === "month") valor = valor === hoy().slice(0, 7) ? hoy() : `${valor}-01`;
+  if (tipo === "mes" && campo.type === "date") valor = valor.slice(0, 7);
+  if (!valor) valor = tipo === "mes" ? hoy().slice(0, 7) : hoy();
   mostrarEstadisticas(tipo, valor);
 }
 
@@ -511,7 +649,7 @@ function graficaPastel3D(titulo, datos, tipo = "citas") {
   const utiles = datos.filter(item => Number(item.valor || 0) > 0);
   const total = utiles.reduce((s, item) => s + Number(item.valor || 0), 0);
   if (!total) {
-    return `<section class="panel chart-card"><h2>${titulo}</h2><div class="chart-empty">Aun no hay datos para este periodo.</div></section>`;
+    return `<section class="panel chart-card"><h2>${titulo}</h2><div class="chart-empty">Aún no hay datos para este periodo.</div></section>`;
   }
   let acumulado = 0;
   const segmentos = utiles.map((item, indice) => {
@@ -547,7 +685,7 @@ function guardarServicio(event) {
   const duracion = Number(document.getElementById("servicioDuracion").value || 0);
   const precio = Number(document.getElementById("servicioPrecio").value || 0);
   const color = document.getElementById("servicioColor").value;
-  if (!nombre || duracion <= 0) return mostrarMensaje("Faltan datos", "Agrega nombre y duracion.", "alerta");
+  if (!nombre || duracion <= 0) return mostrarMensaje("Faltan datos", "Agrega nombre y duración.", "alerta");
   servicios.push({ nombre, duracion, precio, color });
   guardar();
   mostrarServicios();
@@ -573,7 +711,7 @@ function mostrarBloquearHorario() {
         <input id="bloqueoMotivo" placeholder="Motivo">
         <button type="submit">Bloquear</button>
       </form>` : `<p class="solo-ver">Modo solo lectura.</p>`}
-      <table><thead><tr><th>Fecha</th><th>Hora</th><th>Motivo</th><th>Accion</th></tr></thead><tbody>${bloqueos.map(b => `<tr><td>${formatoFecha(b.fecha)}</td><td>${b.hora}</td><td>${b.motivo || "-"}</td><td>${puedeEditar() ? `<button type="button" onclick="eliminarBloqueo(${b.id})">Eliminar</button>` : "-"}</td></tr>`).join("") || `<tr><td colspan="4" class="vacio">No hay horarios bloqueados.</td></tr>`}</tbody></table>
+      <table><thead><tr><th>Fecha</th><th>Hora</th><th>Motivo</th><th>Acción</th></tr></thead><tbody>${bloqueos.map(b => `<tr><td>${formatoFecha(b.fecha)}</td><td>${b.hora}</td><td>${b.motivo || "-"}</td><td>${puedeEditar() ? `<button type="button" onclick="eliminarBloqueo(${b.id})">Eliminar</button>` : "-"}</td></tr>`).join("") || `<tr><td colspan="4" class="vacio">No hay horarios bloqueados.</td></tr>`}</tbody></table>
     </section>`;
 }
 
@@ -605,52 +743,176 @@ function mostrarTransferencias() {
 
 function mostrarSuscripcion() {
   activarMenu("suscripcion");
-  document.getElementById("contenido").innerHTML = `<section class="panel suscripcion"><h2>Mi suscripcion</h2><strong>Premium</strong><p>Agenda activa para Oh, ma belle Belleza y Spa.</p></section>`;
+  document.getElementById("contenido").innerHTML = `<section class="panel suscripcion"><h2>Mi suscripción</h2><strong>Premium</strong><p>Agenda activa para Oh, ma belle Belleza y Spa.</p></section>`;
 }
 
 function mostrarConfiguracion() {
   activarMenu("configuracion");
+  const filasUsuarios = usuarios.map((usuario, indice) => `<tr><td>${usuario.nombre}</td><td>${usuario.usuario}</td><td>${usuario.rol === "editora" ? "Puede ver y editar" : "Solo puede ver"}</td><td>${puedeEditar() ? `<div class="table-actions"><button type="button" onclick="abrirUsuarioModal(${indice})">Editar</button><button class="danger-action" type="button" onclick="eliminarUsuario(${indice})">Eliminar</button></div>` : "-"}</td></tr>`).join("");
   document.getElementById("contenido").innerHTML = `
     <section class="config-grid">
       <article class="panel config-card">
-        <h2>Configuracion</h2>
+        <h2>Configuración</h2>
         <p>Usuario actual: <strong>${usuarioActual?.nombre || "-"}</strong></p>
         <p>Permiso: <strong>${puedeEditar() ? "Puede ver y editar" : "Solo puede ver"}</strong></p>
       </article>
 
       <article class="panel config-card">
-        <h2>Cambiar contrasena</h2>
+        <h2>Cambiar contraseña</h2>
         <form class="config-form" onsubmit="cambiarContrasena(event)">
-          <label>Contrasena anterior</label>
-          <input type="password" id="claveAnterior" autocomplete="current-password" placeholder="Escribe la contrasena anterior">
-          <label>Nueva contrasena</label>
-          <input type="password" id="claveNueva" autocomplete="new-password" placeholder="Escribe la nueva contrasena">
+          <label>Contraseña anterior</label>
+          <input type="password" id="claveAnterior" autocomplete="current-password" placeholder="Escribe la contraseña anterior">
+          <label>Nueva contraseña</label>
+          <input type="password" id="claveNueva" autocomplete="new-password" placeholder="Escribe la nueva contraseña">
           <button class="primary-action" type="submit">Guardar</button>
         </form>
       </article>
 
       <article class="panel config-card">
         <h2>Apariencia</h2>
-        <p>Activa o desactiva el modo oscuro para trabajar mas comodo.</p>
+        <p>Activa o desactiva el modo oscuro para trabajar más cómodo.</p>
         <label class="switch-line"><input type="checkbox" id="toggleOscuro" ${modoOscuro ? "checked" : ""} onchange="cambiarModoOscuro(this.checked)"> Modo oscuro</label>
       </article>
+
+      <article class="panel config-card config-company">
+        <h2>Empresa y moneda</h2>
+        <div class="logo-config-preview"><img src="${configuracion.logo || "assets/logo-oh-ma-belle-transparent.png"}" alt="Logo actual"></div>
+        ${puedeEditar() ? `<form class="config-form" onsubmit="guardarConfiguracionEmpresa(event)">
+          <label>Logo de la empresa</label><input id="configLogo" type="file" accept="image/*">
+          <label>Moneda para mostrar los precios</label><select id="configMoneda"><option value="MXN" ${configuracion.moneda === "MXN" ? "selected" : ""}>Pesos mexicanos (MXN)</option><option value="USD" ${configuracion.moneda === "USD" ? "selected" : ""}>Dólares (USD)</option></select>
+          <div class="exchange-box"><span>Tipo de cambio actual</span><strong>1 USD = ${Number(configuracion.tipoCambio).toFixed(4)} MXN</strong><small>${configuracion.tipoCambioFecha ? `Actualizado: ${configuracion.tipoCambioFecha}` : "Valor de referencia"}</small></div>
+          <div class="config-buttons"><button type="button" onclick="actualizarTipoCambio()">Actualizar tipo de cambio</button><button class="primary-action" type="submit">Guardar configuración</button></div>
+        </form>` : `<p>Moneda seleccionada: <strong>${configuracion.moneda}</strong></p>`}
+      </article>
+    </section>
+
+    <section class="panel users-panel">
+      <div class="section-head"><div><h2>Perfiles de usuario</h2><p>Administra quién puede consultar o editar la agenda.</p></div>${puedeEditar() ? `<button class="primary-action add-user-button" type="button" onclick="abrirUsuarioModal(null)">+ Agregar usuario</button>` : ""}</div>
+      <table><thead><tr><th>Nombre</th><th>Usuario</th><th>Permiso</th><th>Acciones</th></tr></thead><tbody>${filasUsuarios}</tbody></table>
     </section>`;
+  if (puedeEditar() && configuracion.moneda === "USD" && configuracion.tipoCambioConsultadoEn !== hoy()) {
+    setTimeout(() => actualizarTipoCambio(), 50);
+  }
+}
+
+function leerImagenOptimizada(input, callback) {
+  const archivo = input?.files?.[0];
+  if (!archivo) return callback("");
+  if (!archivo.type.startsWith("image/")) return mostrarMensaje("Archivo incorrecto", "Selecciona una imagen para el logo.", "alerta");
+  const lector = new FileReader();
+  lector.onload = () => {
+    const imagen = new Image();
+    imagen.onload = () => {
+      const escala = Math.min(1, 700 / imagen.width, 350 / imagen.height);
+      const lienzo = document.createElement("canvas");
+      lienzo.width = Math.max(1, Math.round(imagen.width * escala));
+      lienzo.height = Math.max(1, Math.round(imagen.height * escala));
+      lienzo.getContext("2d").drawImage(imagen, 0, 0, lienzo.width, lienzo.height);
+      callback(lienzo.toDataURL("image/png"));
+    };
+    imagen.src = lector.result;
+  };
+  lector.readAsDataURL(archivo);
+}
+
+function guardarConfiguracionEmpresa(event) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  const moneda = document.getElementById("configMoneda").value;
+  leerImagenOptimizada(document.getElementById("configLogo"), logoNuevo => {
+    configuracion.moneda = moneda === "USD" ? "USD" : "MXN";
+    if (logoNuevo) configuracion.logo = logoNuevo;
+    guardar();
+    aplicarConfiguracion();
+    mostrarConfiguracion();
+    mostrarMensaje("Configuración guardada", "El logo y la moneda quedaron actualizados.", "ok");
+  });
+}
+
+async function actualizarTipoCambio() {
+  if (!exigirEdicion()) return;
+  try {
+    const respuesta = await fetch("https://api.frankfurter.dev/v2/rate/USD/MXN");
+    if (!respuesta.ok) throw new Error("No disponible");
+    const datos = await respuesta.json();
+    if (!Number(datos.rate) || Number(datos.rate) <= 0) throw new Error("Respuesta incorrecta");
+    configuracion.tipoCambio = Number(datos.rate);
+    configuracion.tipoCambioFecha = datos.date || hoy();
+    configuracion.tipoCambioConsultadoEn = hoy();
+    guardar();
+    mostrarConfiguracion();
+    mostrarMensaje("Tipo de cambio actualizado", `1 USD = ${configuracion.tipoCambio.toFixed(4)} MXN.`, "ok");
+  } catch (error) {
+    mostrarMensaje("No se pudo actualizar", "Conservamos el último tipo de cambio guardado.", "alerta");
+  }
+}
+
+function abrirUsuarioModal(indice = null) {
+  if (!exigirEdicion()) return;
+  const usuario = indice === null ? {} : usuarios[indice];
+  abrirModal(indice === null ? "Agregar usuario" : "Editar usuario", `<form class="modal-stack" novalidate onsubmit="guardarUsuarioModal(event, ${indice === null ? "null" : indice})">
+    <label>Nombre completo</label><input id="perfilNombre" value="${escaparAtributo(usuario.nombre)}" required>
+    <label>Nombre de usuario</label><input id="perfilUsuario" value="${escaparAtributo(usuario.usuario)}" placeholder="Ejemplo: rosa" required>
+    <label>${indice === null ? "Contraseña" : "Nueva contraseña (opcional)"}</label><input id="perfilClave" type="password" autocomplete="new-password" ${indice === null ? "required" : ""}>
+    <label>Permiso</label><select id="perfilRol"><option value="soloVista" ${usuario.rol !== "editora" ? "selected" : ""}>Solo puede ver</option><option value="editora" ${usuario.rol === "editora" ? "selected" : ""}>Puede ver y editar</option></select>
+    ${indice === null ? `<label>Código para crear el perfil</label><input id="perfilCodigo" type="password" inputmode="numeric" placeholder="Código de autorización" required>` : ""}
+    <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar perfil</button></div>
+  </form>`);
+}
+
+function guardarUsuarioModal(event, indice) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  const nombre = document.getElementById("perfilNombre").value.trim();
+  const nombreUsuario = document.getElementById("perfilUsuario").value.trim().toLowerCase();
+  const clave = document.getElementById("perfilClave").value.trim();
+  const rol = document.getElementById("perfilRol").value === "editora" ? "editora" : "soloVista";
+  if (!nombre || !nombreUsuario || (indice === null && !clave)) return mostrarMensaje("Faltan datos por completar", "Escribe el nombre, usuario y contraseña.", "alerta");
+  if (!/^[a-z0-9._-]{3,24}$/.test(nombreUsuario)) return mostrarMensaje("Datos incorrectos", "El usuario debe tener de 3 a 24 letras, números, puntos, guiones o guion bajo.", "alerta");
+  if (clave && clave.length < 4) return mostrarMensaje("Datos incorrectos", "La contraseña debe tener al menos 4 caracteres.", "alerta");
+  if (usuarios.some((item, posicion) => item.usuario === nombreUsuario && posicion !== indice)) return mostrarMensaje("Usuario existente", "Ese nombre de usuario ya está registrado.", "alerta");
+  if (indice === null && document.getElementById("perfilCodigo").value.trim() !== CODIGO_ADMINISTRACION) return mostrarMensaje("Código incorrecto", "No fue posible crear el perfil.", "alerta");
+  if (indice !== null && usuarios[indice].rol === "editora" && rol !== "editora" && usuarios.filter(item => item.rol === "editora").length <= 1) return mostrarMensaje("Se necesita una editora", "Debe quedar al menos un perfil con permiso para editar.", "alerta");
+  if (indice === null) usuarios.push({ nombre, usuario: nombreUsuario, clave, rol });
+  else {
+    const anterior = usuarios[indice];
+    usuarios[indice] = { nombre, usuario: nombreUsuario, clave: clave || anterior.clave, rol };
+    if (usuarioActual?.usuario === anterior.usuario) usuarioActual = usuarios[indice];
+  }
+  guardar();
+  actualizarSelectorUsuarios();
+  cerrarModalFormulario();
+  mostrarConfiguracion();
+  mostrarMensaje("Perfil guardado", "Los permisos del usuario quedaron actualizados.", "ok");
+}
+
+function eliminarUsuario(indice) {
+  if (!exigirEdicion()) return;
+  const usuario = usuarios[indice];
+  if (!usuario) return;
+  if (usuario.usuario === usuarioActual?.usuario) return mostrarMensaje("No se puede eliminar", "No puedes eliminar el perfil que tiene la sesión abierta.", "alerta");
+  if (usuario.rol === "editora" && usuarios.filter(item => item.rol === "editora").length <= 1) return mostrarMensaje("Se necesita una editora", "Debe quedar al menos un perfil con permiso para editar.", "alerta");
+  if (!confirm(`¿Eliminar el perfil de ${usuario.nombre}?`)) return;
+  usuarios.splice(indice, 1);
+  guardar();
+  actualizarSelectorUsuarios();
+  mostrarConfiguracion();
 }
 
 function cambiarContrasena(event) {
   event.preventDefault();
   const anterior = document.getElementById("claveAnterior").value.trim();
   const nueva = document.getElementById("claveNueva").value.trim();
-  if (!anterior || !nueva) return mostrarMensaje("Faltan datos", "Escribe la contrasena anterior y la nueva.", "alerta");
-  if (nueva.length < 3) return mostrarMensaje("Contrasena corta", "Usa al menos 3 caracteres.", "alerta");
+  if (!anterior || !nueva) return mostrarMensaje("Faltan datos", "Escribe la contraseña anterior y la nueva.", "alerta");
+  if (nueva.length < 4) return mostrarMensaje("Contraseña corta", "Usa al menos 4 caracteres.", "alerta");
   const usuario = usuarios.find(item => item.usuario === usuarioActual?.usuario);
-  if (!usuario || usuario.clave !== anterior) return mostrarMensaje("Contrasena incorrecta", "La contrasena anterior no coincide.", "error");
+  if (!usuario || usuario.clave !== anterior) return mostrarMensaje("Contraseña incorrecta", "La contraseña anterior no coincide.", "error");
   usuario.clave = nueva;
   usuarioActual = usuario;
   guardar();
   document.getElementById("claveAnterior").value = "";
   document.getElementById("claveNueva").value = "";
-  mostrarMensaje("Contrasena actualizada", "La nueva contrasena quedo guardada.");
+  mostrarMensaje("Contraseña actualizada", "La nueva contraseña quedó guardada.");
 }
 
 function aplicarModoOscuro() {
@@ -666,7 +928,13 @@ function cambiarModoOscuro(valor) {
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("sistema").style.display = "none";
   aplicarModoOscuro();
+  aplicarConfiguracion();
+  actualizarSelectorUsuarios();
   usuarioSeleccionado();
+  cargarRemoto(true).then(() => {
+    actualizarSelectorUsuarios();
+    usuarioSeleccionado();
+  });
 });
 
 function cerrarModalFormulario() {
@@ -713,10 +981,13 @@ function calendarioGrande(fecha) {
     const citasDia = citasDeFecha(fechaDia).filter(cita => cita.estado !== "Cancelada");
     celdas.push(`<div class="cal-cell ${fechaDia === hoy() ? "hoy" : ""}">
       <div class="cal-day"><strong>${dia}</strong>${puedeEditar() ? `<button type="button" onclick="abrirModalCita('${fechaDia}')">+</button>` : ""}</div>
-      <div class="cal-citas">${citasDia.map(cita => `<button type="button" class="cal-cita" onclick="abrirDetalleCita(${cita.id})"><span>${cita.hora}</span>${cita.cliente}<small>${cita.servicio}</small></button>`).join("")}</div>
+      <div class="cal-citas">${citasDia.map(cita => {
+        const visual = estadoVisualCita(cita);
+        return `<button type="button" class="cal-cita cita-${visual.color}" onclick="abrirDetalleCita(${cita.id})"><span>${cita.hora}</span>${cita.cliente}<small>${cita.servicio}</small><em>${visual.texto}</em></button>`;
+      }).join("")}</div>
     </div>`);
   }
-  return `<div class="calendar-weekdays"><span>Lunes</span><span>Martes</span><span>Miercoles</span><span>Jueves</span><span>Viernes</span><span>Sabado</span><span>Domingo</span></div><div class="calendar-grid">${celdas.join("")}</div>`;
+  return `<div class="calendar-weekdays"><span>Lunes</span><span>Martes</span><span>Miércoles</span><span>Jueves</span><span>Viernes</span><span>Sábado</span><span>Domingo</span></div><div class="calendar-grid">${celdas.join("")}</div>`;
 }
 
 mostrarInicio = function (fecha = hoy()) {
@@ -728,13 +999,13 @@ mostrarInicio = function (fecha = hoy()) {
     <div class="kpi-grid">
       ${kpi("Turnos de Hoy", resumen.activas.length, "Reservas para hoy", "turnos-hoy", "morado")}
       ${kpi("Cancelaciones Hoy", resumen.canceladasHoy.length, "Cancelaciones realizadas hoy", "cancelaciones-hoy", "dorado")}
-      ${kpi("Turnos Pendientes", resumen.pendientes.length, "Total de proximos turnos", "turnos-pendientes", "morado")}
-      ${kpi("Ingresos del Dia", dinero(resumen.ingresos), "Pagos estimados por revisar", "ingresos-dia", "verde")}
+      ${kpi("Turnos pendientes", resumen.pendientes.length, "Total de próximos turnos", "turnos-pendientes", "morado")}
+      ${kpi("Ingresos del día", dinero(resumen.ingresos), "Pagos estimados por revisar", "ingresos-dia", "verde")}
     </div>
 
     <section class="panel soft">
-      <h2>Ultimas Cancelaciones</h2>
-      <p>Listado de reservas canceladas recientemente. Puedes contactar rapidamente a las clientas para reprogramar.</p>
+      <h2>Últimas cancelaciones</h2>
+      <p>Listado de reservas canceladas recientemente. Puedes contactar rápidamente a las clientas para reprogramar.</p>
       <table>
         <thead><tr><th>Cliente</th><th>Contacto</th><th>Servicio</th><th>Personal</th><th>Fecha/Hora Original</th><th>Cancelado</th></tr></thead>
         <tbody>${canceladas.map(cita => `<tr><td>${cita.cliente}</td><td>${cita.telefono || "-"}</td><td>${cita.servicio}</td><td>${cita.personal || "Rosa Polet"}</td><td>${formatoFecha(cita.fecha)} ${cita.hora}</td><td>${cita.canceladaEn || "-"}</td></tr>`).join("") || `<tr><td colspan="6" class="vacio">No hay cancelaciones recientes</td></tr>`}</tbody>
@@ -758,74 +1029,138 @@ mostrarInicio = function (fecha = hoy()) {
     </section>`;
 };
 
-function abrirModalCita(fecha = hoy()) {
+function escaparAtributo(valor) {
+  return String(valor ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function abrirModalCita(fecha = hoy(), citaId = null) {
   if (!exigirEdicion()) return;
-  abrirModal("Agregar cita", `<form class="modal-stack" novalidate onsubmit="guardarCitaModal(event)">
-    <label>Fecha</label><input type="date" id="modalCitaFecha" value="${fecha}" required>
-    <label>Hora</label><input type="time" id="modalCitaHora" value="${horaActual()}" required>
-    <label>Cliente</label><input id="modalCitaCliente" placeholder="Nombre de la clienta" required>
-    <label>Telefono</label><input id="modalCitaTelefono" type="tel" inputmode="numeric" maxlength="10" placeholder="10 digitos" oninput="this.value=this.value.replace(/\\D/g, '').slice(0, 10)" required>
-    <label>Servicio</label><select id="modalCitaServicio" onchange="actualizarPrecioServicioModal()" required>${servicios.map(s => `<option>${s.nombre}</option>`).join("")}</select>
-    <label>Personal</label><select id="modalCitaPersonal" required><option>Rosa Polet</option>${personal.map(p => `<option>${p.nombre}</option>`).join("")}</select>
-    <label>Precio</label><input id="modalCitaPrecio" type="number" min="1" value="${servicios[0]?.precio || 0}" required>
-    <h3>Metodo de pago</h3>
-    <select id="modalCitaPago" required><option value="">Seleccionar metodo</option><option>Pago Presencial/Efectivo</option><option>Transferencia Bancaria</option><option>Tarjeta</option></select>
-    <label>Anticipo de pago (Opcional)</label><div class="input-addon"><span>$</span><input id="modalCitaAnticipo" type="number" min="0" value="0" placeholder="Monto de sena"></div>
-    <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar cita</button></div>
+  const cita = citaId === null ? null : citas.find(item => item.id === citaId);
+  if (citaId !== null && !cita) return mostrarMensaje("Cita no encontrada", "Actualiza la página e inténtalo nuevamente.", "alerta");
+  const nombresPersonal = [...new Set(["Rosa Polet", cita?.personal, ...personal.filter(item => item.activo !== false).map(item => item.nombre)].filter(Boolean))];
+  const nombresServicios = [...new Set([cita?.servicio, ...servicios.map(item => item.nombre)].filter(Boolean))];
+  const metodosPago = ["Pago presencial/efectivo", "Transferencia bancaria", "Tarjeta"];
+  const metodoActual = cita?.metodoPago || "";
+  if (metodoActual && !metodosPago.includes(metodoActual)) metodosPago.unshift(metodoActual);
+  abrirModal(cita ? "Editar cita" : "Agregar cita", `<form class="modal-stack" novalidate onsubmit="guardarCitaModal(event, ${cita ? cita.id : "null"})">
+    <label>Fecha</label><input type="date" id="modalCitaFecha" value="${cita?.fecha || fecha}" required>
+    <label>Hora</label><input type="time" id="modalCitaHora" value="${cita?.hora || horaActual()}" required>
+    <label>Cliente</label><input id="modalCitaCliente" value="${escaparAtributo(cita?.cliente)}" placeholder="Nombre de la clienta" required>
+    <label>Teléfono</label><input id="modalCitaTelefono" type="tel" inputmode="numeric" maxlength="10" value="${escaparAtributo(cita?.telefono)}" placeholder="10 dígitos" oninput="this.value=this.value.replace(/\\D/g, '').slice(0, 10)" required>
+    <label>Servicio</label><select id="modalCitaServicio" onchange="actualizarPrecioServicioModal()" required>${nombresServicios.map(nombre => `<option ${nombre === cita?.servicio ? "selected" : ""}>${nombre}</option>`).join("")}</select>
+    <label>Personal</label><select id="modalCitaPersonal" required><option value="">Selecciona al personal</option>${nombresPersonal.map(nombre => `<option ${nombre === cita?.personal ? "selected" : ""}>${nombre}</option>`).join("")}</select>
+    <label>Precio (${configuracion.moneda})</label><input id="modalCitaPrecio" type="number" min="0.01" step="0.01" value="${valorParaEntrada(cita?.precio ?? servicios[0]?.precio ?? 0)}" required>
+    <h3>Método de pago</h3>
+    <select id="modalCitaPago" required><option value="">Selecciona un método</option>${metodosPago.map(metodo => `<option ${metodo === metodoActual ? "selected" : ""}>${metodo}</option>`).join("")}</select>
+    <label>Anticipo de pago (opcional)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="modalCitaAnticipo" type="number" min="0" step="0.01" value="${valorParaEntrada(cita?.anticipo || 0)}" placeholder="Monto del anticipo"></div>
+    <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">${cita ? "Guardar cambios" : "Guardar cita"}</button></div>
   </form>`);
 }
 
 function actualizarPrecioServicioModal() {
   const servicio = servicioPorNombre(document.getElementById("modalCitaServicio").value);
-  document.getElementById("modalCitaPrecio").value = servicio.precio || 0;
+  document.getElementById("modalCitaPrecio").value = valorParaEntrada(servicio.precio || 0);
 }
 
-function guardarCitaModal(event) {
+function horaAMinutos(hora) {
+  const [horas, minutos] = String(hora || "0:0").split(":").map(Number);
+  return horas * 60 + minutos;
+}
+
+function duracionDeCita(cita) {
+  return Number(servicioPorNombre(cita.servicio)?.duracion || 30);
+}
+
+function hayConflictoDeHorario(nuevaCita, ignorarId = null) {
+  const inicioNuevo = horaAMinutos(nuevaCita.hora);
+  const finNuevo = inicioNuevo + duracionDeCita(nuevaCita);
+  return citas.some(cita => {
+    if (cita.id === ignorarId || cita.estado === "Cancelada") return false;
+    if (cita.fecha !== nuevaCita.fecha || cita.personal !== nuevaCita.personal) return false;
+    const inicioExistente = horaAMinutos(cita.hora);
+    const finExistente = inicioExistente + duracionDeCita(cita);
+    return inicioNuevo < finExistente && finNuevo > inicioExistente;
+  });
+}
+
+function mostrarErrorCita(titulo, texto, campos = []) {
+  document.querySelectorAll("#modalFormulario .campo-error").forEach(campo => campo.classList.remove("campo-error"));
+  campos.forEach(id => document.getElementById(id)?.classList.add("campo-error"));
+  const primerCampo = document.getElementById(campos[0]);
+  if (primerCampo) {
+    primerCampo.focus();
+    primerCampo.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  mostrarMensaje(titulo, texto, "alerta");
+}
+
+function guardarCitaModal(event, citaId = null) {
   event.preventDefault();
   if (!exigirEdicion()) return;
+  document.querySelectorAll("#modalFormulario .campo-error").forEach(campo => campo.classList.remove("campo-error"));
+  const citaAnterior = citaId === null ? null : citas.find(item => item.id === citaId);
   const telefono = document.getElementById("modalCitaTelefono").value.trim();
   const cita = {
-    id: idNuevo(),
+    id: citaAnterior?.id || idNuevo(),
     fecha: document.getElementById("modalCitaFecha").value,
     hora: document.getElementById("modalCitaHora").value,
     cliente: document.getElementById("modalCitaCliente").value.trim(),
     telefono,
     servicio: document.getElementById("modalCitaServicio").value,
-    precio: Number(document.getElementById("modalCitaPrecio").value || 0),
+    precio: valorDesdeEntrada(document.getElementById("modalCitaPrecio").value),
     metodoPago: document.getElementById("modalCitaPago").value,
-    anticipo: Number(document.getElementById("modalCitaAnticipo").value || 0),
-    abonos: [],
+    anticipo: valorDesdeEntrada(document.getElementById("modalCitaAnticipo").value),
+    abonos: citaAnterior?.abonos || [],
     liquidada: false,
-    estado: "Pendiente",
+    estado: citaAnterior?.estado || "Pendiente",
+    canceladaEn: citaAnterior?.canceladaEn,
     personal: document.getElementById("modalCitaPersonal").value
   };
-  if (!cita.fecha || !cita.hora || !cita.cliente || !cita.telefono || !cita.servicio || !cita.personal || !cita.metodoPago || cita.precio <= 0) {
-    return mostrarMensaje("Completa los datos", "Revisa que todos los campos obligatorios esten llenos.", "alerta");
+  const faltantes = [
+    [cita.fecha, "fecha", "modalCitaFecha"],
+    [cita.hora, "hora", "modalCitaHora"],
+    [cita.cliente, "nombre de la clienta", "modalCitaCliente"],
+    [cita.telefono, "teléfono", "modalCitaTelefono"],
+    [cita.servicio, "servicio", "modalCitaServicio"],
+    [cita.personal, "personal", "modalCitaPersonal"],
+    [cita.metodoPago, "método de pago", "modalCitaPago"]
+  ].filter(([valor]) => !valor);
+  if (faltantes.length) {
+    return mostrarErrorCita("Faltan datos por completar", `Revisa: ${faltantes.map(([, nombre]) => nombre).join(", ")}.`, faltantes.map(([, , id]) => id));
   }
-  if (!/^\d{10}$/.test(cita.telefono)) return mostrarMensaje("Telefono invalido", "El telefono debe tener exactamente 10 numeros.", "alerta");
-  if (cita.anticipo >= cita.precio) cita.liquidada = true;
-  citas.push(cita);
+  if (cita.cliente.length < 2) return mostrarErrorCita("Datos incorrectos", "Escribe un nombre válido para la clienta.", ["modalCitaCliente"]);
+  if (!/^\d{10}$/.test(cita.telefono)) return mostrarErrorCita("Datos incorrectos", "El teléfono debe tener exactamente 10 números.", ["modalCitaTelefono"]);
+  if (!Number.isFinite(cita.precio) || cita.precio <= 0) return mostrarErrorCita("Datos incorrectos", "El precio debe ser mayor que cero.", ["modalCitaPrecio"]);
+  if (!Number.isFinite(cita.anticipo) || cita.anticipo < 0 || cita.anticipo > cita.precio) return mostrarErrorCita("Datos incorrectos", "El anticipo no puede ser negativo ni mayor que el precio.", ["modalCitaAnticipo"]);
+  const cambioHorario = !citaAnterior || citaAnterior.fecha !== cita.fecha || citaAnterior.hora !== cita.hora;
+  if (cambioHorario && bloqueos.some(item => item.fecha === cita.fecha && item.hora === cita.hora)) return mostrarErrorCita("Horario bloqueado", "Ese horario no está disponible.", ["modalCitaFecha", "modalCitaHora"]);
+  if (hayConflictoDeHorario(cita, citaAnterior?.id ?? null)) return mostrarErrorCita("Horario ocupado", `${cita.personal} ya tiene una cita que coincide con ese horario.`, ["modalCitaFecha", "modalCitaHora", "modalCitaPersonal"]);
+  cita.liquidada = cita.anticipo + totalAbonos(cita) >= cita.precio;
+  if (citaAnterior) citas[citas.findIndex(item => item.id === citaAnterior.id)] = cita;
+  else citas.push(cita);
   guardar();
   cerrarModalFormulario();
-  mostrarMensaje("Cita guardada", "La cita aparecera en el calendario.", "ok");
+  mostrarMensaje(citaAnterior ? "Cita actualizada" : "Cita guardada", citaAnterior ? "Los cambios quedaron guardados." : "La cita aparecerá en el calendario.", "ok");
   mostrarInicio(cita.fecha);
 }
 
 function abrirDetalleCita(id) {
   const cita = citas.find(item => item.id === id);
   if (!cita) return;
+  const visual = estadoVisualCita(cita);
   abrirModal("Detalle de cita", `<div class="detalle-cita">
+    <div class="cita-status status-${visual.color}">${visual.texto}</div>
     <p><strong>Cliente:</strong> ${cita.cliente}</p>
     <p><strong>Servicio:</strong> ${cita.servicio}</p>
     <p><strong>Fecha:</strong> ${formatoFecha(cita.fecha)} ${cita.hora}</p>
     <p><strong>Personal:</strong> ${cita.personal || "Rosa Polet"}</p>
     <p><strong>Precio:</strong> ${dinero(cita.precio)}</p>
-    <p><strong>Metodo de pago:</strong> ${cita.metodoPago || "-"}</p>
+    <p><strong>Método de pago:</strong> ${cita.metodoPago || "-"}</p>
     <p><strong>Anticipo:</strong> ${dinero(cita.anticipo || 0)}</p>
     <p><strong>Saldo:</strong> ${dinero(saldoCita(cita))}</p>
     <div class="modal-actions">
       <button type="button" onclick="cerrarModalFormulario()">Cerrar</button>
-      ${puedeEditar() ? `${saldoCita(cita) > 0 ? `<button type="button" onclick="registrarAbono(${cita.id}); cerrarModalFormulario()">Abonar</button><button class="primary-action" type="button" onclick="liquidarCita(${cita.id}); cerrarModalFormulario()">Ya liquidaron</button>` : ""}<button type="button" onclick="cancelarCita(${cita.id}); cerrarModalFormulario()">Cancelar cita</button><button class="danger-action" type="button" onclick="eliminarCita(${cita.id}); cerrarModalFormulario()">Eliminar</button>` : ""}
+      ${puedeEditar() ? `<button type="button" onclick="cerrarModalFormulario(); abrirModalCita('${cita.fecha}', ${cita.id})">Editar cita</button>${cita.estado !== "Atendida" ? `<button type="button" onclick="cerrarModalFormulario(); marcarAtendida(${cita.id})">Servicio realizado</button>` : ""}${saldoCita(cita) > 0 ? `<button type="button" onclick="registrarAbono(${cita.id}); cerrarModalFormulario()">Abonar</button><button class="primary-action" type="button" onclick="cerrarModalFormulario(); liquidarCita(${cita.id})">Ya liquidaron</button>` : visual.color === "verde" ? `<button type="button" onclick="cerrarModalFormulario(); mostrarTicketPago(${cita.id})">Ver ticket</button>` : ""}<button type="button" onclick="cancelarCita(${cita.id}); cerrarModalFormulario()">Cancelar cita</button><button class="danger-action" type="button" onclick="eliminarCita(${cita.id}); cerrarModalFormulario()">Eliminar</button>` : ""}
     </div>
   </div>`);
 }
@@ -839,35 +1174,55 @@ function saldoCita(cita) {
   return Math.max(0, Number(cita.precio || 0) - Number(cita.anticipo || 0) - totalAbonos(cita));
 }
 
+function estadoVisualCita(cita) {
+  const atendida = cita.estado === "Atendida";
+  const pagada = saldoCita(cita) <= 0;
+  const tieneAbono = Number(cita.anticipo || 0) + totalAbonos(cita) > 0;
+  if (atendida && pagada) return { color: "verde", texto: "Pagada y servicio realizado" };
+  if (!atendida && pagada) return { color: "amarillo", texto: "Pagada · servicio pendiente" };
+  if (!atendida && tieneAbono) return { color: "amarillo", texto: "Con anticipo · servicio pendiente" };
+  if (atendida) return { color: "rojo", texto: "Servicio realizado · pago pendiente" };
+  return { color: "rojo", texto: "Sin abono · servicio pendiente" };
+}
+
 function citasPorLiquidar(fechaMes = hoy()) {
   const mes = fechaMes.slice(0, 7);
   return citasActivas()
-    .filter(cita => cita.fecha?.slice(0, 7) === mes && Number(cita.anticipo || 0) > 0 && saldoCita(cita) > 0)
+    .filter(cita => {
+      if (cita.fecha?.slice(0, 7) !== mes || saldoCita(cita) <= 0) return false;
+      return Number(cita.anticipo || 0) > 0 || cita.fecha <= hoy();
+    })
     .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
 }
 
 function vistaPagosPendientes(lista) {
-  if (!lista.length) return `<p class="vacio">No hay citas con anticipo pendientes por liquidar este mes.</p>`;
-  return `<div class="pagos-lista">${lista.map(cita => `<article class="pago-item">
+  if (!lista.length) return `<p class="vacio">No hay citas pendientes por liquidar en este periodo.</p>`;
+  return `<div class="pagos-lista">${lista.map(cita => {
+    const visual = estadoVisualCita(cita);
+    return `<article class="pago-item pago-${visual.color}">
     <div><strong>${cita.cliente}</strong><span>${formatoFecha(cita.fecha)} ${cita.hora} · ${cita.servicio}</span></div>
+    <div><small>Estado</small><b class="pago-estado status-${visual.color}">${visual.texto}</b></div>
     <div><small>Anticipo</small><b>${dinero(cita.anticipo)}</b></div>
     <div><small>Saldo</small><b>${dinero(saldoCita(cita))}</b></div>
     ${puedeEditar() ? `<div class="pago-actions"><button type="button" onclick="registrarAbono(${cita.id})">Abonar</button><button class="primary-action" type="button" onclick="liquidarCita(${cita.id})">Ya liquidaron</button></div>` : ""}
-  </article>`).join("")}</div>`;
+  </article>`;
+  }).join("")}</div>`;
 }
 
 function registrarAbono(id) {
   if (!exigirEdicion()) return;
   const cita = citas.find(item => item.id === id);
   if (!cita) return;
-  const cantidad = Number(prompt("Cuanto van a abonar?") || 0);
-  if (!cantidad || cantidad <= 0) return mostrarMensaje("Completa los datos", "Escribe una cantidad valida para el abono.", "alerta");
+  const cantidadMostrada = Number(prompt(`¿Cuánto van a abonar en ${configuracion.moneda}?`) || 0);
+  const cantidad = valorDesdeEntrada(cantidadMostrada);
+  if (!cantidadMostrada || cantidadMostrada <= 0) return mostrarMensaje("Completa los datos", "Escribe una cantidad válida para el abono.", "alerta");
   cita.abonos = cita.abonos || [];
   cita.abonos.push({ monto: cantidad, fecha: hoy() });
   if (saldoCita(cita) <= 0) cita.liquidada = true;
   guardar();
-  mostrarMensaje("Abono guardado", "Se actualizo el saldo de la cita.", "ok");
   mostrarInicio(cita.fecha);
+  if (estadoVisualCita(cita).color === "verde") mostrarTicketPago(cita.id);
+  else mostrarMensaje("Abono guardado", "Se actualizó el saldo de la cita.", "ok");
 }
 
 function liquidarCita(id) {
@@ -878,9 +1233,46 @@ function liquidarCita(id) {
   cita.abonos = cita.abonos || [];
   if (saldo > 0) cita.abonos.push({ monto: saldo, fecha: hoy() });
   cita.liquidada = true;
+  cita.liquidadaEn = new Date().toISOString();
   guardar();
-  mostrarMensaje("Pago liquidado", "La cita ya quedo pagada completo.", "ok");
   mostrarInicio(cita.fecha);
+  if (cita.estado === "Atendida") mostrarTicketPago(cita.id);
+  else mostrarMensaje("Pago completado", "La cita está en amarillo. El ticket aparecerá al marcar el servicio como realizado.", "ok");
+}
+
+function mostrarTicketPago(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return mostrarMensaje("Cita no encontrada", "No fue posible generar el ticket.", "alerta");
+  if (estadoVisualCita(cita).color !== "verde") return mostrarMensaje("Ticket aún no disponible", "Completa el pago y marca el servicio como realizado.", "alerta");
+  const folio = String(cita.id).slice(-8).padStart(8, "0");
+  abrirModal("Ticket de pago", `<article class="ticket-pago">
+    <div class="ticket-brand"><img src="${configuracion.logo || "assets/logo-oh-ma-belle-transparent.png"}" alt="Oh, ma belle"><strong>Oh, ma belle</strong><span>Belleza y Spa</span></div>
+    <div class="ticket-status">PAGADO</div>
+    <div class="ticket-line"><span>Folio</span><b>#${folio}</b></div>
+    <div class="ticket-line"><span>Fecha de pago</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div>
+    <div class="ticket-divider"></div>
+    <div class="ticket-line"><span>Clienta</span><b>${cita.cliente}</b></div>
+    <div class="ticket-line"><span>Servicio</span><b>${cita.servicio}</b></div>
+    <div class="ticket-line"><span>Cita</span><b>${formatoFecha(cita.fecha)} · ${cita.hora}</b></div>
+    <div class="ticket-line"><span>Personal</span><b>${cita.personal || "Rosa Polet"}</b></div>
+    <div class="ticket-line"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div>
+    <div class="ticket-divider"></div>
+    <div class="ticket-total"><span>Total pagado</span><strong>${dinero(cita.precio)}</strong></div>
+    <p>Gracias por tu visita</p>
+  </article>
+  <div class="modal-actions ticket-actions"><button type="button" onclick="cerrarModalFormulario()">Cerrar</button><button class="primary-action" type="button" onclick="imprimirTicket(${cita.id})">Imprimir ticket</button></div>`);
+}
+
+function imprimirTicket(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return;
+  const folio = String(cita.id).slice(-8).padStart(8, "0");
+  const logo = configuracion.logo || new URL("assets/logo-oh-ma-belle-transparent.png", window.location.href).href;
+  const ventana = window.open("", "_blank", "width=420,height=700");
+  if (!ventana) return mostrarMensaje("No se pudo imprimir", "Permite las ventanas emergentes para abrir el ticket.", "alerta");
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket #${folio}</title><style>@page{size:80mm auto;margin:5mm}*{box-sizing:border-box}body{width:70mm;margin:0 auto;font-family:Arial,sans-serif;color:#272238}.marca{text-align:center}.marca img{width:52mm;height:24mm;object-fit:contain}.marca h1{font-size:20px;margin:2px}.marca p{margin:0;color:#746d7f}.pagado{width:max-content;margin:14px auto;padding:5px 12px;border:1px solid #2ca77a;color:#167854;border-radius:20px;font-weight:800}.linea,.total{display:flex;justify-content:space-between;gap:12px;padding:6px 0}.linea b{text-align:right}.separador{border-top:1px dashed #aaa;margin:9px 0}.total{font-size:18px;font-weight:800}.gracias{text-align:center;margin-top:20px;font-size:12px}</style></head><body><div class="marca"><img src="${logo}" alt="Logo"><h1>Oh, ma belle</h1><p>Belleza y Spa</p></div><div class="pagado">PAGADO</div><div class="linea"><span>Folio</span><b>#${folio}</b></div><div class="linea"><span>Fecha</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div><div class="separador"></div><div class="linea"><span>Clienta</span><b>${cita.cliente}</b></div><div class="linea"><span>Servicio</span><b>${cita.servicio}</b></div><div class="linea"><span>Cita</span><b>${formatoFecha(cita.fecha)} ${cita.hora}</b></div><div class="linea"><span>Personal</span><b>${cita.personal || "Rosa Polet"}</b></div><div class="linea"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div><div class="separador"></div><div class="total"><span>Total</span><strong>${dinero(cita.precio)}</strong></div><p class="gracias">Gracias por tu visita</p></body></html>`);
+  ventana.document.close();
+  setTimeout(() => ventana.print(), 300);
 }
 
 let vistaServiciosActual = "servicios";
@@ -923,7 +1315,6 @@ function vistaPersonal() {
     <div class="person-photo" ${persona.foto ? `style="background-image:url('${persona.foto}')"` : ""}></div>
     <div class="service-body">
       <h3>${persona.nombre}</h3>
-      <p>${persona.descripcion || "Especialista del spa."}</p>
       <div class="service-foot"><strong class="activo-dot">Activo</strong>${puedeEditar() ? `<span><button type="button" onclick="abrirEditarPersonal(${indice})">Editar</button><button class="trash" type="button" onclick="eliminarPersonal(${indice})">Eliminar</button></span>` : ""}</div>
     </div>
   </article>`).join("")}</div>`;
@@ -950,10 +1341,10 @@ function abrirNuevoPersonal(indice = null) {
   if (!exigirEdicion()) return;
   const persona = indice !== null ? personal[indice] : { horarios: horariosBase(), fraccion: 30 };
   abrirModal(indice !== null ? "Editar Personal" : "Nuevo Personal", `<form class="modal-stack" novalidate onsubmit="guardarPersonalModal(event, ${indice === null ? "null" : indice})">
-    <label>Nombre Completo</label><input id="personalNombre" value="${persona.nombre || ""}" placeholder="Sebastian Perez" required>
+    <label>Nombre completo</label><input id="personalNombre" value="${persona.nombre || ""}" placeholder="Sebastián Pérez" required>
     <label>Foto</label><input id="personalFoto" type="file" accept="image/*">
-    <label>Email para Notificaciones (Opcional)</label><input id="personalEmail" type="email" value="${persona.email || ""}" placeholder="ejemplo@email.com">
-    <h3>Horario de Trabajo</h3>${camposHorarios("personal", persona.horarios || horariosBase())}
+    <label>Email para notificaciones (opcional)</label><input id="personalEmail" type="email" value="${persona.email || ""}" placeholder="ejemplo@email.com">
+    <h3>Horario de trabajo</h3>${camposHorarios("personal", persona.horarios || horariosBase())}
     <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar Personal</button></div>
   </form>`);
 }
@@ -1000,12 +1391,12 @@ function abrirNuevoServicio(indice = null) {
   abrirModal(indice !== null ? "Editar Servicio" : "Nuevo Servicio", `<form class="modal-stack" novalidate onsubmit="guardarServicioModal(event, ${indice === null ? "null" : indice})">
     <label>Nombre del Servicio</label><input id="servicioNombreModal" value="${servicio.nombre || ""}" required>
     <label>Imagen del Servicio</label><input id="servicioImagenModal" type="file" accept="image/*">
-    <label>Precio</label><div class="input-addon"><span>$</span><input id="servicioPrecioModal" type="number" min="1" value="${servicio.precio || 0}" required></div>
-    <label>Duracion (minutos)</label><input id="servicioDuracionModal" type="number" min="1" value="${servicio.duracion || 30}" required>
+    <label>Precio (${configuracion.moneda})</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="servicioPrecioModal" type="number" min="0.01" step="0.01" value="${valorParaEntrada(servicio.precio || 0)}" required></div>
+    <label>Duración (minutos)</label><input id="servicioDuracionModal" type="number" min="1" value="${servicio.duracion || 30}" required>
     <h3>Personal Asignado</h3>
-    <div class="check-grid">${personal.map(p => `<label class="check-line"><input class="servicioPersonalModal" type="checkbox" value="${p.nombre}" ${(servicio.personalAsignado || []).includes(p.nombre) ? "checked" : ""}> ${p.nombre}</label>`).join("") || `<p class="texto-suave">No hay personal agregado todavia.</p>`}</div>
+    <div class="check-grid">${personal.map(p => `<label class="check-line"><input class="servicioPersonalModal" type="checkbox" value="${p.nombre}" ${(servicio.personalAsignado || []).includes(p.nombre) ? "checked" : ""}> ${p.nombre}</label>`).join("") || `<p class="texto-suave">No hay personal agregado todavía.</p>`}</div>
     <h3>Horarios</h3>${camposHorarios("servicio", servicio.horarios || horariosBase())}
-    <label>Anticipacion minima para reservar</label><select id="servicioAnticipacionModal"><option>Sin anticipacion</option><option>1 hora antes</option><option>24 horas antes</option></select>
+    <label>Anticipación mínima para reservar</label><select id="servicioAnticipacionModal"><option>Sin anticipación</option><option>1 hora antes</option><option>24 horas antes</option></select>
     <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar Servicio</button></div>
   </form>`);
 }
@@ -1024,7 +1415,7 @@ function guardarServicioModal(event, indice) {
       descripcion: actual.descripcion || "",
       confirmacion: actual.confirmacion || "",
       imagen: imagenNueva || actual.imagen || "",
-      precio: Number(document.getElementById("servicioPrecioModal").value || 0),
+      precio: valorDesdeEntrada(document.getElementById("servicioPrecioModal").value),
       capacidad: actual.capacidad || 1,
       anticipo: actual.anticipo || 0,
       duracion: Number(document.getElementById("servicioDuracionModal").value || 30),
@@ -1034,7 +1425,7 @@ function guardarServicioModal(event, indice) {
       horarios: leerHorarios("servicio"),
       color: actual.color || ["rosa", "dorado", "uva", "verde"][servicios.length % 4]
     };
-    if (!servicio.nombre || servicio.precio <= 0 || servicio.duracion <= 0) return mostrarMensaje("Completa los datos", "Agrega nombre, precio y duracion del servicio.", "alerta");
+    if (!servicio.nombre || servicio.precio <= 0 || servicio.duracion <= 0) return mostrarMensaje("Completa los datos", "Agrega nombre, precio y duración del servicio.", "alerta");
     if (indice !== null) servicios[indice] = servicio;
     else servicios.push(servicio);
     guardar();

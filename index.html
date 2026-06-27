@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oh, ma belle | Agenda</title>
-  <link rel="stylesheet" href="style.css?v=20260626-mobile-1">
+  <link rel="stylesheet" href="style.css?v=20260627-estados-2">
 </head>
 <body>
   <section class="login" id="pantallaLogin">
@@ -14,14 +14,12 @@
 
       <label for="usuario">Usuario</label>
       <select id="usuario" onchange="usuarioSeleccionado()">
-        <option value="">Selecciona usuario</option>
-        <option value="maria">Maestra Maria</option>
-        <option value="rosa">Rosa Polet</option>
+        <option value="">Selecciona un usuario</option>
       </select>
 
       <div id="campoClave" class="campo-clave">
-        <label for="clave">Contrasena</label>
-        <input id="clave" type="password" placeholder="Contrasena" autocomplete="current-password" onkeydown="if(event.key === 'Enter') iniciarSesion()">
+        <label for="clave">Contraseña</label>
+        <input id="clave" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key === 'Enter') iniciarSesion()">
       </div>
 
       <button type="button" onclick="iniciarSesion()">Entrar</button>
@@ -45,9 +43,9 @@
 
       <nav aria-label="Menu principal">
         <button class="nav-activo" type="button" data-seccion="inicio" onclick="mostrarInicio()"><img class="menu-icon" src="assets/icons/inicio.png" alt="">Inicio</button>
-        <button type="button" data-seccion="estadisticas" onclick="mostrarEstadisticas()"><img class="menu-icon" src="assets/icons/estadisticas.png" alt="">Estadisticas</button>
+        <button type="button" data-seccion="estadisticas" onclick="mostrarEstadisticas()"><img class="menu-icon" src="assets/icons/estadisticas.png" alt="">Estadísticas</button>
         <button type="button" data-seccion="servicios" onclick="mostrarServicios()"><img class="menu-icon" src="assets/icons/servicios.png" alt="">Servicios</button>
-        <button type="button" data-seccion="configuracion" onclick="mostrarConfiguracion()"><img class="menu-icon" src="assets/icons/configuracion.png" alt="">Configuracion</button>
+        <button type="button" data-seccion="configuracion" onclick="mostrarConfiguracion()"><img class="menu-icon" src="assets/icons/configuracion.png" alt="">Configuración</button>
         <button class="salir" type="button" onclick="cerrarSesion()"><img class="menu-icon" src="assets/icons/cerrar-sesion.png" alt="">Salir</button>
       </nav>
     </aside>
@@ -59,7 +57,7 @@
           <span class="premium">Agenda</span>
         </div>
         <button type="button" onclick="mostrarServicios('personal')" title="Personal"><img src="assets/icons/personal.png" alt=""></button>
-        <button type="button" onclick="mostrarConfiguracion()" title="Configuracion"><img src="assets/icons/configuracion.png" alt=""></button>
+        <button type="button" onclick="mostrarConfiguracion()" title="Configuración"><img src="assets/icons/configuracion.png" alt=""></button>
         <button type="button" onclick="cerrarSesion()" title="Salir"><img src="assets/icons/cerrar-sesion.png" alt=""></button>
       </header>
 
@@ -81,7 +79,7 @@
     </div>
   </div>
 
-  <script src="script.js?v=20260626-mobile-1"></script>
+  <script src="script.js?v=20260627-estados-2"></script>
 </body>
 </html>
 
