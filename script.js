@@ -37,6 +37,7 @@ let personal = cargar("personal") || [];
 let modoOscuro = cargar("modoOscuro") || false;
 let remotoListo = false;
 let guardandoRemoto = false;
+let guardadoRemotoPendiente = false;
 
 normalizarDatos();
 
@@ -76,7 +77,6 @@ async function supabaseRest(ruta, opciones = {}) {
     ...opciones,
     headers: {
       apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
       "Content-Type": "application/json",
       Prefer: "return=representation",
       ...(opciones.headers || {})
@@ -104,7 +104,10 @@ async function cargarRemoto() {
 }
 
 async function guardarRemoto() {
-  if (guardandoRemoto) return;
+  if (guardandoRemoto) {
+    guardadoRemotoPendiente = true;
+    return;
+  }
   guardandoRemoto = true;
   try {
     await supabaseRest(`${SUPABASE_TABLA}?on_conflict=id`, {
@@ -115,8 +118,13 @@ async function guardarRemoto() {
   } catch (error) {
     remotoListo = false;
     console.warn("No se pudo guardar en Supabase:", error);
+    mostrarMensaje("No se guardo en internet", "Revisa la conexion y vuelve a intentarlo.", "alerta");
   } finally {
     guardandoRemoto = false;
+    if (guardadoRemotoPendiente && remotoListo) {
+      guardadoRemotoPendiente = false;
+      guardarRemoto();
+    }
   }
 }
 
