@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Oh, ma belle | Agenda</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260626-mobile-1">
 </head>
 <body>
   <section class="login" id="pantallaLogin">
@@ -43,11 +43,13 @@
         </div>
       </div>
 
-      <button class="nav-activo" type="button" data-seccion="inicio" onclick="mostrarInicio()"><img class="menu-icon" src="assets/icons/inicio.png" alt="">Inicio</button>
-      <button type="button" data-seccion="estadisticas" onclick="mostrarEstadisticas()"><img class="menu-icon" src="assets/icons/estadisticas.png" alt="">Estadisticas</button>
-      <button type="button" data-seccion="servicios" onclick="mostrarServicios()"><img class="menu-icon" src="assets/icons/servicios.png" alt="">Servicios</button>
-      <button type="button" data-seccion="configuracion" onclick="mostrarConfiguracion()"><img class="menu-icon" src="assets/icons/configuracion.png" alt="">Configuracion</button>
-      <button class="salir" type="button" onclick="cerrarSesion()"><img class="menu-icon" src="assets/icons/cerrar-sesion.png" alt="">Cerrar sesion</button>
+      <nav aria-label="Menu principal">
+        <button class="nav-activo" type="button" data-seccion="inicio" onclick="mostrarInicio()"><img class="menu-icon" src="assets/icons/inicio.png" alt="">Inicio</button>
+        <button type="button" data-seccion="estadisticas" onclick="mostrarEstadisticas()"><img class="menu-icon" src="assets/icons/estadisticas.png" alt="">Estadisticas</button>
+        <button type="button" data-seccion="servicios" onclick="mostrarServicios()"><img class="menu-icon" src="assets/icons/servicios.png" alt="">Servicios</button>
+        <button type="button" data-seccion="configuracion" onclick="mostrarConfiguracion()"><img class="menu-icon" src="assets/icons/configuracion.png" alt="">Configuracion</button>
+        <button class="salir" type="button" onclick="cerrarSesion()"><img class="menu-icon" src="assets/icons/cerrar-sesion.png" alt="">Salir</button>
+      </nav>
     </aside>
 
     <main class="main">
@@ -79,7 +81,7 @@
     </div>
   </div>
 
-  <script src="script.js?v=20260626-2"></script>
+  <script src="script.js?v=20260626-mobile-1"></script>
 </body>
 </html>
 

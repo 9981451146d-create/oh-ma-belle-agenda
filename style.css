@@ -1810,6 +1810,7 @@ body.modo-oscuro .kpi i {
     position: static;
     width: 100%;
     min-height: auto;
+    padding: 10px 12px 12px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
@@ -1820,47 +1821,74 @@ body.modo-oscuro .kpi i {
 
   .main {
     width: 100%;
+    min-width: 0;
     margin-left: 0;
   }
 
   .topbar {
     justify-content: space-between;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     height: auto;
     padding: 12px 16px;
-    gap: 10px;
+    gap: 8px;
+  }
+
+  .topbar > div {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .topbar p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+  }
+
+  .topbar button {
+    flex: 0 0 38px;
   }
 
   .brand {
     justify-content: center;
-    padding: 14px 16px;
+    padding: 8px 10px 12px;
+    margin-bottom: 4px;
   }
 
   .sidebar nav {
     display: grid;
-    grid-template-columns: repeat(5, minmax(62px, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 6px;
-    padding: 8px;
-    overflow-x: auto;
+    padding: 4px 0 0;
   }
 
   .sidebar button {
-    min-height: 70px;
-    padding: 8px 6px;
+    min-width: 0;
+    min-height: 66px;
+    margin-top: 0;
+    padding: 7px 2px;
     flex-direction: column;
     justify-content: center;
-    gap: 5px;
-    font-size: 11px;
+    gap: 4px;
+    font-size: 10px;
+    line-height: 1.15;
     text-align: center;
     border-radius: 10px;
   }
 
+  .sidebar .salir {
+    margin-top: 0;
+  }
+
   .menu-icon {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
+    flex-basis: 26px;
   }
 
   .content {
+    width: 100%;
+    min-width: 0;
     padding: 14px;
   }
 
@@ -1906,6 +1934,7 @@ body.modo-oscuro .kpi i {
 
   .calendario-head h2 {
     font-size: 18px;
+    white-space: normal;
   }
 
   .calendario-head input,
@@ -1915,15 +1944,85 @@ body.modo-oscuro .kpi i {
 
   .calendar-weekdays,
   .calendar-grid {
-    min-width: 760px;
+    width: 100%;
+    min-width: 0;
   }
 
   .calendario-panel {
-    overflow-x: auto;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 0;
   }
 
+  .calendar-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .calendar-weekdays span {
+    min-width: 0;
+    padding: 10px 2px;
+    overflow: hidden;
+    font-size: 0;
+  }
+
+  .calendar-weekdays span::after {
+    font-size: 10px;
+  }
+
+  .calendar-weekdays span:nth-child(1)::after { content: "Lun"; }
+  .calendar-weekdays span:nth-child(2)::after { content: "Mar"; }
+  .calendar-weekdays span:nth-child(3)::after { content: "Mie"; }
+  .calendar-weekdays span:nth-child(4)::after { content: "Jue"; }
+  .calendar-weekdays span:nth-child(5)::after { content: "Vie"; }
+  .calendar-weekdays span:nth-child(6)::after { content: "Sab"; }
+  .calendar-weekdays span:nth-child(7)::after { content: "Dom"; }
+
   .cal-cell {
-    min-height: 118px;
+    min-width: 0;
+    min-height: 82px;
+    padding: 5px 4px;
+    overflow: hidden;
+  }
+
+  .cal-day {
+    gap: 2px;
+    margin-bottom: 4px;
+  }
+
+  .cal-day strong {
+    font-size: 13px;
+  }
+
+  .cal-day button {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 22px;
+    padding: 0;
+    border-radius: 7px;
+    font-size: 13px;
+  }
+
+  .cal-citas {
+    min-width: 0;
+    gap: 3px;
+  }
+
+  .cal-cita {
+    min-width: 0;
+    padding: 4px 3px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 9px;
+  }
+
+  .cal-cita span {
+    font-size: 9px;
+  }
+
+  .cal-cita small {
+    display: none;
   }
 
   .stats-picker,
