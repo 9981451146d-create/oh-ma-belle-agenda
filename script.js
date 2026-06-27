@@ -3,6 +3,7 @@ const SUPABASE_URL = "https://vgmyzhmbuteixvlvwxjc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5b7OS0T91SbgnCog14YXEw_tr7lD3WT";
 const SUPABASE_TABLA = "agenda_estado";
 const SUPABASE_ID = "principal";
+const LIMPIEZA_AGENDA_ID = "limpieza-confirmada-2026-06-27-1";
 const CODIGO_ADMINISTRACION = "2009";
 const configuracionBase = {
   logo: "",
@@ -119,7 +120,8 @@ async function cargarRemoto(silencioso = false) {
     } else {
       await guardarRemoto();
     }
-    if (!silencioso) mostrarMensaje("Datos conectados", "La agenda ya está sincronizada.", "ok");
+    const agendaLimpiada = await aplicarLimpiezaConfirmada();
+    if (!silencioso) mostrarMensaje(agendaLimpiada ? "Agenda limpia" : "Datos conectados", agendaLimpiada ? "Se conservaron servicios, personal, usuarios y configuración." : "La agenda ya está sincronizada.", "ok");
     return true;
   } catch (error) {
     remotoListo = false;
@@ -127,6 +129,22 @@ async function cargarRemoto(silencioso = false) {
     if (!silencioso) mostrarMensaje("Sin conexión a la agenda", "No se pudo leer Supabase. Revisa la tabla y sus permisos.", "alerta");
     return false;
   }
+}
+
+async function aplicarLimpiezaConfirmada() {
+  if (configuracion.limpiezaAgendaId === LIMPIEZA_AGENDA_ID) return false;
+  const respaldo = estadoActual();
+  await supabaseRest(`${SUPABASE_TABLA}?on_conflict=id`, {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: JSON.stringify([{ id: `respaldo-${LIMPIEZA_AGENDA_ID}`, datos: respaldo }])
+  });
+  citas = [];
+  bloqueos = [];
+  configuracion.limpiezaAgendaId = LIMPIEZA_AGENDA_ID;
+  guardarLocal();
+  await guardarRemoto();
+  return true;
 }
 
 async function guardarRemoto() {
