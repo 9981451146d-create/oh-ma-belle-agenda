@@ -3,7 +3,6 @@ const SUPABASE_URL = "https://vgmyzhmbuteixvlvwxjc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5b7OS0T91SbgnCog14YXEw_tr7lD3WT";
 const SUPABASE_TABLA = "agenda_estado";
 const SUPABASE_ID = "principal";
-const LIMPIEZA_AGENDA_ID = "limpieza-confirmada-2026-06-27-1";
 const CODIGO_ADMINISTRACION = "2009";
 const configuracionBase = {
   logo: "",
@@ -13,7 +12,7 @@ const configuracionBase = {
   tipoCambioConsultadoEn: ""
 };
 const usuariosBase = [
-  { usuario: "maria", clave: "1234", rol: "soloVista", nombre: "Maestra Maria" },
+  { usuario: "maria", clave: "1234", rol: "editora", nombre: "Maestra Maria" },
   { usuario: "rosa", clave: "0000", rol: "editora", nombre: "Rosa Polet" }
 ];
 
@@ -44,14 +43,46 @@ let servicios = cargar("servicios") || serviciosBase;
 let citas = cargar("citas") || [];
 let bloqueos = cargar("bloqueos") || [];
 let personal = cargar("personal") || [];
+let clientas = cargar("clientas") || [];
 let modoOscuro = cargar("modoOscuro") || false;
 let configuracion = cargar("configuracion") || { ...configuracionBase };
 let remotoListo = false;
 let guardandoRemoto = false;
 let guardadoRemotoPendiente = false;
 let reintentoRemoto = null;
+let eventoInstalacion = null;
 
 normalizarDatos();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(error => {
+    console.warn("No se pudo activar el modo instalable:", error);
+  }));
+}
+
+window.addEventListener("beforeinstallprompt", event => {
+  event.preventDefault();
+  eventoInstalacion = event;
+  const boton = document.getElementById("botonInstalar");
+  if (boton) boton.hidden = false;
+});
+
+window.addEventListener("appinstalled", () => {
+  eventoInstalacion = null;
+  const boton = document.getElementById("botonInstalar");
+  if (boton) boton.hidden = true;
+  mostrarMensaje("Aplicación instalada", "Oh, ma belle ya está disponible en tu pantalla de inicio.", "ok");
+});
+
+async function instalarAplicacion() {
+  if (!eventoInstalacion) {
+    const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    return mostrarMensaje("Instalar aplicación", esIOS ? "En Safari, toca Compartir y después Agregar a pantalla de inicio." : "Abre el menú del navegador y selecciona Instalar aplicación o Agregar a pantalla de inicio.", "ok");
+  }
+  eventoInstalacion.prompt();
+  const resultado = await eventoInstalacion.userChoice;
+  if (resultado.outcome === "accepted") eventoInstalacion = null;
+}
 
 function cargar(nombre) {
   const datos = localStorage.getItem(`${CLAVE}-${nombre}`);
@@ -69,12 +100,13 @@ function guardarLocal() {
   localStorage.setItem(`${CLAVE}-citas`, JSON.stringify(citas));
   localStorage.setItem(`${CLAVE}-bloqueos`, JSON.stringify(bloqueos));
   localStorage.setItem(`${CLAVE}-personal`, JSON.stringify(personal));
+  localStorage.setItem(`${CLAVE}-clientas`, JSON.stringify(clientas));
   localStorage.setItem(`${CLAVE}-modoOscuro`, JSON.stringify(modoOscuro));
   localStorage.setItem(`${CLAVE}-configuracion`, JSON.stringify(configuracion));
 }
 
 function estadoActual() {
-  return { usuarios, servicios, citas, bloqueos, personal, modoOscuro, configuracion, actualizadoEn: new Date().toISOString() };
+  return { usuarios, servicios, citas, bloqueos, personal, clientas, modoOscuro, configuracion, actualizadoEn: new Date().toISOString() };
 }
 
 function aplicarEstado(datos) {
@@ -84,6 +116,7 @@ function aplicarEstado(datos) {
   citas = Array.isArray(datos.citas) ? datos.citas : citas;
   bloqueos = Array.isArray(datos.bloqueos) ? datos.bloqueos : bloqueos;
   personal = Array.isArray(datos.personal) ? datos.personal : personal;
+  clientas = Array.isArray(datos.clientas) ? datos.clientas : clientas;
   modoOscuro = typeof datos.modoOscuro === "boolean" ? datos.modoOscuro : modoOscuro;
   configuracion = datos.configuracion && typeof datos.configuracion === "object" ? datos.configuracion : configuracion;
   normalizarDatos();
@@ -120,8 +153,7 @@ async function cargarRemoto(silencioso = false) {
     } else {
       await guardarRemoto();
     }
-    const agendaLimpiada = await aplicarLimpiezaConfirmada();
-    if (!silencioso) mostrarMensaje(agendaLimpiada ? "Agenda limpia" : "Datos conectados", agendaLimpiada ? "Se conservaron servicios, personal, usuarios y configuración." : "La agenda ya está sincronizada.", "ok");
+    if (!silencioso) mostrarMensaje("Datos conectados", "La agenda ya está sincronizada.", "ok");
     return true;
   } catch (error) {
     remotoListo = false;
@@ -129,22 +161,6 @@ async function cargarRemoto(silencioso = false) {
     if (!silencioso) mostrarMensaje("Sin conexión a la agenda", "No se pudo leer Supabase. Revisa la tabla y sus permisos.", "alerta");
     return false;
   }
-}
-
-async function aplicarLimpiezaConfirmada() {
-  if (configuracion.limpiezaAgendaId === LIMPIEZA_AGENDA_ID) return false;
-  const respaldo = estadoActual();
-  await supabaseRest(`${SUPABASE_TABLA}?on_conflict=id`, {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify([{ id: `respaldo-${LIMPIEZA_AGENDA_ID}`, datos: respaldo }])
-  });
-  citas = [];
-  bloqueos = [];
-  configuracion.limpiezaAgendaId = LIMPIEZA_AGENDA_ID;
-  guardarLocal();
-  await guardarRemoto();
-  return true;
 }
 
 async function guardarRemoto() {
@@ -191,7 +207,7 @@ function normalizarDatos() {
     .map(item => ({
       usuario: String(item.usuario).trim().toLowerCase(),
       clave: String(item.clave || "1234"),
-      rol: item.rol === "editora" ? "editora" : "soloVista",
+      rol: String(item.usuario).trim().toLowerCase() === "maria" || item.rol === "editora" ? "editora" : "soloVista",
       nombre: String(item.nombre || item.usuario).trim()
     }));
   configuracion = {
@@ -224,12 +240,32 @@ function normalizarDatos() {
     activo: persona.activo !== false,
     horarios: normalizarHorarios(persona.horarios)
   }));
+  clientas = (Array.isArray(clientas) ? clientas : []).map(clienta => ({
+    id: clienta.id || idNuevo(),
+    nombre: String(clienta.nombre || "Clienta").trim(),
+    telefono: String(clienta.telefono || "").replace(/\D/g, "").slice(0, 10),
+    notas: String(clienta.notas || ""),
+    creadaEn: clienta.creadaEn || new Date().toISOString()
+  })).filter((clienta, indice, lista) => clienta.telefono && lista.findIndex(item => item.telefono === clienta.telefono) === indice);
   citas = citas.map(cita => ({
     ...cita,
     servicio: cita.servicio === "Pestanas" ? "Pestañas" : cita.servicio,
+    serviciosDetalle: Array.isArray(cita.serviciosDetalle) && cita.serviciosDetalle.length ? cita.serviciosDetalle : [{
+      nombre: cita.servicio === "Pestanas" ? "Pestañas" : (cita.servicio || "Servicio"),
+      duracion: Number(servicioPorNombre(cita.servicio)?.duracion || cita.duracion || 30),
+      precio: Number(cita.precio || 0)
+    }],
     abonos: Array.isArray(cita.abonos) ? cita.abonos : [],
     liquidada: !!cita.liquidada || (Number(cita.anticipo || 0) >= Number(cita.precio || 0) && Number(cita.precio || 0) > 0)
   }));
+  citas.forEach(cita => {
+    let clienta = clientas.find(item => item.telefono === cita.telefono);
+    if (!clienta && /^\d{10}$/.test(cita.telefono || "")) {
+      clienta = { id: idNuevo(), nombre: cita.cliente || "Clienta", telefono: cita.telefono, notas: "", creadaEn: new Date().toISOString() };
+      clientas.push(clienta);
+    }
+    if (clienta) cita.clienteId = clienta.id;
+  });
   guardarLocal();
 }
 
@@ -349,25 +385,19 @@ function formatoFecha(fecha) {
 
 function dinero(valor) {
   const montoPesos = Number(valor || 0);
-  if (configuracion.moneda === "USD") {
-    const tasa = Number(configuracion.tipoCambio || configuracionBase.tipoCambio);
-    return `US$${(montoPesos / tasa).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
   return `$${montoPesos.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} MXN`;
 }
 
 function valorParaEntrada(valorEnPesos) {
-  if (configuracion.moneda !== "USD") return Number(valorEnPesos || 0);
-  return Number((Number(valorEnPesos || 0) / Number(configuracion.tipoCambio || configuracionBase.tipoCambio)).toFixed(2));
+  return Number(valorEnPesos || 0);
 }
 
 function valorDesdeEntrada(valorMostrado) {
-  const valor = Number(valorMostrado || 0);
-  return configuracion.moneda === "USD" ? Number((valor * Number(configuracion.tipoCambio || configuracionBase.tipoCambio)).toFixed(2)) : valor;
+  return Number(valorMostrado || 0);
 }
 
 function simboloMoneda() {
-  return configuracion.moneda === "USD" ? "US$" : "$";
+  return "$";
 }
 
 function citasDeFecha(fecha) {
@@ -586,9 +616,19 @@ function calcularEstadisticas(tipoPeriodo, valor) {
   const activas = citasActivas().filter(cita => citaEnPeriodo(cita, tipoPeriodo, valor));
   const canceladas = citasCanceladas().filter(cita => citaEnPeriodo(cita, tipoPeriodo, valor));
   const ingresos = activas.reduce((suma, cita) => suma + Number(cita.precio || 0), 0);
-  const nombresServicios = [...new Set([...servicios.map(item => item.nombre), ...activas.map(item => item.servicio).filter(Boolean)])];
+  const nombresServicios = [...new Set([...servicios.map(item => item.nombre), ...activas.flatMap(cita => detallesServiciosCita(cita).map(item => item.nombre))])];
   const nombresPersonal = [...new Set([...personal.map(item => item.nombre), ...activas.map(item => item.personal || "Sin asignar")])];
   const resumir = (nombres, propiedad) => nombres.map(nombre => {
+    if (propiedad === "servicio") {
+      const lista = activas.filter(cita => detallesServiciosCita(cita).some(item => item.nombre === nombre));
+      const dineroServicio = lista.reduce((suma, cita) => {
+        const detalles = detallesServiciosCita(cita);
+        const subtotal = detalles.reduce((total, item) => total + Number(item.precio || 0), 0) || 1;
+        const precioServicio = detalles.filter(item => item.nombre === nombre).reduce((total, item) => total + Number(item.precio || 0), 0);
+        return suma + Number(cita.precio || 0) * (precioServicio / subtotal);
+      }, 0);
+      return { nombre, total: lista.length, dinero: dineroServicio };
+    }
     const lista = activas.filter(cita => (cita[propiedad] || "Sin asignar") === nombre);
     return { nombre, total: lista.length, dinero: lista.reduce((suma, cita) => suma + Number(cita.precio || 0), 0) };
   }).sort((a, b) => b.total - a.total || b.dinero - a.dinero);
@@ -750,7 +790,7 @@ function eliminarBloqueo(id) {
 
 function mostrarExtras() {
   activarMenu("extras");
-  document.getElementById("contenido").innerHTML = `<section class="panel"><h2>Extras</h2><div class="extra-grid"><article>Recordatorios por WhatsApp</article><article>Notas de clientas</article><article>Promociones por temporada</article></div></section>`;
+  document.getElementById("contenido").innerHTML = `<section class="panel"><h2>Extras</h2><div class="extra-grid"><article>Recordatorios por WhatsApp</article><article>Notas de clientas</article></div></section>`;
 }
 
 function mostrarTransferencias() {
@@ -762,6 +802,80 @@ function mostrarTransferencias() {
 function mostrarSuscripcion() {
   activarMenu("suscripcion");
   document.getElementById("contenido").innerHTML = `<section class="panel suscripcion"><h2>Mi suscripción</h2><strong>Premium</strong><p>Agenda activa para Oh, ma belle Belleza y Spa.</p></section>`;
+}
+
+function historialDeClienta(clienta) {
+  return citas.filter(cita => cita.clienteId === clienta.id || cita.telefono === clienta.telefono)
+    .sort((a, b) => `${b.fecha} ${b.hora}`.localeCompare(`${a.fecha} ${a.hora}`));
+}
+
+function mostrarClientas(busqueda = "") {
+  activarMenu("clientas");
+  const termino = String(busqueda).trim().toLowerCase();
+  const lista = clientas.filter(clienta => !termino || clienta.nombre.toLowerCase().includes(termino) || clienta.telefono.includes(termino));
+  document.getElementById("contenido").innerHTML = `
+    <section class="panel clientas-head">
+      <div><h2>Clientas</h2><p>Consulta sus visitas y servicios anteriores.</p></div>
+      <form class="client-search" onsubmit="buscarClientas(event)"><input id="buscarClienta" value="${escaparAtributo(busqueda)}" placeholder="Buscar por nombre o teléfono"><button type="submit">Buscar</button></form>
+    </section>
+    <section class="clientas-grid">${lista.map(clienta => {
+      const historial = historialDeClienta(clienta);
+      const ultima = historial[0];
+      return `<article class="client-card"><div class="client-avatar">${clienta.nombre.charAt(0).toUpperCase()}</div><div><h3>${clienta.nombre}</h3><a href="tel:${clienta.telefono}">${clienta.telefono}</a><p>${historial.length} visita(s)${ultima ? ` · Última: ${formatoFecha(ultima.fecha)}` : ""}</p></div><div class="client-actions"><button type="button" onclick="verHistorialClienta(${clienta.id})">Ver historial</button>${puedeEditar() ? `<button type="button" onclick="abrirClientaModal(${clienta.id})">Editar</button>` : ""}</div></article>`;
+    }).join("") || `<div class="panel empty-state"><h2>No encontramos clientas</h2><p>Registra la primera clienta para comenzar su historial.</p></div>`}</section>`;
+}
+
+function buscarClientas(event) {
+  event.preventDefault();
+  mostrarClientas(document.getElementById("buscarClienta").value);
+}
+
+function abrirClientaModal(id = null) {
+  if (!exigirEdicion()) return;
+  const clienta = id === null ? null : clientas.find(item => item.id === id);
+  abrirModal(clienta ? "Editar clienta" : "Nueva clienta", `<form class="modal-stack" novalidate onsubmit="guardarClientaModal(event, ${clienta?.id ?? "null"})"><label>Nombre completo</label><input id="clientaNombre" value="${escaparAtributo(clienta?.nombre)}" required><label>Teléfono</label><input id="clientaTelefono" type="tel" inputmode="numeric" maxlength="10" value="${escaparAtributo(clienta?.telefono)}" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)" required><label>Notas</label><textarea id="clientaNotas" rows="4" placeholder="Preferencias, alergias o información importante">${clienta?.notas || ""}</textarea><div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar clienta</button></div></form>`);
+}
+
+function guardarClientaModal(event, id = null) {
+  event.preventDefault();
+  const nombre = document.getElementById("clientaNombre").value.trim();
+  const telefono = document.getElementById("clientaTelefono").value.trim();
+  if (!nombre) return mostrarMensaje("Faltan datos", "Escribe el nombre de la clienta.", "alerta");
+  if (!/^\d{10}$/.test(telefono)) return mostrarMensaje("Teléfono incorrecto", "El teléfono debe tener exactamente 10 números.", "alerta");
+  if (clientas.some(item => item.telefono === telefono && item.id !== id)) return mostrarMensaje("Clienta existente", "Ese teléfono ya pertenece a otra clienta.", "alerta");
+  const anterior = clientas.find(item => item.id === id);
+  const clienta = { id: anterior?.id || idNuevo(), nombre, telefono, notas: document.getElementById("clientaNotas").value.trim(), creadaEn: anterior?.creadaEn || new Date().toISOString() };
+  if (anterior) clientas[clientas.indexOf(anterior)] = clienta; else clientas.push(clienta);
+  citas.forEach(cita => { if (cita.clienteId === clienta.id || cita.telefono === anterior?.telefono) { cita.clienteId = clienta.id; cita.cliente = clienta.nombre; cita.telefono = clienta.telefono; } });
+  guardar(); cerrarModalFormulario(); mostrarClientas(); mostrarMensaje("Clienta guardada", "Su historial quedó actualizado.", "ok");
+}
+
+function verHistorialClienta(id) {
+  const clienta = clientas.find(item => item.id === id); if (!clienta) return;
+  const historial = historialDeClienta(clienta);
+  const completadas = historial.filter(cita => cita.estado === "Atendida");
+  const totalGastado = completadas.reduce((total, cita) => total + Number(cita.precio || 0), 0);
+  const conteoServicios = {};
+  completadas.forEach(cita => detallesServiciosCita(cita).forEach(servicio => {
+    conteoServicios[servicio.nombre] = (conteoServicios[servicio.nombre] || 0) + 1;
+  }));
+  const favorito = Object.entries(conteoServicios).sort((a, b) => b[1] - a[1])[0]?.[0] || "Aún sin datos";
+  const ultimaVisita = completadas[0];
+  const movimientos = historial.map(cita => {
+    const visual = estadoVisualCita(cita);
+    return `<article class="history-entry history-${visual.color}">
+      <div class="history-date"><strong>${cita.fecha?.slice(8, 10) || "--"}</strong><span>${formatoFecha(cita.fecha)}</span><small>${cita.hora || ""}</small></div>
+      <div class="history-info"><h3>${nombresServiciosCita(cita)}</h3><p>${duracionTotalCita(cita)} min · ${cita.personal || "Sin asignar"}</p><span class="history-status">${visual.texto}</span></div>
+      <strong class="history-amount">${dinero(cita.precio)}</strong>
+    </article>`;
+  }).join("");
+  abrirModal(`Historial de ${clienta.nombre}`, `<div class="client-history">
+    <header class="history-profile"><div class="client-avatar">${clienta.nombre.charAt(0).toUpperCase()}</div><div><h2>${clienta.nombre}</h2><a href="tel:${clienta.telefono}">${clienta.telefono}</a><p>Clienta desde ${formatoFecha((clienta.creadaEn || "").slice(0, 10))}</p></div></header>
+    <div class="history-stats"><article><span>Visitas realizadas</span><strong>${completadas.length}</strong></article><article><span>Total en servicios</span><strong>${dinero(totalGastado)}</strong></article><article><span>Servicio frecuente</span><strong>${favorito}</strong></article><article><span>Última visita</span><strong>${ultimaVisita ? formatoFecha(ultimaVisita.fecha) : "Sin visitas"}</strong></article></div>
+    ${clienta.notas ? `<div class="client-notes"><strong>Notas importantes</strong><p>${clienta.notas}</p></div>` : ""}
+    <div class="history-section-title"><h3>Actividad de la clienta</h3><span>${historial.length} registro(s)</span></div>
+    <div class="history-timeline">${movimientos || `<div class="history-empty"><strong>Aún no tiene visitas registradas</strong><p>Sus próximas citas aparecerán aquí automáticamente.</p></div>`}</div>
+  </div>`);
 }
 
 function mostrarConfiguracion() {
@@ -793,14 +907,12 @@ function mostrarConfiguracion() {
       </article>
 
       <article class="panel config-card config-company">
-        <h2>Empresa y moneda</h2>
+        <h2>Logo de la empresa</h2>
         <div class="logo-config-preview"><img src="${configuracion.logo || "assets/logo-oh-ma-belle-transparent.png"}" alt="Logo actual"></div>
         ${puedeEditar() ? `<form class="config-form" onsubmit="guardarConfiguracionEmpresa(event)">
-          <label>Logo de la empresa</label><input id="configLogo" type="file" accept="image/*">
-          <label>Moneda para mostrar los precios</label><select id="configMoneda"><option value="MXN" ${configuracion.moneda === "MXN" ? "selected" : ""}>Pesos mexicanos (MXN)</option><option value="USD" ${configuracion.moneda === "USD" ? "selected" : ""}>Dólares (USD)</option></select>
-          <div class="exchange-box"><span>Tipo de cambio actual</span><strong>1 USD = ${Number(configuracion.tipoCambio).toFixed(4)} MXN</strong><small>${configuracion.tipoCambioFecha ? `Actualizado: ${configuracion.tipoCambioFecha}` : "Valor de referencia"}</small></div>
-          <div class="config-buttons"><button type="button" onclick="actualizarTipoCambio()">Actualizar tipo de cambio</button><button class="primary-action" type="submit">Guardar configuración</button></div>
-        </form>` : `<p>Moneda seleccionada: <strong>${configuracion.moneda}</strong></p>`}
+          <label>Seleccionar imagen</label><input id="configLogo" type="file" accept="image/*">
+          <div class="config-buttons"><button class="primary-action" type="submit">Guardar logo</button></div>
+        </form>` : ""}
       </article>
     </section>
 
@@ -808,9 +920,6 @@ function mostrarConfiguracion() {
       <div class="section-head"><div><h2>Perfiles de usuario</h2><p>Administra quién puede consultar o editar la agenda.</p></div>${puedeEditar() ? `<button class="primary-action add-user-button" type="button" onclick="abrirUsuarioModal(null)">+ Agregar usuario</button>` : ""}</div>
       <table><thead><tr><th>Nombre</th><th>Usuario</th><th>Permiso</th><th>Acciones</th></tr></thead><tbody>${filasUsuarios}</tbody></table>
     </section>`;
-  if (puedeEditar() && configuracion.moneda === "USD" && configuracion.tipoCambioConsultadoEn !== hoy()) {
-    setTimeout(() => actualizarTipoCambio(), 50);
-  }
 }
 
 function leerImagenOptimizada(input, callback) {
@@ -836,33 +945,13 @@ function leerImagenOptimizada(input, callback) {
 function guardarConfiguracionEmpresa(event) {
   event.preventDefault();
   if (!exigirEdicion()) return;
-  const moneda = document.getElementById("configMoneda").value;
   leerImagenOptimizada(document.getElementById("configLogo"), logoNuevo => {
-    configuracion.moneda = moneda === "USD" ? "USD" : "MXN";
     if (logoNuevo) configuracion.logo = logoNuevo;
     guardar();
     aplicarConfiguracion();
     mostrarConfiguracion();
-    mostrarMensaje("Configuración guardada", "El logo y la moneda quedaron actualizados.", "ok");
+    mostrarMensaje("Logo guardado", "La imagen de la empresa quedó actualizada.", "ok");
   });
-}
-
-async function actualizarTipoCambio() {
-  if (!exigirEdicion()) return;
-  try {
-    const respuesta = await fetch("https://api.frankfurter.dev/v2/rate/USD/MXN");
-    if (!respuesta.ok) throw new Error("No disponible");
-    const datos = await respuesta.json();
-    if (!Number(datos.rate) || Number(datos.rate) <= 0) throw new Error("Respuesta incorrecta");
-    configuracion.tipoCambio = Number(datos.rate);
-    configuracion.tipoCambioFecha = datos.date || hoy();
-    configuracion.tipoCambioConsultadoEn = hoy();
-    guardar();
-    mostrarConfiguracion();
-    mostrarMensaje("Tipo de cambio actualizado", `1 USD = ${configuracion.tipoCambio.toFixed(4)} MXN.`, "ok");
-  } catch (error) {
-    mostrarMensaje("No se pudo actualizar", "Conservamos el último tipo de cambio guardado.", "alerta");
-  }
 }
 
 function abrirUsuarioModal(indice = null) {
@@ -1001,7 +1090,7 @@ function calendarioGrande(fecha) {
       <div class="cal-day"><strong>${dia}</strong>${puedeEditar() ? `<button type="button" onclick="abrirModalCita('${fechaDia}')">+</button>` : ""}</div>
       <div class="cal-citas">${citasDia.map(cita => {
         const visual = estadoVisualCita(cita);
-        return `<button type="button" class="cal-cita cita-${visual.color}" onclick="abrirDetalleCita(${cita.id})"><span>${cita.hora}</span>${cita.cliente}<small>${cita.servicio}</small><em>${visual.texto}</em></button>`;
+        return `<button type="button" class="cal-cita cita-${visual.color}" onclick="abrirDetalleCita(${cita.id})"><span>${cita.hora}</span>${cita.cliente}<small>${nombresServiciosCita(cita)} · ${duracionTotalCita(cita)} min</small><em>${visual.texto}</em></button>`;
       }).join("")}</div>
     </div>`);
   }
@@ -1051,12 +1140,24 @@ function escaparAtributo(valor) {
   return String(valor ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
+function detallesServiciosCita(cita) {
+  return Array.isArray(cita?.serviciosDetalle) && cita.serviciosDetalle.length ? cita.serviciosDetalle : [{ nombre: cita?.servicio || "Servicio", duracion: duracionDeCita(cita || {}), precio: Number(cita?.precio || 0) }];
+}
+
+function nombresServiciosCita(cita) {
+  return detallesServiciosCita(cita).map(item => item.nombre).join(" + ");
+}
+
+function duracionTotalCita(cita) {
+  return detallesServiciosCita(cita).reduce((suma, item) => suma + Number(item.duracion || 0), 0);
+}
+
 function abrirModalCita(fecha = hoy(), citaId = null) {
   if (!exigirEdicion()) return;
   const cita = citaId === null ? null : citas.find(item => item.id === citaId);
   if (citaId !== null && !cita) return mostrarMensaje("Cita no encontrada", "Actualiza la página e inténtalo nuevamente.", "alerta");
   const nombresPersonal = [...new Set(["Rosa Polet", cita?.personal, ...personal.filter(item => item.activo !== false).map(item => item.nombre)].filter(Boolean))];
-  const nombresServicios = [...new Set([cita?.servicio, ...servicios.map(item => item.nombre)].filter(Boolean))];
+  const seleccionados = new Set(detallesServiciosCita(cita).map(item => item.nombre));
   const metodosPago = ["Pago presencial/efectivo", "Transferencia bancaria", "Tarjeta"];
   const metodoActual = cita?.metodoPago || "";
   if (metodoActual && !metodosPago.includes(metodoActual)) metodosPago.unshift(metodoActual);
@@ -1064,20 +1165,53 @@ function abrirModalCita(fecha = hoy(), citaId = null) {
     <label>Fecha</label><input type="date" id="modalCitaFecha" value="${cita?.fecha || fecha}" required>
     <label>Hora</label><input type="time" id="modalCitaHora" value="${cita?.hora || horaActual()}" required>
     <label>Cliente</label><input id="modalCitaCliente" value="${escaparAtributo(cita?.cliente)}" placeholder="Nombre de la clienta" required>
-    <label>Teléfono</label><input id="modalCitaTelefono" type="tel" inputmode="numeric" maxlength="10" value="${escaparAtributo(cita?.telefono)}" placeholder="10 dígitos" oninput="this.value=this.value.replace(/\\D/g, '').slice(0, 10)" required>
-    <label>Servicio</label><select id="modalCitaServicio" onchange="actualizarPrecioServicioModal()" required>${nombresServicios.map(nombre => `<option ${nombre === cita?.servicio ? "selected" : ""}>${nombre}</option>`).join("")}</select>
+    <label>Teléfono</label><input id="modalCitaTelefono" type="tel" inputmode="numeric" maxlength="10" value="${escaparAtributo(cita?.telefono)}" placeholder="10 dígitos" oninput="this.value=this.value.replace(/\\D/g, '').slice(0, 10); actualizarClientaCita()" required>
+    <div id="estadoClientaCita" class="client-match"></div>
+    <label>Servicios</label><div class="appointment-services">${servicios.map((servicio, indice) => `<label><input class="cita-servicio-check" type="checkbox" value="${indice}" ${seleccionados.has(servicio.nombre) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span><strong>${servicio.nombre}</strong><small>${servicio.duracion} min · ${dinero(servicio.precio)}</small></span></label>`).join("")}</div>
+    <div id="resumenServiciosCita" class="appointment-summary"></div>
     <label>Personal</label><select id="modalCitaPersonal" required><option value="">Selecciona al personal</option>${nombresPersonal.map(nombre => `<option ${nombre === cita?.personal ? "selected" : ""}>${nombre}</option>`).join("")}</select>
-    <label>Precio (${configuracion.moneda})</label><input id="modalCitaPrecio" type="number" min="0.01" step="0.01" value="${valorParaEntrada(cita?.precio ?? servicios[0]?.precio ?? 0)}" required>
+    <label>Total (MXN)</label><input id="modalCitaPrecio" type="number" min="0.01" step="0.01" value="${valorParaEntrada(cita?.precio ?? 0)}" required>
     <h3>Método de pago</h3>
     <select id="modalCitaPago" required><option value="">Selecciona un método</option>${metodosPago.map(metodo => `<option ${metodo === metodoActual ? "selected" : ""}>${metodo}</option>`).join("")}</select>
     <label>Anticipo de pago (opcional)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="modalCitaAnticipo" type="number" min="0" step="0.01" value="${valorParaEntrada(cita?.anticipo || 0)}" placeholder="Monto del anticipo"></div>
     <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">${cita ? "Guardar cambios" : "Guardar cita"}</button></div>
   </form>`);
+  actualizarClientaCita();
+  actualizarResumenServiciosCita(false);
 }
 
 function actualizarPrecioServicioModal() {
-  const servicio = servicioPorNombre(document.getElementById("modalCitaServicio").value);
-  document.getElementById("modalCitaPrecio").value = valorParaEntrada(servicio.precio || 0);
+  actualizarResumenServiciosCita();
+}
+
+function actualizarClientaCita() {
+  const telefono = document.getElementById("modalCitaTelefono")?.value || "";
+  const clienta = clientas.find(item => item.telefono === telefono);
+  const estado = document.getElementById("estadoClientaCita");
+  if (!estado) return;
+  if (clienta) {
+    document.getElementById("modalCitaCliente").value = clienta.nombre;
+    estado.innerHTML = `<strong>Clienta registrada</strong><span>La cita se agregará a su historial.</span>`;
+  } else {
+    estado.innerHTML = telefono.length === 10 ? `<strong>Nueva clienta</strong><span>Se creará su historial al guardar.</span>` : "";
+  }
+}
+
+function serviciosSeleccionadosFormulario() {
+  return [...document.querySelectorAll(".cita-servicio-check:checked")].map(input => {
+    const servicio = servicios[Number(input.value)];
+    return { nombre: servicio.nombre, duracion: Number(servicio.duracion), precio: Number(servicio.precio) };
+  });
+}
+
+function actualizarResumenServiciosCita(actualizarPrecio = true) {
+  const seleccion = serviciosSeleccionadosFormulario();
+  const duracion = seleccion.reduce((suma, item) => suma + item.duracion, 0);
+  const subtotal = seleccion.reduce((suma, item) => suma + item.precio, 0);
+  const total = subtotal;
+  if (actualizarPrecio && document.getElementById("modalCitaPrecio")) document.getElementById("modalCitaPrecio").value = valorParaEntrada(total);
+  const resumen = document.getElementById("resumenServiciosCita");
+  if (resumen) resumen.innerHTML = `<strong>${seleccion.length} servicio(s) · ${duracion} minutos</strong><span>${dinero(total)}</span>`;
 }
 
 function horaAMinutos(hora) {
@@ -1086,7 +1220,8 @@ function horaAMinutos(hora) {
 }
 
 function duracionDeCita(cita) {
-  return Number(servicioPorNombre(cita.servicio)?.duracion || 30);
+  if (Array.isArray(cita?.serviciosDetalle) && cita.serviciosDetalle.length) return cita.serviciosDetalle.reduce((suma, item) => suma + Number(item.duracion || 0), 0);
+  return Number(servicioPorNombre(cita?.servicio)?.duracion || cita?.duracion || 30);
 }
 
 function hayConflictoDeHorario(nuevaCita, ignorarId = null) {
@@ -1118,13 +1253,16 @@ function guardarCitaModal(event, citaId = null) {
   document.querySelectorAll("#modalFormulario .campo-error").forEach(campo => campo.classList.remove("campo-error"));
   const citaAnterior = citaId === null ? null : citas.find(item => item.id === citaId);
   const telefono = document.getElementById("modalCitaTelefono").value.trim();
+  const serviciosDetalle = serviciosSeleccionadosFormulario();
   const cita = {
     id: citaAnterior?.id || idNuevo(),
     fecha: document.getElementById("modalCitaFecha").value,
     hora: document.getElementById("modalCitaHora").value,
     cliente: document.getElementById("modalCitaCliente").value.trim(),
     telefono,
-    servicio: document.getElementById("modalCitaServicio").value,
+    servicio: serviciosDetalle.map(item => item.nombre).join(" + "),
+    serviciosDetalle,
+    duracion: serviciosDetalle.reduce((suma, item) => suma + item.duracion, 0),
     precio: valorDesdeEntrada(document.getElementById("modalCitaPrecio").value),
     metodoPago: document.getElementById("modalCitaPago").value,
     anticipo: valorDesdeEntrada(document.getElementById("modalCitaAnticipo").value),
@@ -1139,7 +1277,7 @@ function guardarCitaModal(event, citaId = null) {
     [cita.hora, "hora", "modalCitaHora"],
     [cita.cliente, "nombre de la clienta", "modalCitaCliente"],
     [cita.telefono, "teléfono", "modalCitaTelefono"],
-    [cita.servicio, "servicio", "modalCitaServicio"],
+    [cita.serviciosDetalle.length, "servicio", "resumenServiciosCita"],
     [cita.personal, "personal", "modalCitaPersonal"],
     [cita.metodoPago, "método de pago", "modalCitaPago"]
   ].filter(([valor]) => !valor);
@@ -1150,10 +1288,18 @@ function guardarCitaModal(event, citaId = null) {
   if (!/^\d{10}$/.test(cita.telefono)) return mostrarErrorCita("Datos incorrectos", "El teléfono debe tener exactamente 10 números.", ["modalCitaTelefono"]);
   if (!Number.isFinite(cita.precio) || cita.precio <= 0) return mostrarErrorCita("Datos incorrectos", "El precio debe ser mayor que cero.", ["modalCitaPrecio"]);
   if (!Number.isFinite(cita.anticipo) || cita.anticipo < 0 || cita.anticipo > cita.precio) return mostrarErrorCita("Datos incorrectos", "El anticipo no puede ser negativo ni mayor que el precio.", ["modalCitaAnticipo"]);
+  let clienta = clientas.find(item => item.telefono === cita.telefono);
   const cambioHorario = !citaAnterior || citaAnterior.fecha !== cita.fecha || citaAnterior.hora !== cita.hora;
   if (cambioHorario && bloqueos.some(item => item.fecha === cita.fecha && item.hora === cita.hora)) return mostrarErrorCita("Horario bloqueado", "Ese horario no está disponible.", ["modalCitaFecha", "modalCitaHora"]);
   if (hayConflictoDeHorario(cita, citaAnterior?.id ?? null)) return mostrarErrorCita("Horario ocupado", `${cita.personal} ya tiene una cita que coincide con ese horario.`, ["modalCitaFecha", "modalCitaHora", "modalCitaPersonal"]);
   cita.liquidada = cita.anticipo + totalAbonos(cita) >= cita.precio;
+  if (!clienta) {
+    clienta = { id: idNuevo(), nombre: cita.cliente, telefono: cita.telefono, notas: "", creadaEn: new Date().toISOString() };
+    clientas.push(clienta);
+  } else {
+    clienta.nombre = cita.cliente;
+  }
+  cita.clienteId = clienta.id;
   if (citaAnterior) citas[citas.findIndex(item => item.id === citaAnterior.id)] = cita;
   else citas.push(cita);
   guardar();
@@ -1169,7 +1315,8 @@ function abrirDetalleCita(id) {
   abrirModal("Detalle de cita", `<div class="detalle-cita">
     <div class="cita-status status-${visual.color}">${visual.texto}</div>
     <p><strong>Cliente:</strong> ${cita.cliente}</p>
-    <p><strong>Servicio:</strong> ${cita.servicio}</p>
+    <div class="detail-services"><strong>Servicios:</strong>${detallesServiciosCita(cita).map(item => `<div><span>${item.nombre}</span><b>${item.duracion} min · ${dinero(item.precio)}</b></div>`).join("")}</div>
+    <p><strong>Duración total:</strong> ${duracionTotalCita(cita)} minutos</p>
     <p><strong>Fecha:</strong> ${formatoFecha(cita.fecha)} ${cita.hora}</p>
     <p><strong>Personal:</strong> ${cita.personal || "Rosa Polet"}</p>
     <p><strong>Precio:</strong> ${dinero(cita.precio)}</p>
@@ -1218,7 +1365,7 @@ function vistaPagosPendientes(lista) {
   return `<div class="pagos-lista">${lista.map(cita => {
     const visual = estadoVisualCita(cita);
     return `<article class="pago-item pago-${visual.color}">
-    <div><strong>${cita.cliente}</strong><span>${formatoFecha(cita.fecha)} ${cita.hora} · ${cita.servicio}</span></div>
+    <div><strong>${cita.cliente}</strong><span>${formatoFecha(cita.fecha)} ${cita.hora} · ${nombresServiciosCita(cita)}</span></div>
     <div><small>Estado</small><b class="pago-estado status-${visual.color}">${visual.texto}</b></div>
     <div><small>Anticipo</small><b>${dinero(cita.anticipo)}</b></div>
     <div><small>Saldo</small><b>${dinero(saldoCita(cita))}</b></div>
@@ -1231,7 +1378,7 @@ function registrarAbono(id) {
   if (!exigirEdicion()) return;
   const cita = citas.find(item => item.id === id);
   if (!cita) return;
-  const cantidadMostrada = Number(prompt(`¿Cuánto van a abonar en ${configuracion.moneda}?`) || 0);
+  const cantidadMostrada = Number(prompt("¿Cuánto van a abonar en MXN?") || 0);
   const cantidad = valorDesdeEntrada(cantidadMostrada);
   if (!cantidadMostrada || cantidadMostrada <= 0) return mostrarMensaje("Completa los datos", "Escribe una cantidad válida para el abono.", "alerta");
   cita.abonos = cita.abonos || [];
@@ -1270,7 +1417,9 @@ function mostrarTicketPago(id) {
     <div class="ticket-line"><span>Fecha de pago</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div>
     <div class="ticket-divider"></div>
     <div class="ticket-line"><span>Clienta</span><b>${cita.cliente}</b></div>
-    <div class="ticket-line"><span>Servicio</span><b>${cita.servicio}</b></div>
+    <div class="ticket-divider"></div>
+    <div class="ticket-services">${detallesServiciosCita(cita).map(item => `<div><span>${item.nombre}<small>${item.duracion} min</small></span><b>${dinero(item.precio)}</b></div>`).join("")}</div>
+    <div class="ticket-line"><span>Duración total</span><b>${duracionTotalCita(cita)} min</b></div>
     <div class="ticket-line"><span>Cita</span><b>${formatoFecha(cita.fecha)} · ${cita.hora}</b></div>
     <div class="ticket-line"><span>Personal</span><b>${cita.personal || "Rosa Polet"}</b></div>
     <div class="ticket-line"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div>
@@ -1288,7 +1437,8 @@ function imprimirTicket(id) {
   const logo = configuracion.logo || new URL("assets/logo-oh-ma-belle-transparent.png", window.location.href).href;
   const ventana = window.open("", "_blank", "width=420,height=700");
   if (!ventana) return mostrarMensaje("No se pudo imprimir", "Permite las ventanas emergentes para abrir el ticket.", "alerta");
-  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket #${folio}</title><style>@page{size:80mm auto;margin:5mm}*{box-sizing:border-box}body{width:70mm;margin:0 auto;font-family:Arial,sans-serif;color:#272238}.marca{text-align:center}.marca img{width:52mm;height:24mm;object-fit:contain}.marca h1{font-size:20px;margin:2px}.marca p{margin:0;color:#746d7f}.pagado{width:max-content;margin:14px auto;padding:5px 12px;border:1px solid #2ca77a;color:#167854;border-radius:20px;font-weight:800}.linea,.total{display:flex;justify-content:space-between;gap:12px;padding:6px 0}.linea b{text-align:right}.separador{border-top:1px dashed #aaa;margin:9px 0}.total{font-size:18px;font-weight:800}.gracias{text-align:center;margin-top:20px;font-size:12px}</style></head><body><div class="marca"><img src="${logo}" alt="Logo"><h1>Oh, ma belle</h1><p>Belleza y Spa</p></div><div class="pagado">PAGADO</div><div class="linea"><span>Folio</span><b>#${folio}</b></div><div class="linea"><span>Fecha</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div><div class="separador"></div><div class="linea"><span>Clienta</span><b>${cita.cliente}</b></div><div class="linea"><span>Servicio</span><b>${cita.servicio}</b></div><div class="linea"><span>Cita</span><b>${formatoFecha(cita.fecha)} ${cita.hora}</b></div><div class="linea"><span>Personal</span><b>${cita.personal || "Rosa Polet"}</b></div><div class="linea"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div><div class="separador"></div><div class="total"><span>Total</span><strong>${dinero(cita.precio)}</strong></div><p class="gracias">Gracias por tu visita</p></body></html>`);
+  const serviciosTicket = detallesServiciosCita(cita).map(item => `<div class="linea"><span>${item.nombre}<small> · ${item.duracion} min</small></span><b>${dinero(item.precio)}</b></div>`).join("");
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket #${folio}</title><style>@page{size:80mm auto;margin:5mm}*{box-sizing:border-box}body{width:70mm;margin:0 auto;font-family:Arial,sans-serif;color:#272238}.marca{text-align:center}.marca img{width:52mm;height:24mm;object-fit:contain}.marca h1{font-size:20px;margin:2px}.marca p{margin:0;color:#746d7f}.pagado{width:max-content;margin:14px auto;padding:5px 12px;border:1px solid #2ca77a;color:#167854;border-radius:20px;font-weight:800}.linea,.total{display:flex;justify-content:space-between;gap:12px;padding:6px 0}.linea b{text-align:right}.linea small{display:block;color:#777}.separador{border-top:1px dashed #aaa;margin:9px 0}.total{font-size:18px;font-weight:800}.gracias{text-align:center;margin-top:20px;font-size:12px}</style></head><body><div class="marca"><img src="${logo}" alt="Logo"><h1>Oh, ma belle</h1><p>Belleza y Spa</p></div><div class="pagado">PAGADO</div><div class="linea"><span>Folio</span><b>#${folio}</b></div><div class="linea"><span>Fecha</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div><div class="separador"></div><div class="linea"><span>Clienta</span><b>${cita.cliente}</b></div><div class="separador"></div>${serviciosTicket}<div class="linea"><span>Duración total</span><b>${duracionTotalCita(cita)} min</b></div><div class="separador"></div><div class="linea"><span>Cita</span><b>${formatoFecha(cita.fecha)} ${cita.hora}</b></div><div class="linea"><span>Personal</span><b>${cita.personal || "Rosa Polet"}</b></div><div class="linea"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div><div class="separador"></div><div class="total"><span>Total</span><strong>${dinero(cita.precio)}</strong></div><p class="gracias">Gracias por tu visita</p></body></html>`);
   ventana.document.close();
   setTimeout(() => ventana.print(), 300);
 }
@@ -1409,7 +1559,7 @@ function abrirNuevoServicio(indice = null) {
   abrirModal(indice !== null ? "Editar Servicio" : "Nuevo Servicio", `<form class="modal-stack" novalidate onsubmit="guardarServicioModal(event, ${indice === null ? "null" : indice})">
     <label>Nombre del Servicio</label><input id="servicioNombreModal" value="${servicio.nombre || ""}" required>
     <label>Imagen del Servicio</label><input id="servicioImagenModal" type="file" accept="image/*">
-    <label>Precio (${configuracion.moneda})</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="servicioPrecioModal" type="number" min="0.01" step="0.01" value="${valorParaEntrada(servicio.precio || 0)}" required></div>
+    <label>Precio (MXN)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="servicioPrecioModal" type="number" min="0.01" step="0.01" value="${valorParaEntrada(servicio.precio || 0)}" required></div>
     <label>Duración (minutos)</label><input id="servicioDuracionModal" type="number" min="1" value="${servicio.duracion || 30}" required>
     <h3>Personal Asignado</h3>
     <div class="check-grid">${personal.map(p => `<label class="check-line"><input class="servicioPersonalModal" type="checkbox" value="${p.nombre}" ${(servicio.personalAsignado || []).includes(p.nombre) ? "checked" : ""}> ${p.nombre}</label>`).join("") || `<p class="texto-suave">No hay personal agregado todavía.</p>`}</div>
