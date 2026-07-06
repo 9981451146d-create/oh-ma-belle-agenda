@@ -54,6 +54,25 @@ let eventoInstalacion = null;
 
 normalizarDatos();
 
+function mostrarIntroAplicacion() {
+  const instalada = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  const intro = document.getElementById("introAplicacion");
+  if (!instalada || !intro) return;
+  const movimientoReducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const inicioSalida = movimientoReducido ? 650 : 2700;
+  const finIntro = movimientoReducido ? 850 : 3400;
+  intro.hidden = false;
+  document.body.classList.add("intro-activa");
+  window.setTimeout(() => intro.classList.add("intro-saliendo"), inicioSalida);
+  window.setTimeout(() => {
+    intro.hidden = true;
+    intro.classList.remove("intro-saliendo");
+    document.body.classList.remove("intro-activa");
+  }, finIntro);
+}
+
+mostrarIntroAplicacion();
+
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(error => {
     console.warn("No se pudo activar el modo instalable:", error);
@@ -1188,13 +1207,20 @@ function actualizarClientaCita() {
   const telefono = document.getElementById("modalCitaTelefono")?.value || "";
   const clienta = clientas.find(item => item.telefono === telefono);
   const estado = document.getElementById("estadoClientaCita");
+  const nombre = document.getElementById("modalCitaCliente");
   if (!estado) return;
   if (clienta) {
-    document.getElementById("modalCitaCliente").value = clienta.nombre;
-    estado.innerHTML = `<strong>Clienta registrada</strong><span>La cita se agregará a su historial.</span>`;
+    nombre.value = clienta.nombre;
+    nombre.readOnly = true;
+    estado.innerHTML = `<strong>Clienta registrada: ${clienta.nombre}</strong><span>Este teléfono ya tiene historial. Para cambiar el nombre, edita su perfil en Clientas.</span>`;
   } else {
+    nombre.readOnly = false;
     estado.innerHTML = telefono.length === 10 ? `<strong>Nueva clienta</strong><span>Se creará su historial al guardar.</span>` : "";
   }
+}
+
+function nombreComparable(valor) {
+  return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 function serviciosSeleccionadosFormulario() {
@@ -1286,6 +1312,10 @@ function guardarCitaModal(event, citaId = null) {
   }
   if (cita.cliente.length < 2) return mostrarErrorCita("Datos incorrectos", "Escribe un nombre válido para la clienta.", ["modalCitaCliente"]);
   if (!/^\d{10}$/.test(cita.telefono)) return mostrarErrorCita("Datos incorrectos", "El teléfono debe tener exactamente 10 números.", ["modalCitaTelefono"]);
+  const clientaDelTelefono = clientas.find(item => item.telefono === cita.telefono);
+  if (clientaDelTelefono && nombreComparable(clientaDelTelefono.nombre) !== nombreComparable(cita.cliente)) {
+    return mostrarErrorCita("Teléfono ya registrado", `Este número pertenece a ${clientaDelTelefono.nombre}. Usa ese nombre o edita su perfil en Clientas.`, ["modalCitaTelefono", "modalCitaCliente"]);
+  }
   if (!Number.isFinite(cita.precio) || cita.precio <= 0) return mostrarErrorCita("Datos incorrectos", "El precio debe ser mayor que cero.", ["modalCitaPrecio"]);
   if (!Number.isFinite(cita.anticipo) || cita.anticipo < 0 || cita.anticipo > cita.precio) return mostrarErrorCita("Datos incorrectos", "El anticipo no puede ser negativo ni mayor que el precio.", ["modalCitaAnticipo"]);
   let clienta = clientas.find(item => item.telefono === cita.telefono);
@@ -1325,9 +1355,31 @@ function abrirDetalleCita(id) {
     <p><strong>Saldo:</strong> ${dinero(saldoCita(cita))}</p>
     <div class="modal-actions">
       <button type="button" onclick="cerrarModalFormulario()">Cerrar</button>
+      <button class="whatsapp-action" type="button" onclick="avisarClientaWhatsApp(${cita.id})">Avisar a la clienta</button>
       ${puedeEditar() ? `<button type="button" onclick="cerrarModalFormulario(); abrirModalCita('${cita.fecha}', ${cita.id})">Editar cita</button>${cita.estado !== "Atendida" ? `<button type="button" onclick="cerrarModalFormulario(); marcarAtendida(${cita.id})">Servicio realizado</button>` : ""}${saldoCita(cita) > 0 ? `<button type="button" onclick="registrarAbono(${cita.id}); cerrarModalFormulario()">Abonar</button><button class="primary-action" type="button" onclick="cerrarModalFormulario(); liquidarCita(${cita.id})">Ya liquidaron</button>` : visual.color === "verde" ? `<button type="button" onclick="cerrarModalFormulario(); mostrarTicketPago(${cita.id})">Ver ticket</button>` : ""}<button type="button" onclick="cancelarCita(${cita.id}); cerrarModalFormulario()">Cancelar cita</button><button class="danger-action" type="button" onclick="eliminarCita(${cita.id}); cerrarModalFormulario()">Eliminar</button>` : ""}
     </div>
   </div>`);
+}
+
+function avisarClientaWhatsApp(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return mostrarMensaje("Cita no encontrada", "Actualiza la agenda e inténtalo nuevamente.", "alerta");
+  const telefono = String(cita.telefono || "").replace(/\D/g, "");
+  if (!/^\d{10}$/.test(telefono)) return mostrarMensaje("Teléfono incorrecto", "La clienta debe tener un teléfono de 10 dígitos para abrir WhatsApp.", "alerta");
+
+  const mensaje = [
+    `Hola ${cita.cliente}, te escribimos de Oh, ma belle Belleza y Spa.`,
+    "",
+    "Te recordamos los datos de tu cita:",
+    `Fecha: ${formatoFecha(cita.fecha)}`,
+    `Hora: ${cita.hora}`,
+    `Servicio${detallesServiciosCita(cita).length > 1 ? "s" : ""}: ${nombresServiciosCita(cita)}`,
+    `Duración aproximada: ${duracionTotalCita(cita)} minutos`,
+    `Te atenderá: ${cita.personal || "nuestro personal"}`,
+    "",
+    "Por favor responde CONFIRMO para indicarnos que asistirás. ¡Te esperamos!"
+  ].join("\n");
+  window.open(`https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`, "_blank", "noopener,noreferrer");
 }
 
 function totalAbonos(cita) {
