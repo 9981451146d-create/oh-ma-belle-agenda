@@ -4,6 +4,7 @@ const SUPABASE_KEY = "sb_publishable_5b7OS0T91SbgnCog14YXEw_tr7lD3WT";
 const SUPABASE_TABLA = "agenda_estado";
 const SUPABASE_ID = "principal";
 const CODIGO_ADMINISTRACION = "2009";
+const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftqIr75NoU9-JgWF9EcPzm-MptOXP4abYmzM";
 const configuracionBase = {
   logo: "",
   moneda: "MXN",
@@ -172,7 +173,6 @@ async function cargarRemoto(silencioso = false) {
     } else {
       await guardarRemoto();
     }
-    if (!silencioso) mostrarMensaje("Datos conectados", "La agenda ya está sincronizada.", "ok");
     return true;
   } catch (error) {
     remotoListo = false;
@@ -698,10 +698,31 @@ function exportarEstadisticasExcel() {
 
 function imprimirEstadisticas() {
   const { tipo, valor, datos } = periodoEstadisticasActual();
+  const logoReporte = configuracion.logo || new URL("assets/logo-oh-ma-belle-transparent.png", window.location.href).href;
   const filas = lista => lista.map(item => `<tr><td>${item.nombre}</td><td>${item.total}</td><td>${dinero(item.dinero)}</td></tr>`).join("");
+  const grafica = (titulo, lista, propiedad, tipoValor) => {
+    const colores = ["#6d63ef", "#d68c2f", "#2fbf93", "#cf4f78", "#8a63d2", "#4aa3df", "#b46a56"];
+    const utiles = lista.map(item => ({ nombre: item.nombre, valor: Number(item[propiedad] || 0) })).filter(item => item.valor > 0);
+    const total = utiles.reduce((suma, item) => suma + item.valor, 0);
+    if (!total) return `<article class="grafica"><h3>${titulo}</h3><p class="sin-datos">Sin datos en este periodo.</p></article>`;
+    let acumulado = 0;
+    const segmentos = utiles.map((item, indice) => {
+      const inicio = acumulado;
+      acumulado += item.valor / total * 100;
+      return `${colores[indice % colores.length]} ${inicio}% ${acumulado}%`;
+    }).join(",");
+    const leyenda = utiles.map((item, indice) => `<li><i style="background:${colores[indice % colores.length]}"></i><span>${item.nombre}</span><b>${tipoValor === "dinero" ? dinero(item.valor) : `${item.valor} cita(s)`}</b></li>`).join("");
+    return `<article class="grafica"><h3>${titulo}</h3><div class="grafica-contenido"><div class="pastel" style="background:conic-gradient(${segmentos})"></div><ul>${leyenda}</ul></div></article>`;
+  };
+  const graficas = [
+    grafica("Servicios más vendidos", datos.porServicio, "total", "citas"),
+    grafica("Ingresos por servicio", datos.porServicio, "dinero", "dinero"),
+    grafica("Personal con más citas", datos.porPersonal, "total", "citas"),
+    grafica("Ingresos por personal", datos.porPersonal, "dinero", "dinero")
+  ].join("");
   const ventana = window.open("", "_blank", "width=960,height=720");
   if (!ventana) return mostrarMensaje("No se pudo abrir", "Permite las ventanas emergentes para imprimir el reporte.", "alerta");
-  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reporte Oh, ma belle</title><style>body{font-family:Arial,sans-serif;color:#28233b;margin:36px}header{display:flex;align-items:center;gap:18px;border-bottom:3px solid #6d63ef;padding-bottom:18px}header img{width:120px;height:70px;object-fit:contain}h1{margin:0;font-size:28px}h2{margin-top:30px;color:#513c75}.resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.dato{padding:16px;border:1px solid #ddd5e8;border-radius:8px}.dato strong{display:block;font-size:22px;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:11px;border-bottom:1px solid #e8e3ee;text-align:left}th{background:#f4f0fb}@media print{body{margin:14mm}.no-print{display:none}}</style></head><body><header>${configuracion.logo ? `<img src="${configuracion.logo}" alt="Logo">` : ""}<div><h1>Oh, ma belle</h1><p>Reporte de estadísticas · ${etiquetaPeriodo(tipo, valor)}</p></div></header><section class="resumen"><div class="dato">Citas activas<strong>${datos.activas.length}</strong></div><div class="dato">Canceladas<strong>${datos.canceladas.length}</strong></div><div class="dato">Ingresos<strong>${dinero(datos.ingresos)}</strong></div></section><h2>Resultados por personal</h2><table><thead><tr><th>Personal</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porPersonal)}</tbody></table><h2>Resultados por servicio</h2><table><thead><tr><th>Servicio</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porServicio)}</tbody></table></body></html>`);
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reporte Oh, ma belle</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#28233b;margin:36px}header{display:flex;align-items:center;gap:18px;border-bottom:3px solid #6d63ef;padding-bottom:18px}header img{width:120px;height:70px;object-fit:contain}h1{margin:0;font-size:28px}h2{margin-top:30px;color:#513c75}h3{margin:0 0 14px;color:#513c75;font-size:16px}.resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.dato{padding:16px;border:1px solid #ddd5e8;border-radius:8px}.dato strong{display:block;font-size:22px;margin-top:8px}.graficas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.grafica{padding:16px;border:1px solid #ddd5e8;border-radius:8px;break-inside:avoid}.grafica-contenido{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:14px}.pastel{width:106px;height:106px;border-radius:50%;box-shadow:inset -8px -10px 0 rgba(40,35,59,.14),0 7px 0 #d9d3e3}.grafica ul{list-style:none;padding:0;margin:0}.grafica li{display:grid;grid-template-columns:10px 1fr auto;gap:6px;align-items:center;padding:3px 0;font-size:10px}.grafica li i{width:9px;height:9px;border-radius:2px}.grafica li b{text-align:right}.sin-datos{color:#777}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:11px;border-bottom:1px solid #e8e3ee;text-align:left}th{background:#f4f0fb}@media print{body{margin:10mm}.graficas{page-break-after:always}.grafica{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><header><img src="${logoReporte}" alt="Logo"><div><h1>Oh, ma belle</h1><p>Reporte de estadísticas · ${etiquetaPeriodo(tipo, valor)}</p></div></header><section class="resumen"><div class="dato">Citas activas<strong>${datos.activas.length}</strong></div><div class="dato">Canceladas<strong>${datos.canceladas.length}</strong></div><div class="dato">Ingresos<strong>${dinero(datos.ingresos)}</strong></div></section><h2>Gráficas del periodo</h2><section class="graficas">${graficas}</section><h2>Resultados por personal</h2><table><thead><tr><th>Personal</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porPersonal)}</tbody></table><h2>Resultados por servicio</h2><table><thead><tr><th>Servicio</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porServicio)}</tbody></table></body></html>`);
   ventana.document.close();
   setTimeout(() => ventana.print(), 300);
 }
@@ -830,23 +851,61 @@ function historialDeClienta(clienta) {
 
 function mostrarClientas(busqueda = "") {
   activarMenu("clientas");
-  const termino = String(busqueda).trim().toLowerCase();
-  const lista = clientas.filter(clienta => !termino || clienta.nombre.toLowerCase().includes(termino) || clienta.telefono.includes(termino));
   document.getElementById("contenido").innerHTML = `
     <section class="panel clientas-head">
       <div><h2>Clientas</h2><p>Consulta sus visitas y servicios anteriores.</p></div>
-      <form class="client-search" onsubmit="buscarClientas(event)"><input id="buscarClienta" value="${escaparAtributo(busqueda)}" placeholder="Buscar por nombre o teléfono"><button type="submit">Buscar</button></form>
+      <div class="client-search"><input id="buscarClienta" value="${escaparAtributo(busqueda)}" placeholder="Buscar por nombre o teléfono" oninput="filtrarClientasEnVivo(this.value)"><span id="conteoClientas"></span></div>
     </section>
-    <section class="clientas-grid">${lista.map(clienta => {
+    <section id="resultadosClientas" class="clientas-grid"></section>`;
+  filtrarClientasEnVivo(busqueda);
+}
+
+function tarjetaClienta(clienta) {
       const historial = historialDeClienta(clienta);
       const ultima = historial[0];
       return `<article class="client-card"><div class="client-avatar">${clienta.nombre.charAt(0).toUpperCase()}</div><div><h3>${clienta.nombre}</h3><a href="tel:${clienta.telefono}">${clienta.telefono}</a><p>${historial.length} visita(s)${ultima ? ` · Última: ${formatoFecha(ultima.fecha)}` : ""}</p></div><div class="client-actions"><button type="button" onclick="verHistorialClienta(${clienta.id})">Ver historial</button>${puedeEditar() ? `<button type="button" onclick="abrirClientaModal(${clienta.id})">Editar</button>` : ""}</div></article>`;
-    }).join("") || `<div class="panel empty-state"><h2>No encontramos clientas</h2><p>Registra la primera clienta para comenzar su historial.</p></div>`}</section>`;
 }
 
-function buscarClientas(event) {
-  event.preventDefault();
-  mostrarClientas(document.getElementById("buscarClienta").value);
+function distanciaTexto(a, b) {
+  const anterior = Array.from({ length: b.length + 1 }, (_, indice) => indice);
+  for (let i = 1; i <= a.length; i += 1) {
+    let diagonal = anterior[0];
+    anterior[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const arriba = anterior[j];
+      anterior[j] = Math.min(anterior[j] + 1, anterior[j - 1] + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diagonal = arriba;
+    }
+  }
+  return anterior[b.length];
+}
+
+function filtrarClientasEnVivo(busqueda = "") {
+  const contenedor = document.getElementById("resultadosClientas");
+  if (!contenedor) return;
+  const termino = nombreComparable(busqueda);
+  const digitos = String(busqueda).replace(/\D/g, "");
+  let lista = clientas.map(clienta => {
+    const nombre = nombreComparable(clienta.nombre);
+    const telefono = String(clienta.telefono || "");
+    let puntaje = 0;
+    if (termino || digitos) {
+      if (digitos && telefono.includes(digitos)) puntaje = telefono.startsWith(digitos) ? 0 : 1;
+      else if (digitos) puntaje = 10 + distanciaTexto(digitos, telefono);
+      else if (nombre === termino) puntaje = 0;
+      else if (nombre.startsWith(termino) || nombre.split(" ").some(parte => parte.startsWith(termino))) puntaje = 1;
+      else if (nombre.includes(termino)) puntaje = 2 + nombre.indexOf(termino) / 100;
+      else puntaje = 10 + Math.min(distanciaTexto(termino, nombre), ...nombre.split(" ").map(parte => distanciaTexto(termino, parte)));
+    }
+    return { clienta, puntaje };
+  }).sort((a, b) => a.puntaje - b.puntaje || a.clienta.nombre.localeCompare(b.clienta.nombre, "es"));
+  if (termino || digitos) {
+    const coincidencias = lista.filter(item => item.puntaje < 10);
+    lista = coincidencias.length ? coincidencias : lista.slice(0, 3);
+  }
+  contenedor.innerHTML = lista.map(item => tarjetaClienta(item.clienta)).join("") || `<div class="panel empty-state"><h2>No encontramos clientas</h2><p>Prueba con otro nombre o teléfono.</p></div>`;
+  const conteo = document.getElementById("conteoClientas");
+  if (conteo) conteo.textContent = `${lista.length} resultado${lista.length === 1 ? "" : "s"}`;
 }
 
 function abrirClientaModal(id = null) {
@@ -919,6 +978,12 @@ function mostrarConfiguracion() {
         </form>
       </article>
 
+      <article class="panel config-card notification-settings">
+        <div class="notification-heading"><div><h2>Notificaciones al personal</h2><p>Recibe avisos 1 hora y 30 minutos antes de cada cita.</p></div><span id="estadoNotificaciones" class="notification-badge">Comprobando...</span></div>
+        <div class="notification-actions"><button class="primary-action" type="button" onclick="activarNotificaciones()">Activar notificaciones</button><button type="button" onclick="probarNotificacion()">Enviar prueba</button></div>
+        <p class="texto-suave">Actívalas en cada celular donde quieras recibir recordatorios.</p>
+      </article>
+
       <article class="panel config-card">
         <h2>Apariencia</h2>
         <p>Activa o desactiva el modo oscuro para trabajar más cómodo.</p>
@@ -939,6 +1004,75 @@ function mostrarConfiguracion() {
       <div class="section-head"><div><h2>Perfiles de usuario</h2><p>Administra quién puede consultar o editar la agenda.</p></div>${puedeEditar() ? `<button class="primary-action add-user-button" type="button" onclick="abrirUsuarioModal(null)">+ Agregar usuario</button>` : ""}</div>
       <table><thead><tr><th>Nombre</th><th>Usuario</th><th>Permiso</th><th>Acciones</th></tr></thead><tbody>${filasUsuarios}</tbody></table>
     </section>`;
+  actualizarEstadoNotificaciones();
+}
+
+function convertirClavePush(clave) {
+  const relleno = "=".repeat((4 - clave.length % 4) % 4);
+  const base64 = (clave + relleno).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(base64), caracter => caracter.charCodeAt(0));
+}
+
+async function actualizarEstadoNotificaciones() {
+  const etiqueta = document.getElementById("estadoNotificaciones");
+  if (!etiqueta) return;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    etiqueta.textContent = "No compatible";
+    etiqueta.className = "notification-badge notification-off";
+    return;
+  }
+  const registro = await navigator.serviceWorker.ready;
+  const suscripcion = await registro.pushManager.getSubscription();
+  const activa = Notification.permission === "granted" && !!suscripcion;
+  etiqueta.textContent = activa ? "Activadas" : Notification.permission === "denied" ? "Bloqueadas" : "Desactivadas";
+  etiqueta.className = `notification-badge ${activa ? "notification-on" : "notification-off"}`;
+}
+
+async function activarNotificaciones() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return mostrarMensaje("No compatible", "Este navegador no permite notificaciones push. Abre la aplicación instalada con Chrome o Safari.", "alerta");
+  try {
+    const permiso = await Notification.requestPermission();
+    if (permiso !== "granted") return mostrarMensaje("Permiso necesario", "Debes permitir las notificaciones desde la configuración del celular.", "alerta");
+    const registro = await navigator.serviceWorker.ready;
+    let suscripcion = await registro.pushManager.getSubscription();
+    if (!suscripcion) suscripcion = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: convertirClavePush(VAPID_PUBLIC_KEY) });
+    const datos = suscripcion.toJSON();
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/push_suscripciones`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      },
+      body: JSON.stringify({
+        endpoint: datos.endpoint,
+        p256dh: datos.keys?.p256dh,
+        auth: datos.keys?.auth,
+        usuario: usuarioActual?.usuario || "sin-sesion",
+        nombre: usuarioActual?.nombre || "Personal",
+        activa: true,
+        actualizado_en: new Date().toISOString()
+      })
+    });
+    if (!respuesta.ok && respuesta.status !== 409) throw new Error(await respuesta.text());
+    await actualizarEstadoNotificaciones();
+    mostrarMensaje("Notificaciones activadas", "Este celular quedó registrado para recibir los recordatorios.", "ok");
+  } catch (error) {
+    console.warn("No se pudieron activar las notificaciones:", error);
+    mostrarMensaje("Falta configurar Supabase", "Primero debemos crear el registro de notificaciones en Supabase.", "alerta");
+  }
+}
+
+async function probarNotificacion() {
+  if (Notification.permission !== "granted") return activarNotificaciones();
+  const registro = await navigator.serviceWorker.ready;
+  await registro.showNotification("Prueba de Oh, ma belle", {
+    body: "Las notificaciones están funcionando en este celular.",
+    icon: "assets/app-icon-192.png",
+    badge: "assets/app-icon-192.png",
+    tag: "prueba-notificaciones"
+  });
 }
 
 function leerImagenOptimizada(input, callback) {

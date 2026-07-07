@@ -1942,6 +1942,18 @@ body.modo-oscuro .modal-actions .whatsapp-action {
   margin-top: 18px;
 }
 
+.notification-settings { grid-column: 1 / -1; }
+.notification-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.notification-heading h2, .notification-heading p { margin: 0 0 6px; }
+.notification-badge { flex: 0 0 auto; padding: 7px 10px; border-radius: 7px; font-size: 12px; font-weight: 800; }
+.notification-on { background: #e5f8ed; color: #16784a; }
+.notification-off { background: #fff1f3; color: #b4233f; }
+.notification-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.notification-actions button { min-height: 42px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font-weight: 800; }
+.notification-actions .primary-action { border-color: transparent; background: linear-gradient(135deg, #522d63, #b73565); color: #fff; }
+body.modo-oscuro .notification-on { background: #183629; color: #8ceab3; }
+body.modo-oscuro .notification-off { background: #3b2028; color: #ffafbd; }
+
 .config-form input,
 .config-form select {
   width: 100%;
@@ -2284,6 +2296,7 @@ body.modo-oscuro .client-notes {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
+  align-items: center;
 }
 
 .client-search input,
@@ -2292,6 +2305,14 @@ body.modo-oscuro .client-notes {
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 14px;
+}
+
+.client-search > span {
+  min-width: 92px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
 }
 
 .client-search button {

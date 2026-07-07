@@ -1,4 +1,4 @@
-const CACHE = "oh-ma-belle-pwa-v5";
+const CACHE = "oh-ma-belle-pwa-v7";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -44,4 +44,26 @@ self.addEventListener("fetch", event => {
     if (respuesta.ok) caches.open(CACHE).then(cache => cache.put(peticion, respuesta.clone()));
     return respuesta;
   })));
+});
+
+self.addEventListener("push", event => {
+  let datos = {};
+  try { datos = event.data ? event.data.json() : {}; } catch { datos = { body: event.data?.text() || "Tienes una cita próxima." }; }
+  event.waitUntil(self.registration.showNotification(datos.title || "Oh, ma belle", {
+    body: datos.body || "Tienes una cita próxima.",
+    icon: "assets/app-icon-192.png",
+    badge: "assets/app-icon-192.png",
+    tag: datos.tag || "recordatorio-cita",
+    data: { url: datos.url || "./" },
+    vibrate: [180, 80, 180]
+  }));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const destino = event.notification.data?.url || "./";
+  event.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then(ventanas => {
+    const abierta = ventanas.find(ventana => "focus" in ventana);
+    return abierta ? abierta.focus() : clients.openWindow(destino);
+  }));
 });
