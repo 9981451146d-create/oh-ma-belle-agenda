@@ -46,6 +46,7 @@ let bloqueos = cargar("bloqueos") || [];
 let personal = cargar("personal") || [];
 let clientas = cargar("clientas") || [];
 let modoOscuro = cargar("modoOscuro") || false;
+let sonidosActivos = cargar("sonidosActivos") !== false;
 let configuracion = cargar("configuracion") || { ...configuracionBase };
 let remotoListo = false;
 let guardandoRemoto = false;
@@ -64,6 +65,7 @@ function mostrarIntroAplicacion() {
   const finIntro = movimientoReducido ? 850 : 3400;
   intro.hidden = false;
   document.body.classList.add("intro-activa");
+  reproducirSonido("intro", 0.2);
   window.setTimeout(() => intro.classList.add("intro-saliendo"), inicioSalida);
   window.setTimeout(() => {
     intro.hidden = true;
@@ -73,6 +75,20 @@ function mostrarIntroAplicacion() {
 }
 
 mostrarIntroAplicacion();
+
+function reproducirSonido(tipo, volumen = 0.14) {
+  if (!sonidosActivos) return;
+  const rutas = { intro: "assets/sounds/intro.wav", tap: "assets/sounds/tap.wav", success: "assets/sounds/success.wav", danger: "assets/sounds/danger.wav" };
+  if (!rutas[tipo]) return;
+  const audio = new Audio(rutas[tipo]);
+  audio.volume = volumen;
+  audio.play().catch(() => {});
+}
+
+document.addEventListener("click", event => {
+  const boton = event.target.closest("button");
+  if (boton && !boton.disabled) reproducirSonido("tap", 0.11);
+}, true);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(error => {
@@ -122,6 +138,7 @@ function guardarLocal() {
   localStorage.setItem(`${CLAVE}-personal`, JSON.stringify(personal));
   localStorage.setItem(`${CLAVE}-clientas`, JSON.stringify(clientas));
   localStorage.setItem(`${CLAVE}-modoOscuro`, JSON.stringify(modoOscuro));
+  localStorage.setItem(`${CLAVE}-sonidosActivos`, JSON.stringify(sonidosActivos));
   localStorage.setItem(`${CLAVE}-configuracion`, JSON.stringify(configuracion));
 }
 
@@ -387,6 +404,7 @@ function mostrarMensaje(titulo, texto = "", tipo = "ok") {
   document.getElementById("textoMensaje").textContent = texto;
   modal.className = `modal ${tipo}`;
   modal.style.display = "grid";
+  reproducirSonido(tipo === "ok" ? "success" : "danger", tipo === "ok" ? 0.13 : 0.1);
   setTimeout(() => modal.style.display = "none", tipo === "ok" ? 2200 : 4200);
 }
 
@@ -988,6 +1006,7 @@ function mostrarConfiguracion() {
         <h2>Apariencia</h2>
         <p>Activa o desactiva el modo oscuro para trabajar más cómodo.</p>
         <label class="switch-line"><input type="checkbox" id="toggleOscuro" ${modoOscuro ? "checked" : ""} onchange="cambiarModoOscuro(this.checked)"> Modo oscuro</label>
+        <label class="switch-line"><input type="checkbox" ${sonidosActivos ? "checked" : ""} onchange="cambiarSonidos(this.checked)"> Sonidos de la aplicación</label>
       </article>
 
       <article class="panel config-card config-company">
@@ -1183,6 +1202,12 @@ function cambiarModoOscuro(valor) {
   modoOscuro = !!valor;
   guardar();
   aplicarModoOscuro();
+}
+
+function cambiarSonidos(valor) {
+  sonidosActivos = !!valor;
+  localStorage.setItem(`${CLAVE}-sonidosActivos`, JSON.stringify(sonidosActivos));
+  if (sonidosActivos) reproducirSonido("success", 0.13);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

@@ -1,4 +1,4 @@
-const CACHE = "oh-ma-belle-pwa-v7";
+const CACHE = "oh-ma-belle-pwa-v8";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -9,6 +9,10 @@ const ARCHIVOS = [
   "./assets/user-icon-transparent.png",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",
+  "./assets/sounds/intro.wav",
+  "./assets/sounds/tap.wav",
+  "./assets/sounds/success.wav",
+  "./assets/sounds/danger.wav",
   "./assets/icons/inicio.png",
   "./assets/icons/estadisticas.png",
   "./assets/icons/servicios.png",
