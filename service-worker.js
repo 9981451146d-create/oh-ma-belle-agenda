@@ -1,4 +1,4 @@
-const CACHE = "oh-ma-belle-pwa-v8";
+const CACHE = "oh-ma-belle-pwa-v10";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -59,7 +59,10 @@ self.addEventListener("push", event => {
     badge: "assets/app-icon-192.png",
     tag: datos.tag || "recordatorio-cita",
     data: { url: datos.url || "./" },
-    vibrate: [180, 80, 180]
+    vibrate: [300, 120, 300, 120, 450],
+    renotify: true,
+    requireInteraction: true,
+    timestamp: Date.now()
   }));
 });
 

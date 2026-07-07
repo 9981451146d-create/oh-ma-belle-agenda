@@ -65,7 +65,7 @@ function mostrarIntroAplicacion() {
   const finIntro = movimientoReducido ? 850 : 3400;
   intro.hidden = false;
   document.body.classList.add("intro-activa");
-  reproducirSonido("intro", 0.2);
+  reproducirSonido("intro", 0.75);
   window.setTimeout(() => intro.classList.add("intro-saliendo"), inicioSalida);
   window.setTimeout(() => {
     intro.hidden = true;
@@ -87,7 +87,7 @@ function reproducirSonido(tipo, volumen = 0.14) {
 
 document.addEventListener("click", event => {
   const boton = event.target.closest("button");
-  if (boton && !boton.disabled) reproducirSonido("tap", 0.11);
+  if (boton && !boton.disabled) reproducirSonido("tap", 0.55);
 }, true);
 
 if ("serviceWorker" in navigator) {
@@ -404,7 +404,7 @@ function mostrarMensaje(titulo, texto = "", tipo = "ok") {
   document.getElementById("textoMensaje").textContent = texto;
   modal.className = `modal ${tipo}`;
   modal.style.display = "grid";
-  reproducirSonido(tipo === "ok" ? "success" : "danger", tipo === "ok" ? 0.13 : 0.1);
+  reproducirSonido(tipo === "ok" ? "success" : "danger", tipo === "ok" ? 0.5 : 0.45);
   setTimeout(() => modal.style.display = "none", tipo === "ok" ? 2200 : 4200);
 }
 
@@ -1035,16 +1035,30 @@ function convertirClavePush(clave) {
 async function actualizarEstadoNotificaciones() {
   const etiqueta = document.getElementById("estadoNotificaciones");
   if (!etiqueta) return;
-  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
     etiqueta.textContent = "No compatible";
     etiqueta.className = "notification-badge notification-off";
     return;
   }
-  const registro = await navigator.serviceWorker.ready;
-  const suscripcion = await registro.pushManager.getSubscription();
-  const activa = Notification.permission === "granted" && !!suscripcion;
-  etiqueta.textContent = activa ? "Activadas" : Notification.permission === "denied" ? "Bloqueadas" : "Desactivadas";
-  etiqueta.className = `notification-badge ${activa ? "notification-on" : "notification-off"}`;
+  try {
+    const registro = await obtenerRegistroNotificaciones();
+    const suscripcion = await registro.pushManager.getSubscription();
+    const activa = Notification.permission === "granted" && !!suscripcion;
+    etiqueta.textContent = activa ? "Activadas" : Notification.permission === "denied" ? "Bloqueadas" : "Desactivadas";
+    etiqueta.className = `notification-badge ${activa ? "notification-on" : "notification-off"}`;
+  } catch {
+    etiqueta.textContent = "Reabre la app";
+    etiqueta.className = "notification-badge notification-off";
+  }
+}
+
+async function obtenerRegistroNotificaciones() {
+  const existente = await navigator.serviceWorker.getRegistration();
+  if (existente?.active) return existente;
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((_, rechazar) => setTimeout(() => rechazar(new Error("Service Worker no disponible")), 6000))
+  ]);
 }
 
 async function activarNotificaciones() {
@@ -1052,7 +1066,7 @@ async function activarNotificaciones() {
   try {
     const permiso = await Notification.requestPermission();
     if (permiso !== "granted") return mostrarMensaje("Permiso necesario", "Debes permitir las notificaciones desde la configuración del celular.", "alerta");
-    const registro = await navigator.serviceWorker.ready;
+    const registro = await obtenerRegistroNotificaciones();
     let suscripcion = await registro.pushManager.getSubscription();
     if (!suscripcion) suscripcion = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: convertirClavePush(VAPID_PUBLIC_KEY) });
     const datos = suscripcion.toJSON();
@@ -1085,7 +1099,7 @@ async function activarNotificaciones() {
 
 async function probarNotificacion() {
   if (Notification.permission !== "granted") return activarNotificaciones();
-  const registro = await navigator.serviceWorker.ready;
+  const registro = await obtenerRegistroNotificaciones();
   await registro.showNotification("Prueba de Oh, ma belle", {
     body: "Las notificaciones están funcionando en este celular.",
     icon: "assets/app-icon-192.png",
@@ -1207,7 +1221,7 @@ function cambiarModoOscuro(valor) {
 function cambiarSonidos(valor) {
   sonidosActivos = !!valor;
   localStorage.setItem(`${CLAVE}-sonidosActivos`, JSON.stringify(sonidosActivos));
-  if (sonidosActivos) reproducirSonido("success", 0.13);
+  if (sonidosActivos) reproducirSonido("success", 0.5);
 }
 
 document.addEventListener("DOMContentLoaded", () => {

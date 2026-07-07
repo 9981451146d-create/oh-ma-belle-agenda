@@ -36,7 +36,8 @@ Deno.serve(async req => {
   for (const cita of citas) {
     if (!cita?.id || !cita?.fecha || !cita?.hora || ["Cancelada", "Atendida"].includes(cita.estado)) continue;
     const diferencia = (fechaCita(cita).getTime() - ahora.getTime()) / 60000;
-    const recordatorio = [60, 30].find(minutos => diferencia > minutos - 3 && diferencia <= minutos + 3);
+    // 5 minutos es temporal para comprobar el recorrido completo de las notificaciones.
+    const recordatorio = [60, 30, 5].find(minutos => diferencia > minutos - 3 && diferencia <= minutos + 3);
     if (!recordatorio) continue;
 
     for (const suscripcion of suscripciones || []) {
