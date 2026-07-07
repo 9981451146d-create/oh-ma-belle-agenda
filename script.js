@@ -1639,6 +1639,10 @@ async function avisarClientaWhatsApp(id) {
   if (!guardadaEnInternet) {
     return mostrarMensaje("No se pudo crear el enlace", "Revisa la conexión a internet e inténtalo nuevamente.", "alerta");
   }
+  const confirmacionesActivas = await verificarServicioConfirmacion();
+  if (!confirmacionesActivas) {
+    return mostrarMensaje("Falta activar las confirmaciones", "Ejecuta el archivo supabase-confirmaciones.sql en el Editor SQL de Supabase antes de enviar el aviso.", "alerta");
+  }
   const enlaceConfirmacion = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}confirmar.html?token=${encodeURIComponent(cita.confirmacionToken)}`;
 
   const mensaje = [
@@ -1659,6 +1663,23 @@ async function avisarClientaWhatsApp(id) {
     "¡Te esperamos!"
   ]).join("\n");
   location.href = `https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`;
+}
+
+async function verificarServicioConfirmacion() {
+  try {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirmar_cita`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ p_token: `comprobacion-${Date.now()}` })
+    });
+    return respuesta.ok;
+  } catch {
+    return false;
+  }
 }
 
 function totalAbonos(cita) {

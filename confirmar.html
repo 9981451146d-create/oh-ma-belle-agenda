@@ -45,14 +45,27 @@
           headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({ p_token: token })
         });
-        const resultado = respuesta.ok ? await respuesta.json() : false;
-        if (!resultado) throw new Error("No se encontró la cita");
+        const textoRespuesta = await respuesta.text();
+        if (!respuesta.ok) {
+          let detalle = "";
+          try { detalle = JSON.parse(textoRespuesta)?.message || ""; } catch {}
+          if (respuesta.status === 404 || /confirmar_cita|schema cache/i.test(detalle)) {
+            throw new Error("CONFIGURACION");
+          }
+          throw new Error("SERVIDOR");
+        }
+        const resultado = JSON.parse(textoRespuesta || "false");
+        if (!resultado) throw new Error("ENLACE");
         mensaje.className = "ok";
         mensaje.textContent = "Tu cita quedó confirmada. ¡Te esperamos!";
         boton.hidden = true;
-      } catch {
+      } catch (error) {
         mensaje.className = "error";
-        mensaje.textContent = "No pudimos confirmar la cita. Pide al negocio un enlace nuevo.";
+        mensaje.textContent = error.message === "CONFIGURACION"
+          ? "Las confirmaciones todavía no están activadas en el sistema. Comunícate con el negocio."
+          : error.message === "ENLACE"
+            ? "Este enlace ya no corresponde a una cita. Pide al negocio uno nuevo."
+            : "No pudimos conectar con el sistema. Revisa tu internet e inténtalo nuevamente.";
         boton.disabled = false;
         boton.textContent = "Intentar nuevamente";
       }
