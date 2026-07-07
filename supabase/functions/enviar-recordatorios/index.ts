@@ -4,8 +4,8 @@ import webpush from "npm:web-push@3.6.7";
 const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftqIr75NoU9-JgWF9EcPzm-MptOXP4abYmzM";
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY")!;
-const cronSecret = Deno.env.get("CRON_SECRET")!;
+const vapidPrivateKey = (Deno.env.get("VAPID_PRIVATE_KEY") || "").trim();
+const cronSecret = (Deno.env.get("CRON_SECRET") || "").trim();
 
 webpush.setVapidDetails("mailto:ohmabelle@local.agenda", VAPID_PUBLIC_KEY, vapidPrivateKey);
 const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
@@ -21,13 +21,39 @@ async function yaEnviado(citaId: string, minutos: number, endpoint: string) {
 }
 
 Deno.serve(async req => {
-  if (req.headers.get("authorization") !== `Bearer ${cronSecret}`) return new Response("No autorizado", { status: 401 });
+  const secretoRecibido = (req.headers.get("x-cron-secret") || req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "").trim();
+  if (secretoRecibido !== cronSecret) return new Response("No autorizado", { status: 401 });
   if (!vapidPrivateKey) return new Response("Falta VAPID_PRIVATE_KEY", { status: 500 });
+
+  const { data: suscripciones, error: errorPush } = await supabase.from("push_suscripciones").select("*").eq("activa", true);
+  if (errorPush) return new Response(errorPush.message, { status: 500 });
+  const entrada = await req.json().catch(() => ({}));
+
+  if (entrada?.prueba === true) {
+    let enviadosPrueba = 0;
+    const errores: Array<{ status: number; mensaje: string }> = [];
+    for (const suscripcion of suscripciones || []) {
+      try {
+        await webpush.sendNotification({ endpoint: suscripcion.endpoint, keys: { p256dh: suscripcion.p256dh, auth: suscripcion.auth } }, JSON.stringify({
+          title: "Prueba automática de Oh, ma belle",
+          body: "El envío desde Supabase está funcionando correctamente.",
+          tag: `prueba-servidor-${Date.now()}`,
+          url: "./"
+        }), { TTL: 120, urgency: "high" });
+        enviadosPrueba += 1;
+      } catch (error) {
+        const pushError = error as { statusCode?: number; message?: string };
+        const detalle = { status: Number(pushError.statusCode || 0), mensaje: String(pushError.message || error) };
+        errores.push(detalle);
+        if (detalle.status === 404 || detalle.status === 410) await supabase.from("push_suscripciones").update({ activa: false }).eq("endpoint", suscripcion.endpoint);
+        console.error("Error en prueba push", detalle);
+      }
+    }
+    return Response.json({ ok: errores.length === 0, prueba: true, enviados: enviadosPrueba, errores });
+  }
 
   const { data: fila, error: errorAgenda } = await supabase.from("agenda_estado").select("datos").eq("id", "principal").single();
   if (errorAgenda) return new Response(errorAgenda.message, { status: 500 });
-  const { data: suscripciones, error: errorPush } = await supabase.from("push_suscripciones").select("*").eq("activa", true);
-  if (errorPush) return new Response(errorPush.message, { status: 500 });
 
   const ahora = new Date();
   const citas = Array.isArray(fila?.datos?.citas) ? fila.datos.citas : [];
@@ -36,8 +62,7 @@ Deno.serve(async req => {
   for (const cita of citas) {
     if (!cita?.id || !cita?.fecha || !cita?.hora || ["Cancelada", "Atendida"].includes(cita.estado)) continue;
     const diferencia = (fechaCita(cita).getTime() - ahora.getTime()) / 60000;
-    // 5 minutos es temporal para comprobar el recorrido completo de las notificaciones.
-    const recordatorio = [60, 30, 5].find(minutos => diferencia > minutos - 3 && diferencia <= minutos + 3);
+    const recordatorio = [60, 30].find(minutos => diferencia > minutos - 3 && diferencia <= minutos + 3);
     if (!recordatorio) continue;
 
     for (const suscripcion of suscripciones || []) {
@@ -50,7 +75,7 @@ Deno.serve(async req => {
         url: "./"
       });
       try {
-        await webpush.sendNotification({ endpoint: suscripcion.endpoint, keys: { p256dh: suscripcion.p256dh, auth: suscripcion.auth } }, payload);
+        await webpush.sendNotification({ endpoint: suscripcion.endpoint, keys: { p256dh: suscripcion.p256dh, auth: suscripcion.auth } }, payload, { TTL: 600, urgency: "high" });
         await supabase.from("push_envios").insert({ cita_id: citaId, minutos_antes: recordatorio, endpoint: suscripcion.endpoint });
         enviados += 1;
       } catch (error) {

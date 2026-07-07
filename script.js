@@ -219,6 +219,19 @@ async function guardarRemoto() {
   guardandoRemoto = true;
   let guardadoExitoso = false;
   try {
+    // Conserva confirmaciones hechas desde el enlace público aunque la agenda
+    // estuviera abierta en otro dispositivo con una copia anterior.
+    const remotas = await supabaseRest(`${SUPABASE_TABLA}?id=eq.${SUPABASE_ID}&select=datos`);
+    const citasRemotas = remotas?.[0]?.datos?.citas;
+    if (Array.isArray(citasRemotas)) {
+      citas.forEach(cita => {
+        const remota = citasRemotas.find(item => String(item.id) === String(cita.id));
+        if (remota?.confirmadaCliente) {
+          cita.confirmadaCliente = true;
+          cita.confirmadaEn = remota.confirmadaEn || cita.confirmadaEn;
+        }
+      });
+    }
     const filas = await supabaseRest(`${SUPABASE_TABLA}?on_conflict=id`, {
       method: "POST",
       headers: { Prefer: "resolution=merge-duplicates,return=representation" },
@@ -303,6 +316,9 @@ function normalizarDatos() {
       precio: Number(cita.precio || 0)
     }],
     abonos: Array.isArray(cita.abonos) ? cita.abonos : [],
+    confirmacionToken: cita.confirmacionToken || tokenConfirmacionNuevo(),
+    confirmadaCliente: !!cita.confirmadaCliente,
+    confirmadaEn: cita.confirmadaEn || null,
     liquidada: !!cita.liquidada || (Number(cita.anticipo || 0) >= Number(cita.precio || 0) && Number(cita.precio || 0) > 0)
   }));
   citas.forEach(cita => {
@@ -345,6 +361,12 @@ function horaActual() {
 
 function idNuevo() {
   return Date.now() + Math.floor(Math.random() * 1000);
+}
+
+function tokenConfirmacionNuevo() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function actualizarSelectorUsuarios() {
@@ -1247,6 +1269,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && usuarioActual && remotoListo && !guardandoRemoto) cargarRemoto(true);
+});
+
+setInterval(() => {
+  if (document.visibilityState === "visible" && usuarioActual && remotoListo && !guardandoRemoto) cargarRemoto(true);
+}, 30000);
+
 function cerrarModalFormulario() {
   document.getElementById("modalFormulario").style.display = "none";
   document.getElementById("modalContenido").innerHTML = "";
@@ -1480,6 +1510,9 @@ function guardarCitaModal(event, citaId = null) {
     liquidada: false,
     estado: citaAnterior?.estado || "Pendiente",
     canceladaEn: citaAnterior?.canceladaEn,
+    confirmacionToken: citaAnterior?.confirmacionToken || tokenConfirmacionNuevo(),
+    confirmadaCliente: !!citaAnterior?.confirmadaCliente,
+    confirmadaEn: citaAnterior?.confirmadaEn || null,
     personal: document.getElementById("modalCitaPersonal").value
   };
   const faltantes = [
@@ -1537,6 +1570,10 @@ function abrirDetalleCita(id) {
     <p><strong>Método de pago:</strong> ${cita.metodoPago || "-"}</p>
     <p><strong>Anticipo:</strong> ${dinero(cita.anticipo || 0)}</p>
     <p><strong>Saldo:</strong> ${dinero(saldoCita(cita))}</p>
+    <div class="client-confirmation ${cita.confirmadaCliente ? "confirmation-ok" : "confirmation-waiting"}">
+      <strong>${cita.confirmadaCliente ? "Confirmada por la clienta" : "Confirmación pendiente"}</strong>
+      <span>${cita.confirmadaCliente && cita.confirmadaEn ? `Confirmó el ${new Date(cita.confirmadaEn).toLocaleString("es-MX")}` : "Todavía no ha confirmado desde su enlace."}</span>
+    </div>
     <div class="modal-actions">
       <button type="button" onclick="cerrarModalFormulario()">Cerrar</button>
       <button class="whatsapp-action" type="button" onclick="avisarClientaWhatsApp(${cita.id})">Avisar a la clienta</button>
@@ -1551,6 +1588,10 @@ function avisarClientaWhatsApp(id) {
   const telefono = String(cita.telefono || "").replace(/\D/g, "");
   if (!/^\d{10}$/.test(telefono)) return mostrarMensaje("Teléfono incorrecto", "La clienta debe tener un teléfono de 10 dígitos para abrir WhatsApp.", "alerta");
 
+  if (!cita.confirmacionToken) cita.confirmacionToken = tokenConfirmacionNuevo();
+  guardar();
+  const enlaceConfirmacion = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}confirmar.html?token=${encodeURIComponent(cita.confirmacionToken)}`;
+
   const mensaje = [
     `Hola ${cita.cliente}, te escribimos de Oh, ma belle Belleza y Spa.`,
     "",
@@ -1562,7 +1603,12 @@ function avisarClientaWhatsApp(id) {
     `Te atenderá: ${cita.personal || "nuestro personal"}`,
     "",
     "Por favor responde CONFIRMO para indicarnos que asistirás. ¡Te esperamos!"
-  ].join("\n");
+  ].slice(0, -1).concat([
+    "Confirma tu asistencia abriendo este enlace y tocando el botón:",
+    enlaceConfirmacion,
+    "",
+    "¡Te esperamos!"
+  ]).join("\n");
   window.open(`https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`, "_blank", "noopener,noreferrer");
 }
 
