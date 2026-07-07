@@ -403,21 +403,40 @@ async function iniciarSesion() {
   }
 
   usuarioActual = existe;
+  if (document.getElementById("recordarme")?.checked) localStorage.setItem(`${CLAVE}-sesion`, existe.usuario);
+  else localStorage.removeItem(`${CLAVE}-sesion`);
   document.body.classList.toggle("modo-solo-ver", !puedeEditar());
   document.getElementById("rolActual").textContent = existe.nombre;
   document.getElementById("pantallaLogin").style.display = "none";
   document.getElementById("sistema").style.display = "flex";
   await cargarRemoto();
+  if (screen.orientation?.lock) screen.orientation.lock("portrait").catch(() => {});
   mostrarInicio();
+}
+
+function entrarConUsuario(usuario) {
+  const existe = usuarios.find(item => item.usuario === usuario);
+  if (!existe) return false;
+  usuarioActual = existe;
+  document.body.classList.toggle("modo-solo-ver", !puedeEditar());
+  document.getElementById("rolActual").textContent = existe.nombre;
+  document.getElementById("pantallaLogin").style.display = "none";
+  document.getElementById("sistema").style.display = "flex";
+  document.getElementById("recordarme").checked = true;
+  if (screen.orientation?.lock) screen.orientation.lock("portrait").catch(() => {});
+  mostrarInicio();
+  return true;
 }
 
 function cerrarSesion() {
   usuarioActual = null;
+  localStorage.removeItem(`${CLAVE}-sesion`);
   document.body.classList.remove("modo-solo-ver");
   document.getElementById("pantallaLogin").style.display = "grid";
   document.getElementById("sistema").style.display = "none";
   document.getElementById("usuario").value = "";
   document.getElementById("clave").value = "";
+  document.getElementById("recordarme").checked = false;
   usuarioSeleccionado();
 }
 
@@ -495,8 +514,8 @@ function resumenDia() {
   return { activas, canceladasHoy, pendientes, ingresos };
 }
 
-function kpi(titulo, valor, texto, icono, clase = "") {
-  return `<article class="kpi ${clase}">
+function kpi(titulo, valor, texto, icono, clase = "", accion = "") {
+  return `<article class="kpi ${clase} ${accion ? "kpi-action" : ""}" ${accion ? `role="button" tabindex="0" onclick="${accion}" onkeydown="if(event.key==='Enter')${accion}"` : ""}>
     <div><span>${titulo}</span><strong>${valor}</strong><p>${texto}</p></div>
     <i><img src="assets/icons/${icono}.png" alt=""></i>
   </article>`;
@@ -1266,6 +1285,8 @@ document.addEventListener("DOMContentLoaded", () => {
   cargarRemoto(true).then(() => {
     actualizarSelectorUsuarios();
     usuarioSeleccionado();
+    const sesionGuardada = localStorage.getItem(`${CLAVE}-sesion`);
+    if (sesionGuardada) entrarConUsuario(sesionGuardada);
   });
 });
 
@@ -1330,6 +1351,28 @@ function calendarioGrande(fecha) {
   return `<div class="calendar-weekdays"><span>Lunes</span><span>Martes</span><span>Miércoles</span><span>Jueves</span><span>Viernes</span><span>Sábado</span><span>Domingo</span></div><div class="calendar-grid">${celdas.join("")}</div>`;
 }
 
+function abrirResumenInicio(tipo) {
+  const resumen = resumenDia();
+  const esTurnos = tipo === "turnos";
+  const lista = esTurnos ? resumen.activas : resumen.canceladasHoy;
+  const titulo = esTurnos ? "Turnos de hoy" : "Cancelaciones de hoy";
+  const contenido = lista.map(cita => `<button class="today-item" type="button" onclick="cerrarModalFormulario(); abrirDetalleCita(${cita.id})">
+    <time>${cita.hora || "--:--"}</time>
+    <span><strong>${cita.cliente}</strong><small>${nombresServiciosCita(cita)} · ${cita.personal || "Rosa Polet"}</small></span>
+    <b>${dinero(cita.precio || 0)}</b>
+  </button>`).join("") || `<div class="empty-summary"><strong>No hay ${esTurnos ? "turnos" : "cancelaciones"} hoy</strong><span>La información aparecerá aquí cuando exista.</span></div>`;
+  abrirModal(titulo, `<div class="today-list">${contenido}</div><div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cerrar</button></div>`);
+}
+
+function contactarCancelacion(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return mostrarMensaje("Cita no encontrada", "Actualiza la agenda e inténtalo otra vez.", "alerta");
+  const telefono = String(cita.telefono || "").replace(/\D/g, "");
+  if (!/^\d{10}$/.test(telefono)) return mostrarMensaje("Teléfono incorrecto", "Se necesita un teléfono de 10 dígitos para contactar a la clienta.", "alerta");
+  const mensaje = `Hola ${cita.cliente}, somos de Oh, ma belle Belleza y Spa. Lamentamos la cancelación de tu cita de ${nombresServiciosCita(cita)}. Si deseas, con gusto podemos ayudarte a reprogramarla para otra fecha y horario.`;
+  location.href = `https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`;
+}
+
 mostrarInicio = function (fecha = hoy()) {
   activarMenu("inicio");
   const resumen = resumenDia();
@@ -1337,19 +1380,20 @@ mostrarInicio = function (fecha = hoy()) {
   const pendientesPago = citasPorLiquidar(fecha);
   document.getElementById("contenido").innerHTML = `
     <div class="kpi-grid">
-      ${kpi("Turnos de Hoy", resumen.activas.length, "Reservas para hoy", "turnos-hoy", "morado")}
-      ${kpi("Cancelaciones Hoy", resumen.canceladasHoy.length, "Cancelaciones realizadas hoy", "cancelaciones-hoy", "dorado")}
+      ${kpi("Turnos de Hoy", resumen.activas.length, "Reservas para hoy", "turnos-hoy", "morado", "abrirResumenInicio('turnos')")}
+      ${kpi("Cancelaciones Hoy", resumen.canceladasHoy.length, "Cancelaciones realizadas hoy", "cancelaciones-hoy", "dorado", "abrirResumenInicio('cancelaciones')")}
       ${kpi("Turnos pendientes", resumen.pendientes.length, "Total de próximos turnos", "turnos-pendientes", "morado")}
       ${kpi("Ingresos del día", dinero(resumen.ingresos), "Pagos estimados por revisar", "ingresos-dia", "verde")}
     </div>
 
-    <section class="panel soft">
-      <h2>Últimas cancelaciones</h2>
-      <p>Listado de reservas canceladas recientemente. Puedes contactar rápidamente a las clientas para reprogramar.</p>
-      <table>
-        <thead><tr><th>Cliente</th><th>Contacto</th><th>Servicio</th><th>Personal</th><th>Fecha/Hora Original</th><th>Cancelado</th></tr></thead>
-        <tbody>${canceladas.map(cita => `<tr><td>${cita.cliente}</td><td>${cita.telefono || "-"}</td><td>${cita.servicio}</td><td>${cita.personal || "Rosa Polet"}</td><td>${formatoFecha(cita.fecha)} ${cita.hora}</td><td>${cita.canceladaEn || "-"}</td></tr>`).join("") || `<tr><td colspan="6" class="vacio">No hay cancelaciones recientes</td></tr>`}</tbody>
-      </table>
+    <section class="panel soft recent-cancellations">
+      <div class="section-head"><div><h2>Últimas cancelaciones</h2><p>Contacta a la clienta para ofrecerle una nueva fecha.</p></div></div>
+      <div class="cancellation-list">${canceladas.map(cita => `<article class="cancellation-item">
+        <div><strong>${cita.cliente}</strong><span>${nombresServiciosCita(cita)}</span></div>
+        <div><small>Fecha original</small><b>${formatoFecha(cita.fecha)} · ${cita.hora}</b></div>
+        <div><small>Personal</small><b>${cita.personal || "Rosa Polet"}</b></div>
+        <button class="whatsapp-action" type="button" onclick="contactarCancelacion(${cita.id})">Contactar</button>
+      </article>`).join("") || `<div class="empty-summary"><strong>No hay cancelaciones recientes</strong><span>Las cancelaciones aparecerán aquí.</span></div>`}</div>
     </section>
 
     <section class="panel calendario-panel">
@@ -1582,14 +1626,19 @@ function abrirDetalleCita(id) {
   </div>`);
 }
 
-function avisarClientaWhatsApp(id) {
+async function avisarClientaWhatsApp(id) {
   const cita = citas.find(item => item.id === id);
   if (!cita) return mostrarMensaje("Cita no encontrada", "Actualiza la agenda e inténtalo nuevamente.", "alerta");
   const telefono = String(cita.telefono || "").replace(/\D/g, "");
   if (!/^\d{10}$/.test(telefono)) return mostrarMensaje("Teléfono incorrecto", "La clienta debe tener un teléfono de 10 dígitos para abrir WhatsApp.", "alerta");
 
   if (!cita.confirmacionToken) cita.confirmacionToken = tokenConfirmacionNuevo();
-  guardar();
+  guardarLocal();
+  mostrarMensaje("Preparando confirmación", "Estamos guardando el enlace antes de abrir WhatsApp.", "ok");
+  const guardadaEnInternet = await guardarRemoto();
+  if (!guardadaEnInternet) {
+    return mostrarMensaje("No se pudo crear el enlace", "Revisa la conexión a internet e inténtalo nuevamente.", "alerta");
+  }
   const enlaceConfirmacion = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}confirmar.html?token=${encodeURIComponent(cita.confirmacionToken)}`;
 
   const mensaje = [
@@ -1609,7 +1658,7 @@ function avisarClientaWhatsApp(id) {
     "",
     "¡Te esperamos!"
   ]).join("\n");
-  window.open(`https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`, "_blank", "noopener,noreferrer");
+  location.href = `https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`;
 }
 
 function totalAbonos(cita) {
@@ -1709,7 +1758,7 @@ function mostrarTicketPago(id) {
     <div class="ticket-total"><span>Total pagado</span><strong>${dinero(cita.precio)}</strong></div>
     <p>Gracias por tu visita</p>
   </article>
-  <div class="modal-actions ticket-actions"><button type="button" onclick="cerrarModalFormulario()">Cerrar</button><button class="primary-action" type="button" onclick="imprimirTicket(${cita.id})">Imprimir ticket</button></div>`);
+  <div class="modal-actions ticket-actions"><button type="button" onclick="cerrarModalFormulario()">Cerrar</button><button type="button" onclick="imprimirTicket(${cita.id})">Imprimir ticket</button><button class="primary-action" type="button" onclick="enviarTicketCliente(${cita.id})">Enviar a la clienta</button></div>`);
 }
 
 function imprimirTicket(id) {
@@ -1723,6 +1772,111 @@ function imprimirTicket(id) {
   ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket #${folio}</title><style>@page{size:80mm auto;margin:5mm}*{box-sizing:border-box}body{width:70mm;margin:0 auto;font-family:Arial,sans-serif;color:#272238}.marca{text-align:center}.marca img{width:52mm;height:24mm;object-fit:contain}.marca h1{font-size:20px;margin:2px}.marca p{margin:0;color:#746d7f}.pagado{width:max-content;margin:14px auto;padding:5px 12px;border:1px solid #2ca77a;color:#167854;border-radius:20px;font-weight:800}.linea,.total{display:flex;justify-content:space-between;gap:12px;padding:6px 0}.linea b{text-align:right}.linea small{display:block;color:#777}.separador{border-top:1px dashed #aaa;margin:9px 0}.total{font-size:18px;font-weight:800}.gracias{text-align:center;margin-top:20px;font-size:12px}</style></head><body><div class="marca"><img src="${logo}" alt="Logo"><h1>Oh, ma belle</h1><p>Belleza y Spa</p></div><div class="pagado">PAGADO</div><div class="linea"><span>Folio</span><b>#${folio}</b></div><div class="linea"><span>Fecha</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div><div class="separador"></div><div class="linea"><span>Clienta</span><b>${cita.cliente}</b></div><div class="separador"></div>${serviciosTicket}<div class="linea"><span>Duración total</span><b>${duracionTotalCita(cita)} min</b></div><div class="separador"></div><div class="linea"><span>Cita</span><b>${formatoFecha(cita.fecha)} ${cita.hora}</b></div><div class="linea"><span>Personal</span><b>${cita.personal || "Rosa Polet"}</b></div><div class="linea"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div><div class="separador"></div><div class="total"><span>Total</span><strong>${dinero(cita.precio)}</strong></div><p class="gracias">Gracias por tu visita</p></body></html>`);
   ventana.document.close();
   setTimeout(() => ventana.print(), 300);
+}
+
+function cargarImagenTicket(origen) {
+  return new Promise(resolve => {
+    const imagen = new Image();
+    imagen.onload = () => resolve(imagen);
+    imagen.onerror = () => resolve(null);
+    imagen.src = origen;
+  });
+}
+
+async function crearImagenTicket(cita) {
+  const serviciosTicket = detallesServiciosCita(cita);
+  const canvas = document.createElement("canvas");
+  canvas.width = 900;
+  canvas.height = 1120 + serviciosTicket.length * 82;
+  const ctx = canvas.getContext("2d");
+  const folio = String(cita.id).slice(-8).padStart(8, "0");
+  ctx.fillStyle = "#fffdf9";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "#d8c5a2";
+  ctx.lineWidth = 5;
+  ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
+
+  const logo = await cargarImagenTicket(configuracion.logo || "assets/logo-oh-ma-belle-transparent.png");
+  if (logo) ctx.drawImage(logo, 245, 55, 410, 150);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#342540";
+  ctx.font = "700 36px Arial";
+  ctx.fillText("OH, MA BELLE", 450, 240);
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "#806b70";
+  ctx.fillText("Belleza y Spa", 450, 278);
+
+  ctx.fillStyle = "#e9f8ef";
+  ctx.fillRect(325, 310, 250, 58);
+  ctx.fillStyle = "#18724d";
+  ctx.font = "700 28px Arial";
+  ctx.fillText("PAGADO", 450, 349);
+
+  let y = 420;
+  const linea = (etiqueta, valor, negrita = false) => {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#786f7e";
+    ctx.font = "24px Arial";
+    ctx.fillText(etiqueta, 90, y);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#30273a";
+    ctx.font = `${negrita ? "700 " : "600 "}24px Arial`;
+    ctx.fillText(String(valor), 810, y);
+    y += 58;
+  };
+  const separador = () => {
+    ctx.strokeStyle = "#d9d2dc";
+    ctx.setLineDash([10, 9]);
+    ctx.beginPath(); ctx.moveTo(90, y); ctx.lineTo(810, y); ctx.stroke();
+    ctx.setLineDash([]);
+    y += 40;
+  };
+
+  linea("Folio", `#${folio}`);
+  linea("Fecha de pago", formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10)));
+  separador();
+  linea("Clienta", cita.cliente, true);
+  separador();
+  serviciosTicket.forEach(item => {
+    linea(`${item.nombre} · ${item.duracion} min`, dinero(item.precio));
+  });
+  separador();
+  linea("Duración total", `${duracionTotalCita(cita)} min`);
+  linea("Cita", `${formatoFecha(cita.fecha)} · ${cita.hora}`);
+  linea("Personal", cita.personal || "Rosa Polet");
+  linea("Método", cita.metodoPago || "No especificado");
+  separador();
+  ctx.font = "700 28px Arial";
+  linea("TOTAL PAGADO", dinero(cita.precio), true);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#806b70";
+  ctx.font = "24px Arial";
+  ctx.fillText("Gracias por tu visita", 450, canvas.height - 85);
+  return new Promise(resolve => canvas.toBlob(resolve, "image/png", 0.95));
+}
+
+async function enviarTicketCliente(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return mostrarMensaje("Cita no encontrada", "No fue posible preparar el comprobante.", "alerta");
+  mostrarMensaje("Preparando ticket", "En un momento podrás compartirlo con la clienta.", "ok");
+  const imagen = await crearImagenTicket(cita);
+  if (!imagen) return mostrarMensaje("No se pudo crear", "Inténtalo nuevamente.", "alerta");
+  const archivo = new File([imagen], `ticket-oh-ma-belle-${cita.id}.png`, { type: "image/png" });
+  if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [archivo] }))) {
+    try {
+      await navigator.share({ title: "Comprobante Oh, ma belle", text: `Comprobante de pago para ${cita.cliente}`, files: [archivo] });
+      return;
+    } catch (error) {
+      if (error?.name === "AbortError") return;
+    }
+  }
+  const enlace = URL.createObjectURL(imagen);
+  const descarga = document.createElement("a");
+  descarga.href = enlace;
+  descarga.download = archivo.name;
+  descarga.click();
+  setTimeout(() => URL.revokeObjectURL(enlace), 2000);
+  mostrarMensaje("Ticket descargado", "Ya puedes adjuntarlo en WhatsApp.", "ok");
 }
 
 let vistaServiciosActual = "servicios";

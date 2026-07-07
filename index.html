@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
   <meta name="theme-color" content="#522d63">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/png" sizes="192x192" href="assets/app-icon-192.png">
   <link rel="apple-touch-icon" href="assets/app-icon-192.png">
-  <link rel="stylesheet" href="style.css?v=20260706-confirmacion-9">
+  <link rel="stylesheet" href="style.css?v=20260707-movil-11">
 </head>
 <body>
   <div id="introAplicacion" class="app-intro" hidden aria-hidden="true">
@@ -36,7 +36,7 @@
 
       <button type="button" onclick="iniciarSesion()">Entrar</button>
       <div class="login-options">
-        <label><input type="checkbox" checked> Recordarme</label>
+        <label><input id="recordarme" type="checkbox"> Recordarme</label>
         <span>Oh, ma belle</span>
       </div>
       <p class="error" id="mensaje"></p>
@@ -93,7 +93,7 @@
     </div>
   </div>
 
-  <script src="script.js?v=20260706-confirmacion-9"></script>
+  <script src="script.js?v=20260707-movil-11"></script>
 </body>
 </html>
 

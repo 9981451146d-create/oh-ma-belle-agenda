@@ -13,6 +13,18 @@
   --shadow: 0 14px 36px rgba(25, 31, 56, 0.08);
 }
 
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  touch-action: pan-y;
+}
+
+img,
+canvas,
+video { max-width: 100%; }
+
 * {
   box-sizing: border-box;
 }
@@ -501,6 +513,50 @@ button {
   gap: 18px;
   animation: aparecer 480ms ease both;
 }
+
+.kpi-action { cursor: pointer; }
+.kpi-action:focus-visible { outline: 3px solid #8c72be; outline-offset: 3px; }
+.kpi-action:active { transform: translateY(1px); }
+
+.today-list { display: grid; gap: 10px; padding: 18px 22px; }
+.today-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  text-align: left;
+  color: var(--navy);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.today-item time { font-weight: 800; color: #6b3d77; }
+.today-item span { min-width: 0; display: grid; gap: 3px; }
+.today-item small { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.empty-summary { display: grid; gap: 6px; padding: 28px 18px; text-align: center; color: var(--muted); }
+.empty-summary strong { color: var(--navy); }
+
+.cancellation-list { display: grid; gap: 10px; margin-top: 16px; }
+.cancellation-item {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.3fr) minmax(150px, 1fr) minmax(120px, .8fr) auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  background: rgba(255,255,255,.72);
+  border: 1px solid #eadde4;
+  border-radius: 8px;
+}
+.cancellation-item > div { min-width: 0; display: grid; gap: 4px; }
+.cancellation-item span,
+.cancellation-item small { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.cancellation-item b { overflow-wrap: anywhere; }
+.cancellation-item .whatsapp-action { min-height: 42px; padding: 0 16px; }
+body.modo-oscuro .today-item,
+body.modo-oscuro .cancellation-item { color: #f5edf8; background: #251c2b; border-color: #4a3b50; }
+body.modo-oscuro .empty-summary strong { color: #fff; }
 
 @keyframes aparecer {
   from { opacity: 0; transform: translateY(10px); }
@@ -2507,20 +2563,20 @@ body.modo-oscuro .client-notes {
 
   .sidebar nav {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 3px;
     padding: 4px 0 0;
   }
 
   .sidebar button {
     min-width: 0;
-    min-height: 66px;
+    min-height: 58px;
     margin-top: 0;
     padding: 7px 2px;
     flex-direction: column;
     justify-content: center;
     gap: 4px;
-    font-size: 10px;
+    font-size: 8px;
     line-height: 1.15;
     text-align: center;
     border-radius: 10px;
@@ -2531,9 +2587,9 @@ body.modo-oscuro .client-notes {
   }
 
   .menu-icon {
-    width: 26px;
-    height: 26px;
-    flex-basis: 26px;
+    width: 23px;
+    height: 23px;
+    flex-basis: 23px;
   }
 
   .content {
@@ -2571,9 +2627,16 @@ body.modo-oscuro .client-notes {
   }
 
   .panel table {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
+    width: 100%;
+    table-layout: fixed;
+    white-space: normal;
+  }
+
+  .panel th,
+  .panel td {
+    padding: 8px 5px;
+    overflow-wrap: anywhere;
+    font-size: 11px;
   }
 
   .calendario-head {
@@ -2803,6 +2866,14 @@ body.modo-oscuro .client-notes {
     padding: 20px 16px;
   }
 
+  .today-list { padding: 14px; }
+  .today-item { grid-template-columns: 52px minmax(0, 1fr); }
+  .today-item > b { grid-column: 2; }
+  .cancellation-item { grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cancellation-item > div:first-child,
+  .cancellation-item .whatsapp-action { grid-column: 1 / -1; }
+  .cancellation-item .whatsapp-action { width: 100%; }
+
   .clientas-head,
   .client-search,
   .appointment-services {
@@ -2826,6 +2897,24 @@ body.modo-oscuro .client-notes {
   .history-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .history-entry { grid-template-columns: 58px minmax(0, 1fr); }
   .history-amount { grid-column: 2; }
+}
+
+@media (orientation: landscape) and (max-height: 600px) {
+  body > * { visibility: hidden !important; }
+  body::before {
+    content: "Gira tu celular para usar la agenda verticalmente";
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+    visibility: visible;
+    text-align: center;
+    color: #fff;
+    background: #522d63;
+    font: 700 22px/1.4 Arial, sans-serif;
+  }
 }
 
 @media (max-width: 480px) {
