@@ -91,9 +91,20 @@ document.addEventListener("click", event => {
 }, true);
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js").catch(error => {
-    console.warn("No se pudo activar el modo instalable:", error);
-  }));
+  let recargandoPorActualizacion = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (recargandoPorActualizacion) return;
+    recargandoPorActualizacion = true;
+    window.location.reload();
+  });
+  window.addEventListener("load", async () => {
+    try {
+      const registro = await navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" });
+      await registro.update();
+    } catch (error) {
+      console.warn("No se pudo activar el modo instalable:", error);
+    }
+  });
 }
 
 window.addEventListener("beforeinstallprompt", event => {
