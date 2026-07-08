@@ -1943,25 +1943,32 @@ async function crearImagenTicket(cita) {
 async function enviarTicketCliente(id) {
   const cita = citas.find(item => item.id === id);
   if (!cita) return mostrarMensaje("Cita no encontrada", "No fue posible preparar el comprobante.", "alerta");
-  mostrarMensaje("Preparando ticket", "En un momento podrás compartirlo con la clienta.", "ok");
+  const clienta = clientas.find(item => item.id === cita.clienteId || item.telefono === cita.telefono);
+  const telefono = String(cita.telefono || clienta?.telefono || "").replace(/\D/g, "");
+  if (!/^\d{10}$/.test(telefono)) {
+    return mostrarMensaje("Teléfono incorrecto", "El ticket necesita el teléfono registrado de 10 dígitos para abrir WhatsApp.", "alerta");
+  }
+  mostrarMensaje("Preparando ticket", "Se abrirá WhatsApp con el número de la clienta registrada.", "ok");
   const imagen = await crearImagenTicket(cita);
   if (!imagen) return mostrarMensaje("No se pudo crear", "Inténtalo nuevamente.", "alerta");
   const archivo = new File([imagen], `ticket-oh-ma-belle-${cita.id}.png`, { type: "image/png" });
-  if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [archivo] }))) {
-    try {
-      await navigator.share({ title: "Comprobante Oh, ma belle", text: `Comprobante de pago para ${cita.cliente}`, files: [archivo] });
-      return;
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-    }
-  }
   const enlace = URL.createObjectURL(imagen);
   const descarga = document.createElement("a");
   descarga.href = enlace;
   descarga.download = archivo.name;
   descarga.click();
   setTimeout(() => URL.revokeObjectURL(enlace), 2000);
-  mostrarMensaje("Ticket descargado", "Ya puedes adjuntarlo en WhatsApp.", "ok");
+  const mensaje = [
+    `Hola ${cita.cliente}, te compartimos tu comprobante de pago de Oh, ma belle Belleza y Spa.`,
+    "",
+    `Servicio${detallesServiciosCita(cita).length > 1 ? "s" : ""}: ${nombresServiciosCita(cita)}`,
+    `Fecha: ${formatoFecha(cita.fecha)} ${cita.hora}`,
+    `Total pagado: ${dinero(cita.precio)}`,
+    "",
+    "El ticket se descargó en este dispositivo para adjuntarlo en este chat. Gracias por tu visita."
+  ].join("\n");
+  window.open(`https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`, "_blank");
+  mostrarMensaje("WhatsApp abierto", "Adjunta el ticket descargado en el chat de la clienta.", "ok");
 }
 
 let vistaServiciosActual = "servicios";
