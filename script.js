@@ -1,8 +1,6 @@
 const CLAVE = "oh-ma-belle-agenda-v1";
 const SUPABASE_URL = "https://vgmyzhmbuteixvlvwxjc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5b7OS0T91SbgnCog14YXEw_tr7lD3WT";
-const SUPABASE_TABLA = "agenda_estado";
-const SUPABASE_ID = "principal";
 const CODIGO_ADMINISTRACION = "2009";
 const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftqIr75NoU9-JgWF9EcPzm-MptOXP4abYmzM";
 const configuracionBase = {
@@ -13,8 +11,8 @@ const configuracionBase = {
   tipoCambioConsultadoEn: ""
 };
 const usuariosBase = [
-  { usuario: "maria", clave: "1234", rol: "editora", nombre: "Maestra Maria" },
-  { usuario: "rosa", clave: "0000", rol: "editora", nombre: "Rosa Polet" }
+  { usuario: "maria", rol: "editora", nombre: "Maestra Maria" },
+  { usuario: "rosa", rol: "editora", nombre: "Rosa Polet" }
 ];
 
 const serviciosBase = [
@@ -53,6 +51,8 @@ let guardandoRemoto = false;
 let guardadoRemotoPendiente = false;
 let reintentoRemoto = null;
 let eventoInstalacion = null;
+let tokenSesion = localStorage.getItem(`${CLAVE}-token`) || sessionStorage.getItem(`${CLAVE}-token`) || "";
+let versionRemota = null;
 
 normalizarDatos();
 
@@ -150,11 +150,11 @@ function cargar(nombre) {
 
 function guardar() {
   guardarLocal();
-  if (remotoListo) guardarRemoto();
+  if (remotoListo && puedeEditar()) guardarRemoto();
 }
 
 function guardarLocal() {
-  localStorage.setItem(`${CLAVE}-usuarios`, JSON.stringify(usuarios));
+  localStorage.setItem(`${CLAVE}-usuarios`, JSON.stringify(usuarios.map(({ usuario, nombre, rol }) => ({ usuario, nombre, rol }))));
   localStorage.setItem(`${CLAVE}-servicios`, JSON.stringify(servicios));
   localStorage.setItem(`${CLAVE}-citas`, JSON.stringify(citas));
   localStorage.setItem(`${CLAVE}-bloqueos`, JSON.stringify(bloqueos));
@@ -166,12 +166,11 @@ function guardarLocal() {
 }
 
 function estadoActual() {
-  return { usuarios, servicios, citas, bloqueos, personal, clientas, modoOscuro, configuracion, actualizadoEn: new Date().toISOString() };
+  return { servicios, citas, bloqueos, personal, clientas, modoOscuro, configuracion, actualizadoEn: new Date().toISOString() };
 }
 
 function aplicarEstado(datos) {
   if (!datos) return;
-  usuarios = Array.isArray(datos.usuarios) ? datos.usuarios : usuarios;
   servicios = Array.isArray(datos.servicios) ? datos.servicios : servicios;
   citas = Array.isArray(datos.citas) ? datos.citas : citas;
   bloqueos = Array.isArray(datos.bloqueos) ? datos.bloqueos : bloqueos;
@@ -185,45 +184,65 @@ function aplicarEstado(datos) {
   actualizarSelectorUsuarios();
 }
 
-async function supabaseRest(ruta, opciones = {}) {
-  const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${ruta}`, {
-    ...opciones,
-    headers: {
-      apikey: SUPABASE_KEY,
-      "Content-Type": "application/json",
-      Prefer: "return=representation",
-      ...(opciones.headers || {})
-    }
+async function supabaseRpc(nombre, parametros = {}) {
+  const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${nombre}`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(parametros)
   });
   const texto = await respuesta.text();
   if (!respuesta.ok) {
-    throw new Error(`Supabase ${respuesta.status}: ${texto || respuesta.statusText}`);
+    const error = new Error(texto || respuesta.statusText);
+    error.status = respuesta.status;
+    throw error;
   }
-  if (!texto) return null;
-  return JSON.parse(texto);
+  return texto ? JSON.parse(texto) : null;
+}
+
+async function cargarUsuariosPublicos() {
+  try {
+    const lista = await supabaseRpc("agenda_listar_usuarios");
+    if (Array.isArray(lista) && lista.length) {
+      usuarios = lista.map(item => ({ usuario: item.usuario, nombre: item.nombre, rol: item.rol === "editora" ? "editora" : "soloVista" }));
+      guardarLocal();
+      actualizarSelectorUsuarios();
+    }
+    return true;
+  } catch (error) {
+    console.warn("No se pudo cargar la lista segura de usuarios:", error);
+    return false;
+  }
 }
 
 async function cargarRemoto(silencioso = false) {
+  if (!tokenSesion) return false;
   try {
-    const filas = await supabaseRest(`${SUPABASE_TABLA}?id=eq.${SUPABASE_ID}&select=datos`);
+    const resultado = await supabaseRpc("agenda_obtener_estado", { p_token: tokenSesion });
     remotoListo = true;
-    if (filas?.[0]?.datos) {
-      aplicarEstado(filas[0].datos);
-      guardarLocal();
-    } else {
-      await guardarRemoto();
+    versionRemota = resultado?.version || null;
+    if (resultado?.usuario) {
+      usuarioActual = { ...resultado.usuario };
+      const indice = usuarios.findIndex(item => item.usuario === usuarioActual.usuario);
+      if (indice >= 0) usuarios[indice] = { ...usuarioActual };
     }
+    if (resultado?.datos) aplicarEstado(resultado.datos);
+    guardarLocal();
     return true;
   } catch (error) {
     remotoListo = false;
     console.warn("Supabase aún no está listo:", error);
-    if (!silencioso) mostrarMensaje("Sin conexión a la agenda", "No se pudo leer Supabase. Revisa la tabla y sus permisos.", "alerta");
+    if (error?.status === 401 || /SESION_INVALIDA|28000/i.test(error?.message || "")) {
+      tokenSesion = "";
+      localStorage.removeItem(`${CLAVE}-token`);
+      sessionStorage.removeItem(`${CLAVE}-token`);
+      if (!silencioso) mostrarMensaje("Sesión vencida", "Vuelve a iniciar sesión.", "alerta");
+    } else if (!silencioso) mostrarMensaje("Sin conexión a la agenda", "No se pudo leer Supabase. Revisa la conexión.", "alerta");
     return false;
   }
 }
 
 async function guardarRemoto() {
-  if (!remotoListo) return false;
+  if (!remotoListo || !tokenSesion || !versionRemota) return false;
   if (guardandoRemoto) {
     guardadoRemotoPendiente = true;
     return false;
@@ -231,31 +250,32 @@ async function guardarRemoto() {
   guardandoRemoto = true;
   let guardadoExitoso = false;
   try {
-    // Conserva confirmaciones hechas desde el enlace público aunque la agenda
-    // estuviera abierta en otro dispositivo con una copia anterior.
-    const remotas = await supabaseRest(`${SUPABASE_TABLA}?id=eq.${SUPABASE_ID}&select=datos`);
-    const citasRemotas = remotas?.[0]?.datos?.citas;
-    if (Array.isArray(citasRemotas)) {
-      citas.forEach(cita => {
-        const remota = citasRemotas.find(item => String(item.id) === String(cita.id));
-        if (remota?.confirmadaCliente) {
-          cita.confirmadaCliente = true;
-          cita.confirmadaEn = remota.confirmadaEn || cita.confirmadaEn;
-        }
-      });
-    }
-    const filas = await supabaseRest(`${SUPABASE_TABLA}?on_conflict=id`, {
-      method: "POST",
-      headers: { Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify([{ id: SUPABASE_ID, datos: estadoActual() }])
+    const resultado = await supabaseRpc("agenda_guardar_estado", {
+      p_token: tokenSesion,
+      p_datos: estadoActual(),
+      p_version: versionRemota
     });
-    if (!filas?.[0]?.datos) throw new Error("Supabase no confirmo el guardado.");
+    if (resultado?.conflicto) {
+      versionRemota = resultado.version;
+      aplicarEstado(resultado.datos);
+      guardarLocal();
+      guardadoRemotoPendiente = false;
+      mostrarMensaje("La agenda cambió en otro dispositivo", "Se cargó la versión más reciente para evitar sobrescribir información. Repite tu último cambio.", "alerta");
+      return false;
+    }
+    if (!resultado?.ok || !resultado?.version) throw new Error("Supabase no confirmó el guardado.");
+    versionRemota = resultado.version;
     guardadoExitoso = true;
     clearTimeout(reintentoRemoto);
     return true;
   } catch (error) {
-    guardadoRemotoPendiente = true;
     console.warn("No se pudo guardar en Supabase:", error);
+    if (error?.status === 401 || error?.status === 403 || /SESION_INVALIDA|SOLO_LECTURA|28000|42501/i.test(error?.message || "")) {
+      guardadoRemotoPendiente = false;
+      mostrarMensaje("No se pudo guardar", "La sesión venció o este perfil no tiene permiso para editar.", "alerta");
+      return false;
+    }
+    guardadoRemotoPendiente = true;
     mostrarMensaje("No se guardó en internet", "Reintentaremos automáticamente en unos segundos.", "alerta");
     clearTimeout(reintentoRemoto);
     reintentoRemoto = setTimeout(() => {
@@ -278,7 +298,6 @@ function normalizarDatos() {
     .filter((item, indice, lista) => item?.usuario && lista.findIndex(otro => otro.usuario === item.usuario) === indice)
     .map(item => ({
       usuario: String(item.usuario).trim().toLowerCase(),
-      clave: String(item.clave || "1234"),
       rol: String(item.usuario).trim().toLowerCase() === "maria" || item.rol === "editora" ? "editora" : "soloVista",
       nombre: String(item.nombre || item.usuario).trim()
     }));
@@ -405,44 +424,54 @@ function usuarioSeleccionado() {
 }
 
 async function iniciarSesion() {
-  if (!remotoListo) await cargarRemoto(true);
   const usuario = document.getElementById("usuario").value;
   const clave = document.getElementById("clave").value.trim();
-  const existe = usuarios.find(item => item.usuario === usuario && item.clave === clave);
-  if (!existe) {
+  if (!usuario || !clave) {
+    document.getElementById("mensaje").textContent = "Selecciona el usuario y escribe la contraseña";
+    return;
+  }
+  try {
+    const sesion = await supabaseRpc("agenda_iniciar_sesion", { p_usuario: usuario, p_clave: clave });
+    tokenSesion = sesion.token;
+    usuarioActual = { usuario: sesion.usuario, nombre: sesion.nombre, rol: sesion.rol };
+  } catch (error) {
+    console.warn("Inicio de sesión rechazado:", error);
     document.getElementById("mensaje").textContent = "Usuario o contraseña incorrectos";
     return;
   }
-
-  usuarioActual = existe;
-  if (document.getElementById("recordarme")?.checked) localStorage.setItem(`${CLAVE}-sesion`, existe.usuario);
-  else localStorage.removeItem(`${CLAVE}-sesion`);
-  document.body.classList.toggle("modo-solo-ver", !puedeEditar());
-  document.getElementById("rolActual").textContent = existe.nombre;
-  document.getElementById("pantallaLogin").style.display = "none";
-  document.getElementById("sistema").style.display = "flex";
-  await cargarRemoto();
-  if (screen.orientation?.lock) screen.orientation.lock("portrait").catch(() => {});
-  mostrarInicio();
+  const recordar = !!document.getElementById("recordarme")?.checked;
+  localStorage.removeItem(`${CLAVE}-sesion`);
+  if (recordar) {
+    localStorage.setItem(`${CLAVE}-token`, tokenSesion);
+    sessionStorage.removeItem(`${CLAVE}-token`);
+  } else {
+    sessionStorage.setItem(`${CLAVE}-token`, tokenSesion);
+    localStorage.removeItem(`${CLAVE}-token`);
+  }
+  remotoListo = true;
+  if (!await cargarRemoto()) return;
+  mostrarSistemaDesdeSesion(recordar);
 }
 
-function entrarConUsuario(usuario) {
-  const existe = usuarios.find(item => item.usuario === usuario);
-  if (!existe) return false;
-  usuarioActual = existe;
+function mostrarSistemaDesdeSesion(recordada = false) {
   document.body.classList.toggle("modo-solo-ver", !puedeEditar());
-  document.getElementById("rolActual").textContent = existe.nombre;
+  document.getElementById("rolActual").textContent = usuarioActual.nombre;
   document.getElementById("pantallaLogin").style.display = "none";
   document.getElementById("sistema").style.display = "flex";
-  document.getElementById("recordarme").checked = true;
+  document.getElementById("recordarme").checked = recordada;
   if (screen.orientation?.lock) screen.orientation.lock("portrait").catch(() => {});
   mostrarInicio();
-  return true;
 }
 
 function cerrarSesion() {
+  if (tokenSesion) supabaseRpc("agenda_cerrar_sesion", { p_token: tokenSesion }).catch(() => {});
   usuarioActual = null;
+  tokenSesion = "";
+  versionRemota = null;
+  remotoListo = false;
   localStorage.removeItem(`${CLAVE}-sesion`);
+  localStorage.removeItem(`${CLAVE}-token`);
+  sessionStorage.removeItem(`${CLAVE}-token`);
   document.body.classList.remove("modo-solo-ver");
   document.getElementById("pantallaLogin").style.display = "grid";
   document.getElementById("sistema").style.display = "none";
@@ -1134,21 +1163,20 @@ async function activarNotificaciones() {
     let suscripcion = await registro.pushManager.getSubscription();
     if (!suscripcion) suscripcion = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: convertirClavePush(VAPID_PUBLIC_KEY) });
     const datos = suscripcion.toJSON();
-    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/push_suscripciones?on_conflict=endpoint`, {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/rpc/registrar_push`, {
       method: "POST",
       headers: {
         apikey: SUPABASE_KEY,
         "Content-Type": "application/json",
-        Prefer: "resolution=merge-duplicates,return=minimal"
+        Prefer: "return=minimal"
       },
       body: JSON.stringify({
-        endpoint: datos.endpoint,
-        p256dh: datos.keys?.p256dh,
-        auth: datos.keys?.auth,
-        usuario: usuarioActual?.usuario || "sin-sesion",
-        nombre: usuarioActual?.nombre || "Personal",
-        activa: true,
-        actualizado_en: new Date().toISOString()
+        p_token: tokenSesion,
+        p_endpoint: datos.endpoint,
+        p_p256dh: datos.keys?.p256dh,
+        p_auth: datos.keys?.auth,
+        p_usuario: usuarioActual?.usuario || "sin-sesion",
+        p_nombre: usuarioActual?.nombre || "Personal"
       })
     });
     if (!respuesta.ok) {
@@ -1161,10 +1189,10 @@ async function activarNotificaciones() {
     mostrarMensaje("Notificaciones activadas", "Este celular quedó registrado para recibir los recordatorios.", "ok");
   } catch (error) {
     console.warn("No se pudieron activar las notificaciones:", error);
-    if (error?.status === 404 || /push_suscripciones|does not exist|schema cache/i.test(error?.message || "")) {
-      mostrarMensaje("Falta configurar Supabase", "Ejecuta nuevamente supabase-notificaciones.sql en el Editor SQL.", "alerta");
+    if (error?.status === 404 || /registrar_push|does not exist|schema cache|PGRST202|PGRST205|42P01/i.test(error?.message || "")) {
+      mostrarMensaje("Falta configurar la seguridad", "Ejecuta supabase-seguridad.sql en el Editor SQL.", "alerta");
     } else if (error?.status === 401 || error?.status === 403 || /row-level security|permission/i.test(error?.message || "")) {
-      mostrarMensaje("Falta actualizar permisos", "Ejecuta nuevamente supabase-notificaciones.sql en el Editor SQL.", "alerta");
+      mostrarMensaje("Falta actualizar permisos", "Ejecuta supabase-seguridad.sql en el Editor SQL.", "alerta");
     } else {
       mostrarMensaje("No se pudieron activar", "Revisa el permiso de notificaciones del celular, la conexión y vuelve a intentarlo.", "alerta");
     }
@@ -1227,7 +1255,7 @@ function abrirUsuarioModal(indice = null) {
   </form>`);
 }
 
-function guardarUsuarioModal(event, indice) {
+async function guardarUsuarioModal(event, indice) {
   event.preventDefault();
   if (!exigirEdicion()) return;
   const nombre = document.getElementById("perfilNombre").value.trim();
@@ -1240,43 +1268,59 @@ function guardarUsuarioModal(event, indice) {
   if (usuarios.some((item, posicion) => item.usuario === nombreUsuario && posicion !== indice)) return mostrarMensaje("Usuario existente", "Ese nombre de usuario ya está registrado.", "alerta");
   if (indice === null && document.getElementById("perfilCodigo").value.trim() !== CODIGO_ADMINISTRACION) return mostrarMensaje("Código incorrecto", "No fue posible crear el perfil.", "alerta");
   if (indice !== null && usuarios[indice].rol === "editora" && rol !== "editora" && usuarios.filter(item => item.rol === "editora").length <= 1) return mostrarMensaje("Se necesita una editora", "Debe quedar al menos un perfil con permiso para editar.", "alerta");
-  if (indice === null) usuarios.push({ nombre, usuario: nombreUsuario, clave, rol });
-  else {
-    const anterior = usuarios[indice];
-    usuarios[indice] = { nombre, usuario: nombreUsuario, clave: clave || anterior.clave, rol };
-    if (usuarioActual?.usuario === anterior.usuario) usuarioActual = usuarios[indice];
+  const anterior = indice === null ? null : usuarios[indice];
+  try {
+    await supabaseRpc("agenda_guardar_usuario", {
+      p_token: tokenSesion,
+      p_original: anterior?.usuario || null,
+      p_usuario: nombreUsuario,
+      p_nombre: nombre,
+      p_clave: clave || null,
+      p_rol: rol,
+      p_codigo: indice === null ? document.getElementById("perfilCodigo").value.trim() : null
+    });
+  } catch (error) {
+    console.warn("No se pudo guardar el perfil:", error);
+    return mostrarMensaje("No se guardó el perfil", "Revisa los datos, el código y que el usuario no esté repetido.", "alerta");
   }
-  guardar();
+  await cargarUsuariosPublicos();
+  if (anterior?.usuario === usuarioActual?.usuario) await cargarRemoto(true);
   actualizarSelectorUsuarios();
   cerrarModalFormulario();
   mostrarConfiguracion();
   mostrarMensaje("Perfil guardado", "Los permisos del usuario quedaron actualizados.", "ok");
 }
 
-function eliminarUsuario(indice) {
+async function eliminarUsuario(indice) {
   if (!exigirEdicion()) return;
   const usuario = usuarios[indice];
   if (!usuario) return;
   if (usuario.usuario === usuarioActual?.usuario) return mostrarMensaje("No se puede eliminar", "No puedes eliminar el perfil que tiene la sesión abierta.", "alerta");
   if (usuario.rol === "editora" && usuarios.filter(item => item.rol === "editora").length <= 1) return mostrarMensaje("Se necesita una editora", "Debe quedar al menos un perfil con permiso para editar.", "alerta");
   if (!confirm(`¿Eliminar el perfil de ${usuario.nombre}?`)) return;
-  usuarios.splice(indice, 1);
-  guardar();
+  try {
+    await supabaseRpc("agenda_eliminar_usuario", { p_token: tokenSesion, p_usuario: usuario.usuario });
+  } catch (error) {
+    console.warn("No se pudo eliminar el perfil:", error);
+    return mostrarMensaje("No se pudo eliminar", "Debe quedar al menos una editora y no puedes eliminar tu propia sesión.", "alerta");
+  }
+  await cargarUsuariosPublicos();
   actualizarSelectorUsuarios();
   mostrarConfiguracion();
 }
 
-function cambiarContrasena(event) {
+async function cambiarContrasena(event) {
   event.preventDefault();
   const anterior = document.getElementById("claveAnterior").value.trim();
   const nueva = document.getElementById("claveNueva").value.trim();
   if (!anterior || !nueva) return mostrarMensaje("Faltan datos", "Escribe la contraseña anterior y la nueva.", "alerta");
   if (nueva.length < 4) return mostrarMensaje("Contraseña corta", "Usa al menos 4 caracteres.", "alerta");
-  const usuario = usuarios.find(item => item.usuario === usuarioActual?.usuario);
-  if (!usuario || usuario.clave !== anterior) return mostrarMensaje("Contraseña incorrecta", "La contraseña anterior no coincide.", "error");
-  usuario.clave = nueva;
-  usuarioActual = usuario;
-  guardar();
+  try {
+    await supabaseRpc("agenda_cambiar_clave", { p_token: tokenSesion, p_anterior: anterior, p_nueva: nueva });
+  } catch (error) {
+    console.warn("No se pudo cambiar la contraseña:", error);
+    return mostrarMensaje("Contraseña incorrecta", "La contraseña anterior no coincide.", "error");
+  }
   document.getElementById("claveAnterior").value = "";
   document.getElementById("claveNueva").value = "";
   mostrarMensaje("Contraseña actualizada", "La nueva contraseña quedó guardada.");
@@ -1298,18 +1342,16 @@ function cambiarSonidos(valor) {
   if (sonidosActivos) reproducirSonido("success", 0.5);
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("sistema").style.display = "none";
   aplicarModoOscuro();
   aplicarConfiguracion();
+  await cargarUsuariosPublicos();
   actualizarSelectorUsuarios();
   usuarioSeleccionado();
-  cargarRemoto(true).then(() => {
-    actualizarSelectorUsuarios();
-    usuarioSeleccionado();
-    const sesionGuardada = localStorage.getItem(`${CLAVE}-sesion`);
-    if (sesionGuardada) entrarConUsuario(sesionGuardada);
-  });
+  if (tokenSesion && await cargarRemoto(true)) {
+    mostrarSistemaDesdeSesion(!!localStorage.getItem(`${CLAVE}-token`));
+  }
 });
 
 document.addEventListener("visibilitychange", () => {

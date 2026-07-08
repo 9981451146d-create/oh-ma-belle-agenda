@@ -1,4 +1,4 @@
-const CACHE = "oh-ma-belle-pwa-v17";
+const CACHE = "oh-ma-belle-pwa-v20";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -39,9 +39,10 @@ self.addEventListener("fetch", event => {
   if (peticion.mode === "navigate") {
     event.respondWith(fetch(peticion).then(respuesta => {
       const copia = respuesta.clone();
-      caches.open(CACHE).then(cache => cache.put("./index.html", copia));
+      const destinoCache = url.pathname.endsWith("/confirmar.html") ? "./confirmar.html" : "./index.html";
+      caches.open(CACHE).then(cache => cache.put(destinoCache, copia));
       return respuesta;
-    }).catch(() => caches.match("./index.html")));
+    }).catch(() => caches.match(url.pathname.endsWith("/confirmar.html") ? "./confirmar.html" : "./index.html")));
     return;
   }
 

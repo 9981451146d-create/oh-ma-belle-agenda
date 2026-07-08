@@ -21,30 +21,9 @@ create table if not exists public.push_envios (
 alter table public.push_suscripciones enable row level security;
 alter table public.push_envios enable row level security;
 
-grant insert, update on table public.push_suscripciones to anon;
-
 drop policy if exists "Registrar este dispositivo" on public.push_suscripciones;
-create policy "Registrar este dispositivo"
-on public.push_suscripciones
-for insert
-to anon
-with check (
-  char_length(endpoint) between 20 and 2000
-  and char_length(p256dh) between 20 and 500
-  and char_length(auth) between 5 and 500
-);
-
 drop policy if exists "Actualizar este dispositivo" on public.push_suscripciones;
-create policy "Actualizar este dispositivo"
-on public.push_suscripciones
-for update
-to anon
-using (char_length(endpoint) between 20 and 2000)
-with check (
-  char_length(endpoint) between 20 and 2000
-  and char_length(p256dh) between 20 and 500
-  and char_length(auth) between 5 and 500
-);
+revoke all on table public.push_suscripciones from anon, authenticated;
 
 -- No se crean políticas de lectura: los celulares no pueden consultar
 -- las suscripciones de otros dispositivos. La Edge Function usa service_role.
