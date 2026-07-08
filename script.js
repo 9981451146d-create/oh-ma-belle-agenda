@@ -114,6 +114,17 @@ window.addEventListener("beforeinstallprompt", event => {
   if (boton) boton.hidden = false;
 });
 
+function actualizarBotonInstalacion() {
+  const boton = document.getElementById("botonInstalar");
+  if (!boton) return;
+  const instalada = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  boton.hidden = instalada || (!eventoInstalacion && !esIOS);
+}
+
+document.addEventListener("DOMContentLoaded", actualizarBotonInstalacion);
+window.addEventListener("pageshow", actualizarBotonInstalacion);
+
 window.addEventListener("appinstalled", () => {
   eventoInstalacion = null;
   const boton = document.getElementById("botonInstalar");
@@ -124,11 +135,12 @@ window.addEventListener("appinstalled", () => {
 async function instalarAplicacion() {
   if (!eventoInstalacion) {
     const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    return mostrarMensaje("Instalar aplicación", esIOS ? "En Safari, toca Compartir y después Agregar a pantalla de inicio." : "Abre el menú del navegador y selecciona Instalar aplicación o Agregar a pantalla de inicio.", "ok");
+    return mostrarMensaje("Instalar aplicación", esIOS ? "Abre esta página en Safari, toca Compartir y después Agregar a pantalla de inicio." : "Abre el menú del navegador y selecciona Instalar aplicación o Agregar a pantalla de inicio.", "ok");
   }
   eventoInstalacion.prompt();
   const resultado = await eventoInstalacion.userChoice;
   if (resultado.outcome === "accepted") eventoInstalacion = null;
+  actualizarBotonInstalacion();
 }
 
 function cargar(nombre) {
@@ -1122,13 +1134,12 @@ async function activarNotificaciones() {
     let suscripcion = await registro.pushManager.getSubscription();
     if (!suscripcion) suscripcion = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: convertirClavePush(VAPID_PUBLIC_KEY) });
     const datos = suscripcion.toJSON();
-    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/push_suscripciones`, {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/push_suscripciones?on_conflict=endpoint`, {
       method: "POST",
       headers: {
         apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
         "Content-Type": "application/json",
-        Prefer: "return=minimal"
+        Prefer: "resolution=merge-duplicates,return=minimal"
       },
       body: JSON.stringify({
         endpoint: datos.endpoint,
@@ -1140,12 +1151,23 @@ async function activarNotificaciones() {
         actualizado_en: new Date().toISOString()
       })
     });
-    if (!respuesta.ok && respuesta.status !== 409) throw new Error(await respuesta.text());
+    if (!respuesta.ok) {
+      const detalle = await respuesta.text();
+      const error = new Error(detalle || `Error ${respuesta.status}`);
+      error.status = respuesta.status;
+      throw error;
+    }
     await actualizarEstadoNotificaciones();
     mostrarMensaje("Notificaciones activadas", "Este celular quedó registrado para recibir los recordatorios.", "ok");
   } catch (error) {
     console.warn("No se pudieron activar las notificaciones:", error);
-    mostrarMensaje("Falta configurar Supabase", "Primero debemos crear el registro de notificaciones en Supabase.", "alerta");
+    if (error?.status === 404 || /push_suscripciones|does not exist|schema cache/i.test(error?.message || "")) {
+      mostrarMensaje("Falta configurar Supabase", "Ejecuta nuevamente supabase-notificaciones.sql en el Editor SQL.", "alerta");
+    } else if (error?.status === 401 || error?.status === 403 || /row-level security|permission/i.test(error?.message || "")) {
+      mostrarMensaje("Falta actualizar permisos", "Ejecuta nuevamente supabase-notificaciones.sql en el Editor SQL.", "alerta");
+    } else {
+      mostrarMensaje("No se pudieron activar", "Revisa el permiso de notificaciones del celular, la conexión y vuelve a intentarlo.", "alerta");
+    }
   }
 }
 
