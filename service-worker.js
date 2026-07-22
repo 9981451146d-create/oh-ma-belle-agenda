@@ -1,4 +1,4 @@
-const CACHE = "oh-ma-belle-pwa-v20";
+const CACHE = "oh-ma-belle-pwa-v22";
 const ARCHIVOS = [
   "./",
   "./index.html",

@@ -364,9 +364,9 @@ function normalizarDatos() {
 }
 
 function horariosBase() {
-  return ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"].map(dia => ({
+  return ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map(dia => ({
     dia,
-    activo: !["Domingo"].includes(dia),
+    activo: true,
     inicio: "09:00",
     fin: "18:00"
   }));
@@ -374,10 +374,14 @@ function horariosBase() {
 
 function normalizarHorarios(horarios) {
   const lista = Array.isArray(horarios) ? horarios : horariosBase();
-  return lista.map(item => ({
+  const normalizados = lista.map(item => ({
     ...item,
     dia: item.dia === "Miercoles" ? "Miércoles" : item.dia === "Sabado" ? "Sábado" : item.dia
   }));
+  return horariosBase().map(base => {
+    const guardado = normalizados.find(item => item.dia === base.dia);
+    return guardado ? { ...base, ...guardado } : base;
+  });
 }
 
 function hoy() {
