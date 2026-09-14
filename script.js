@@ -51,6 +51,8 @@ let remotoListo = false;
 let guardandoRemoto = false;
 let guardadoRemotoPendiente = false;
 let datosMigrados = false;
+let mensajesWhatsApp = [];
+let chatWhatsAppActivo = "";
 let reintentoRemoto = null;
 let eventoInstalacion = null;
 let tokenSesion = localStorage.getItem(`${CLAVE}-token`) || sessionStorage.getItem(`${CLAVE}-token`) || "";
@@ -200,6 +202,27 @@ async function supabaseRpc(nombre, parametros = {}) {
     throw error;
   }
   return texto ? JSON.parse(texto) : null;
+}
+
+async function llamarFuncionSupabase(nombre, datos = {}) {
+  const respuesta = await fetch(`${SUPABASE_URL}/functions/v1/${nombre}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(datos)
+  });
+  const texto = await respuesta.text();
+  let cuerpo = null;
+  try { cuerpo = texto ? JSON.parse(texto) : null; } catch { cuerpo = { error: texto }; }
+  if (!respuesta.ok) {
+    const error = new Error(cuerpo?.error || texto || `Error ${respuesta.status}`);
+    error.status = respuesta.status;
+    throw error;
+  }
+  return cuerpo;
 }
 
 async function cargarUsuariosPublicos() {
@@ -1087,6 +1110,126 @@ function verHistorialClienta(id) {
   </div>`);
 }
 
+function telefonoLocalWhatsApp(telefono = "") {
+  const digitos = String(telefono || "").replace(/\D/g, "");
+  if (digitos.length === 12 && digitos.startsWith("52")) return digitos.slice(2);
+  if (digitos.length === 11 && digitos.startsWith("1")) return digitos.slice(1);
+  return digitos.slice(-10);
+}
+
+function fechaHoraMensaje(fecha) {
+  const valor = new Date(fecha || "");
+  if (Number.isNaN(valor.getTime())) return "";
+  return valor.toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function conversacionesWhatsApp() {
+  const mapa = new Map();
+  mensajesWhatsApp.forEach(mensaje => {
+    const telefono = mensaje.telefono || mensaje.wa_id || "";
+    if (!telefono) return;
+    const actual = mapa.get(telefono) || { telefono, nombre: mensaje.nombre || "", mensajes: [], ultimo: null, sinLeer: 0 };
+    actual.nombre = mensaje.nombre || actual.nombre || clientas.find(item => item.telefono === telefonoLocalWhatsApp(telefono))?.nombre || telefono;
+    actual.mensajes.push(mensaje);
+    if (!actual.ultimo || String(mensaje.creado_en || "").localeCompare(String(actual.ultimo.creado_en || "")) > 0) actual.ultimo = mensaje;
+    if (mensaje.direccion === "entrante" && !mensaje.leido) actual.sinLeer += 1;
+    mapa.set(telefono, actual);
+  });
+  return [...mapa.values()].sort((a, b) => String(b.ultimo?.creado_en || "").localeCompare(String(a.ultimo?.creado_en || "")));
+}
+
+async function cargarMensajesWhatsApp(telefono = chatWhatsAppActivo) {
+  try {
+    const resultado = await llamarFuncionSupabase("whatsapp-inbox", { accion: "listar", token: tokenSesion, telefono });
+    mensajesWhatsApp = Array.isArray(resultado?.mensajes) ? resultado.mensajes : [];
+    if (telefono) chatWhatsAppActivo = telefono;
+    return true;
+  } catch (error) {
+    console.warn("No se pudo cargar WhatsApp:", error);
+    const texto = /404|Function not found/i.test(error.message || "") ? "Sube la función whatsapp-inbox a Supabase y ejecuta el SQL de la bandeja." : "Revisa la sesión, la función de Supabase y la conexión.";
+    document.getElementById("contenido").innerHTML = `<section class="panel empty-state"><h2>Bandeja no disponible</h2><p>${texto}</p></section>`;
+    return false;
+  }
+}
+
+async function mostrarMensajesWhatsApp(telefono = chatWhatsAppActivo) {
+  activarMenu("mensajes");
+  document.getElementById("contenido").innerHTML = `<section class="panel empty-state"><h2>Cargando mensajes...</h2><p>Estamos consultando WhatsApp.</p></section>`;
+  const ok = await cargarMensajesWhatsApp(telefono);
+  if (ok) pintarMensajesWhatsApp();
+}
+
+function pintarMensajesWhatsApp() {
+  const conversaciones = conversacionesWhatsApp();
+  if (!chatWhatsAppActivo && conversaciones[0]) chatWhatsAppActivo = conversaciones[0].telefono;
+  const activa = conversaciones.find(item => item.telefono === chatWhatsAppActivo);
+  const mensajes = (activa?.mensajes || []).sort((a, b) => String(a.creado_en || "").localeCompare(String(b.creado_en || "")));
+  document.getElementById("contenido").innerHTML = `
+    <section class="whatsapp-inbox">
+      <aside class="panel whatsapp-conversations">
+        <div class="section-head"><div><h2>Mensajes</h2><p>Responde manualmente desde el número del negocio.</p></div><button type="button" onclick="mostrarMensajesWhatsApp()">Actualizar</button></div>
+        <div class="whatsapp-search"><input id="telefonoChatNuevo" inputmode="numeric" maxlength="12" placeholder="Abrir teléfono"><button type="button" onclick="abrirChatWhatsApp(document.getElementById('telefonoChatNuevo').value)">Abrir</button></div>
+        <div class="conversation-list">${conversaciones.map(item => `
+          <button class="${item.telefono === chatWhatsAppActivo ? "activo" : ""}" type="button" onclick="abrirChatWhatsApp('${item.telefono}')">
+            <strong>${escaparTexto(item.nombre || item.telefono)}</strong>
+            <span>${escaparTexto(item.ultimo?.texto || item.ultimo?.tipo || "Mensaje")}</span>
+            ${item.sinLeer ? `<b>${item.sinLeer}</b>` : ""}
+          </button>`).join("") || `<p class="vacio">Aún no hay mensajes recibidos.</p>`}</div>
+      </aside>
+      <article class="panel whatsapp-chat">
+        ${activa ? `
+          <header><div><h2>${escaparTexto(activa.nombre || activa.telefono)}</h2><p>+${escaparTexto(activa.telefono)}</p></div><button type="button" onclick="vincularChatConClienta('${activa.telefono}')">Vincular clienta</button></header>
+          <div class="message-list">${mensajes.map(mensaje => `
+            <div class="message-bubble ${mensaje.direccion === "saliente" ? "saliente" : "entrante"}">
+              <p>${escaparTexto(mensaje.texto || `[${mensaje.tipo || "mensaje"}]`)}</p>
+              <span>${fechaHoraMensaje(mensaje.creado_en)}${mensaje.estado ? ` · ${escaparTexto(mensaje.estado)}` : ""}</span>
+            </div>`).join("") || `<div class="history-empty"><strong>Sin mensajes todavía</strong><p>Cuando la clienta escriba, aparecerá aquí.</p></div>`}</div>
+          ${puedeEditar() ? `<form class="reply-box" onsubmit="enviarMensajeWhatsApp(event)"><textarea id="respuestaWhatsApp" rows="3" placeholder="Escribe tu respuesta como persona..."></textarea><button class="primary-action" type="submit">Enviar</button></form>` : `<p class="solo-ver">Modo solo lectura: puedes ver los mensajes, pero no responder.</p>`}
+        ` : `<div class="history-empty"><strong>Selecciona una conversación</strong><p>También puedes abrir un teléfono nuevo para responder dentro de la ventana de 24 horas.</p></div>`}
+      </article>
+    </section>`;
+  requestAnimationFrame(() => {
+    const lista = document.querySelector(".message-list");
+    if (lista) lista.scrollTop = lista.scrollHeight;
+  });
+}
+
+function abrirChatWhatsApp(telefono) {
+  const limpio = String(telefono || "").replace(/\D/g, "");
+  if (!limpio) return mostrarMensaje("Falta teléfono", "Escribe o selecciona un número.", "alerta");
+  chatWhatsAppActivo = limpio.length === 10 ? `52${limpio}` : limpio;
+  mostrarMensajesWhatsApp(chatWhatsAppActivo);
+}
+
+async function enviarMensajeWhatsApp(event) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  const texto = document.getElementById("respuestaWhatsApp")?.value.trim();
+  if (!chatWhatsAppActivo || !texto) return mostrarMensaje("Falta mensaje", "Escribe una respuesta antes de enviar.", "alerta");
+  try {
+    await llamarFuncionSupabase("whatsapp-inbox", { accion: "enviar", token: tokenSesion, telefono: chatWhatsAppActivo, texto });
+    document.getElementById("respuestaWhatsApp").value = "";
+    await cargarMensajesWhatsApp(chatWhatsAppActivo);
+    pintarMensajesWhatsApp();
+    mostrarMensaje("Mensaje enviado", "Se envió desde WhatsApp Business API.", "ok");
+  } catch (error) {
+    console.warn("No se pudo enviar WhatsApp:", error);
+    const fueraVentana = /24|outside|window|131047|template/i.test(error.message || "");
+    mostrarMensaje("No se pudo enviar", fueraVentana ? "Si la clienta no ha escrito en las últimas 24 horas, WhatsApp exige una plantilla aprobada." : "Revisa el token, el número de WhatsApp y la función en Supabase.", "alerta");
+  }
+}
+
+function vincularChatConClienta(telefono) {
+  const local = telefonoLocalWhatsApp(telefono);
+  const clienta = clientas.find(item => item.telefono === local);
+  if (clienta) return verHistorialClienta(clienta.id);
+  abrirClientaModal(null);
+  setTimeout(() => {
+    const input = document.getElementById("clientaTelefono");
+    if (input) input.value = local;
+  }, 50);
+}
+
 function mostrarConfiguracion() {
   activarMenu("configuracion");
   const filasUsuarios = usuarios.map((usuario, indice) => `<tr><td>${usuario.nombre}</td><td>${usuario.usuario}</td><td>${usuario.rol === "editora" ? "Puede ver y editar" : "Solo puede ver"}</td><td>${puedeEditar() ? `<div class="table-actions"><button type="button" onclick="abrirUsuarioModal(${indice})">Editar</button><button class="danger-action" type="button" onclick="eliminarUsuario(${indice})">Eliminar</button></div>` : "-"}</td></tr>`).join("");
@@ -1499,6 +1642,10 @@ mostrarInicio = function (fecha = hoy()) {
 
 function escaparAtributo(valor) {
   return String(valor ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escaparTexto(valor) {
+  return String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function detallesServiciosCita(cita) {
