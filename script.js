@@ -6,6 +6,7 @@ const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftq
 const NOMBRE_NEGOCIO = "Beloved Body";
 const SUBTITULO_NEGOCIO = "Salón Spa";
 const LOGO_PREDETERMINADO = "assets/logo-beloved-body.png";
+const MIGRACION_DATOS_ACTUAL = "20260914-beloved-body-logo-servicios";
 const detallesManicureBase = [
   { grupo: "Efectos", opciones: ["Azul", "Morado", "Rojo"] },
   { grupo: "Detalles", opciones: ["Fino", "Delgado"] },
@@ -49,6 +50,7 @@ let configuracion = cargar("configuracion") || { ...configuracionBase };
 let remotoListo = false;
 let guardandoRemoto = false;
 let guardadoRemotoPendiente = false;
+let datosMigrados = false;
 let reintentoRemoto = null;
 let eventoInstalacion = null;
 let tokenSesion = localStorage.getItem(`${CLAVE}-token`) || sessionStorage.getItem(`${CLAVE}-token`) || "";
@@ -163,6 +165,7 @@ function guardarLocal() {
   localStorage.setItem(`${CLAVE}-modoOscuro`, JSON.stringify(modoOscuro));
   localStorage.setItem(`${CLAVE}-sonidosActivos`, JSON.stringify(sonidosActivos));
   localStorage.setItem(`${CLAVE}-configuracion`, JSON.stringify(configuracion));
+  if (datosMigrados) localStorage.setItem(`${CLAVE}-migracion-datos`, MIGRACION_DATOS_ACTUAL);
 }
 
 function estadoActual() {
@@ -227,6 +230,7 @@ async function cargarRemoto(silencioso = false) {
     }
     if (resultado?.datos) aplicarEstado(resultado.datos);
     guardarLocal();
+    if (datosMigrados && puedeEditar()) setTimeout(() => guardarRemoto(), 250);
     return true;
   } catch (error) {
     remotoListo = false;
@@ -306,7 +310,12 @@ function normalizarDatos() {
     ...(configuracion && typeof configuracion === "object" ? configuracion : {}),
     tipoCambio: Number(configuracion?.tipoCambio || configuracionBase.tipoCambio)
   };
-  if (!configuracion.logo || configuracion.logo.includes("logo-oh-ma-belle")) configuracion.logo = LOGO_PREDETERMINADO;
+  const migracionPendiente = configuracion.migracionDatos !== MIGRACION_DATOS_ACTUAL;
+  if (migracionPendiente || !configuracion.logo || configuracion.logo.includes("logo-oh-ma-belle")) {
+    configuracion.logo = LOGO_PREDETERMINADO;
+    configuracion.migracionDatos = MIGRACION_DATOS_ACTUAL;
+    datosMigrados = true;
+  }
   servicios = servicios.map((servicio, indice) => ({
     nombre: servicio.nombre === "Pestanas" ? "Pestañas" : (servicio.nombre || "Servicio"),
     descripcion: servicio.descripcion || "",
@@ -323,6 +332,8 @@ function normalizarDatos() {
     detalles: normalizarDetallesServicio(servicio),
     horarios: normalizarHorarios(servicio.horarios)
   }));
+  if (servicios.some(servicio => servicio.imagen)) datosMigrados = true;
+  if (servicios.some(servicio => nombreComparable(servicio.nombre) === "manicure" && JSON.stringify(servicio.detalles) !== JSON.stringify(detallesManicureBase))) datosMigrados = true;
   personal = personal.filter(persona => !personalRetirado.includes(nombreComparable(persona?.nombre))).map(persona => ({
     id: persona.id || idNuevo(),
     nombre: persona.nombre || "Personal",
