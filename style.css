@@ -1791,6 +1791,26 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
     linear-gradient(135deg, #b73565, #e7b35f);
 }
 
+.service-image-empty {
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  color: #7b6341;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,255,255,0.62), transparent 26%),
+    linear-gradient(135deg, #fbf4e8, #e8d2ab) !important;
+  text-align: center;
+}
+
+.service-image-empty span {
+  max-width: 92%;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  letter-spacing: 0;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .service-body {
   padding: 20px;
 }
@@ -1808,6 +1828,22 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
 
 .service-time {
   color: #6b7280;
+  font-weight: 800;
+}
+
+.service-detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 10px 0 16px;
+}
+
+.service-detail-tags span {
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: #f8f1e7;
+  color: #7b6341;
+  font-size: 12px;
   font-weight: 800;
 }
 
@@ -2328,6 +2364,7 @@ body.modo-oscuro .kpi i {
 
 body.modo-oscuro .client-card,
 body.modo-oscuro .appointment-services label,
+body.modo-oscuro .appointment-service-option,
 body.modo-oscuro .client-match,
 body.modo-oscuro .appointment-summary,
 body.modo-oscuro .history-stats article,
@@ -2335,6 +2372,12 @@ body.modo-oscuro .history-entry {
   background: #171b28;
   color: #eef2ff;
   border-color: #38402f;
+}
+
+body.modo-oscuro .service-suboptions label,
+body.modo-oscuro .service-detail-tags span {
+  background: #2b2832;
+  color: #ead8bd;
 }
 
 body.modo-oscuro .history-stats strong,
@@ -2467,10 +2510,23 @@ body.modo-oscuro .client-notes {
   grid-template-columns: 1fr auto;
 }
 
+.appointment-summary small {
+  grid-column: 1 / -1;
+  color: #6a6488;
+  font-weight: 700;
+}
+
 .appointment-services {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.appointment-service-option {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fffef8;
 }
 
 .appointment-services label {
@@ -2478,15 +2534,30 @@ body.modo-oscuro .client-notes {
   align-items: center;
   gap: 10px;
   padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fffef8;
+  border: 0;
+  background: transparent;
   cursor: pointer;
 }
 
 .appointment-services input { width: 18px; height: 18px; flex: 0 0 18px; accent-color: #6d63ef; }
 .appointment-services span { display: grid; gap: 3px; }
 .appointment-services small { color: var(--muted); }
+.service-suboptions {
+  display: grid;
+  gap: 4px;
+  padding: 0 12px 12px 40px;
+}
+.service-suboptions label {
+  min-height: 34px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #f8f1e7;
+  color: #5f5141;
+  font-size: 13px;
+}
+.appointment-service-option:not(.servicio-elegido) .service-suboptions {
+  opacity: .45;
+}
 .detail-services { display: grid; gap: 8px; margin-bottom: 16px; }
 .detail-services > div,
 .ticket-services > div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px dashed #d8d2c0; }

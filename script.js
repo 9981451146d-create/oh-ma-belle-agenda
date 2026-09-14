@@ -3,8 +3,11 @@ const SUPABASE_URL = "https://vgmyzhmbuteixvlvwxjc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_5b7OS0T91SbgnCog14YXEw_tr7lD3WT";
 const CODIGO_ADMINISTRACION = "2009";
 const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftqIr75NoU9-JgWF9EcPzm-MptOXP4abYmzM";
+const NOMBRE_NEGOCIO = "Beloved Body";
+const SUBTITULO_NEGOCIO = "Salón Spa";
+const LOGO_PREDETERMINADO = "assets/logo-beloved-body.png";
 const configuracionBase = {
-  logo: "",
+  logo: LOGO_PREDETERMINADO,
   moneda: "MXN",
   tipoCambio: 17.6087,
   tipoCambioFecha: "",
@@ -17,7 +20,7 @@ const usuariosBase = [
 
 const serviciosBase = [
   { nombre: "Pedicure", duracion: 60, precio: 350, color: "rosa" },
-  { nombre: "Manicure", duracion: 45, precio: 280, color: "dorado" },
+  { nombre: "Manicure", duracion: 45, precio: 280, color: "dorado", detalles: ["Efectos (luz)", "Pedrería (blandas)"] },
   { nombre: "Pestañas", duracion: 90, precio: 650, color: "uva" },
   { nombre: "Masajes", duracion: 60, precio: 500, color: "verde" },
   { nombre: "Cejas", duracion: 30, precio: 180, color: "rosa" },
@@ -25,16 +28,8 @@ const serviciosBase = [
   { nombre: "Tintes", duracion: 120, precio: 900, color: "uva" }
 ];
 
-const imagenesServiciosBase = {
-  Pedicure: "assets/services/pedicure.jpg",
-  Manicure: "assets/services/manicure.jpg",
-  Pestañas: "assets/services/pestanas.jpg",
-  Pestanas: "assets/services/pestanas.jpg",
-  Masajes: "assets/services/masajes.jpg",
-  Cejas: "assets/services/cejas.jpg",
-  Peinados: "assets/services/peinados.jpg",
-  Tintes: "assets/services/tintes.jpg"
-};
+const imagenesServiciosBase = {};
+const personalRetirado = ["rosa polet", "elizabet", "elizabeth"];
 
 let usuarios = cargar("usuarios") || usuariosBase.map(usuario => ({ ...usuario }));
 let usuarioActual = null;
@@ -129,7 +124,7 @@ window.addEventListener("appinstalled", () => {
   eventoInstalacion = null;
   const boton = document.getElementById("botonInstalar");
   if (boton) boton.hidden = true;
-  mostrarMensaje("Aplicación instalada", "Oh, ma belle ya está disponible en tu pantalla de inicio.", "ok");
+  mostrarMensaje("Aplicación instalada", `${NOMBRE_NEGOCIO} ya está disponible en tu pantalla de inicio.`, "ok");
 });
 
 async function instalarAplicacion() {
@@ -306,11 +301,12 @@ function normalizarDatos() {
     ...(configuracion && typeof configuracion === "object" ? configuracion : {}),
     tipoCambio: Number(configuracion?.tipoCambio || configuracionBase.tipoCambio)
   };
+  if (!configuracion.logo || configuracion.logo.includes("logo-oh-ma-belle")) configuracion.logo = LOGO_PREDETERMINADO;
   servicios = servicios.map((servicio, indice) => ({
     nombre: servicio.nombre === "Pestanas" ? "Pestañas" : (servicio.nombre || "Servicio"),
     descripcion: servicio.descripcion || "",
     confirmacion: servicio.confirmacion || "",
-    imagen: servicio.imagen || imagenesServiciosBase[servicio.nombre] || "",
+    imagen: "",
     duracion: Number(servicio.duracion || 30),
     precio: Number(servicio.precio || 0),
     capacidad: Number(servicio.capacidad || 1),
@@ -319,9 +315,12 @@ function normalizarDatos() {
     pagoTransferencia: !!servicio.pagoTransferencia,
     color: servicio.color || ["rosa", "dorado", "uva", "verde"][indice % 4],
     personalAsignado: Array.isArray(servicio.personalAsignado) ? servicio.personalAsignado : [],
+    detalles: Array.isArray(servicio.detalles) && servicio.detalles.length
+      ? servicio.detalles.map(item => String(item).trim()).filter(Boolean)
+      : ((servicio.nombre || "").toLowerCase() === "manicure" ? ["Efectos (luz)", "Pedrería (blandas)"] : []),
     horarios: normalizarHorarios(servicio.horarios)
   }));
-  personal = personal.map(persona => ({
+  personal = personal.filter(persona => !personalRetirado.includes(nombreComparable(persona?.nombre))).map(persona => ({
     id: persona.id || idNuevo(),
     nombre: persona.nombre || "Personal",
     descripcion: persona.descripcion || "",
@@ -343,9 +342,12 @@ function normalizarDatos() {
     servicio: cita.servicio === "Pestanas" ? "Pestañas" : cita.servicio,
     serviciosDetalle: Array.isArray(cita.serviciosDetalle) && cita.serviciosDetalle.length ? cita.serviciosDetalle : [{
       nombre: cita.servicio === "Pestanas" ? "Pestañas" : (cita.servicio || "Servicio"),
+      detalle: cita.detalleServicio || "",
       duracion: Number(servicioPorNombre(cita.servicio)?.duracion || cita.duracion || 30),
       precio: Number(cita.precio || 0)
     }],
+    personal: personalRetirado.includes(nombreComparable(cita.personal)) ? "" : cita.personal,
+    metodoPago: cita.metodoPago === "Tarjeta" ? "" : cita.metodoPago,
     abonos: Array.isArray(cita.abonos) ? cita.abonos : [],
     confirmacionToken: cita.confirmacionToken || tokenConfirmacionNuevo(),
     confirmadaCliente: !!cita.confirmadaCliente,
@@ -413,7 +415,7 @@ function actualizarSelectorUsuarios() {
 }
 
 function aplicarConfiguracion() {
-  const logo = configuracion.logo || "assets/logo-oh-ma-belle-transparent.png";
+  const logo = configuracion.logo || LOGO_PREDETERMINADO;
   document.querySelectorAll(".login-logo, .brand img").forEach(imagen => imagen.src = logo);
 }
 
@@ -813,7 +815,7 @@ function exportarEstadisticasExcel() {
 
 function imprimirEstadisticas() {
   const { tipo, valor, datos } = periodoEstadisticasActual();
-  const logoReporte = configuracion.logo || new URL("assets/logo-oh-ma-belle-transparent.png", window.location.href).href;
+  const logoReporte = configuracion.logo || new URL(LOGO_PREDETERMINADO, window.location.href).href;
   const filas = lista => lista.map(item => `<tr><td>${item.nombre}</td><td>${item.total}</td><td>${dinero(item.dinero)}</td></tr>`).join("");
   const grafica = (titulo, lista, propiedad, tipoValor) => {
     const colores = ["#6d63ef", "#d68c2f", "#2fbf93", "#cf4f78", "#8a63d2", "#4aa3df", "#b46a56"];
@@ -837,7 +839,7 @@ function imprimirEstadisticas() {
   ].join("");
   const ventana = window.open("", "_blank", "width=960,height=720");
   if (!ventana) return mostrarMensaje("No se pudo abrir", "Permite las ventanas emergentes para imprimir el reporte.", "alerta");
-  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reporte Oh, ma belle</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#28233b;margin:36px}header{display:flex;align-items:center;gap:18px;border-bottom:3px solid #6d63ef;padding-bottom:18px}header img{width:120px;height:70px;object-fit:contain}h1{margin:0;font-size:28px}h2{margin-top:30px;color:#513c75}h3{margin:0 0 14px;color:#513c75;font-size:16px}.resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.dato{padding:16px;border:1px solid #ddd5e8;border-radius:8px}.dato strong{display:block;font-size:22px;margin-top:8px}.graficas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.grafica{padding:16px;border:1px solid #ddd5e8;border-radius:8px;break-inside:avoid}.grafica-contenido{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:14px}.pastel{width:106px;height:106px;border-radius:50%;box-shadow:inset -8px -10px 0 rgba(40,35,59,.14),0 7px 0 #d9d3e3}.grafica ul{list-style:none;padding:0;margin:0}.grafica li{display:grid;grid-template-columns:10px 1fr auto;gap:6px;align-items:center;padding:3px 0;font-size:10px}.grafica li i{width:9px;height:9px;border-radius:2px}.grafica li b{text-align:right}.sin-datos{color:#777}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:11px;border-bottom:1px solid #e8e3ee;text-align:left}th{background:#f4f0fb}@media print{body{margin:10mm}.graficas{page-break-after:always}.grafica{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><header><img src="${logoReporte}" alt="Logo"><div><h1>Oh, ma belle</h1><p>Reporte de estadísticas · ${etiquetaPeriodo(tipo, valor)}</p></div></header><section class="resumen"><div class="dato">Citas activas<strong>${datos.activas.length}</strong></div><div class="dato">Canceladas<strong>${datos.canceladas.length}</strong></div><div class="dato">Ingresos<strong>${dinero(datos.ingresos)}</strong></div></section><h2>Gráficas del periodo</h2><section class="graficas">${graficas}</section><h2>Resultados por personal</h2><table><thead><tr><th>Personal</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porPersonal)}</tbody></table><h2>Resultados por servicio</h2><table><thead><tr><th>Servicio</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porServicio)}</tbody></table></body></html>`);
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reporte ${NOMBRE_NEGOCIO}</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#28233b;margin:36px}header{display:flex;align-items:center;gap:18px;border-bottom:3px solid #6d63ef;padding-bottom:18px}header img{width:120px;height:70px;object-fit:contain}h1{margin:0;font-size:28px}h2{margin-top:30px;color:#513c75}h3{margin:0 0 14px;color:#513c75;font-size:16px}.resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.dato{padding:16px;border:1px solid #ddd5e8;border-radius:8px}.dato strong{display:block;font-size:22px;margin-top:8px}.graficas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.grafica{padding:16px;border:1px solid #ddd5e8;border-radius:8px;break-inside:avoid}.grafica-contenido{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:14px}.pastel{width:106px;height:106px;border-radius:50%;box-shadow:inset -8px -10px 0 rgba(40,35,59,.14),0 7px 0 #d9d3e3}.grafica ul{list-style:none;padding:0;margin:0}.grafica li{display:grid;grid-template-columns:10px 1fr auto;gap:6px;align-items:center;padding:3px 0;font-size:10px}.grafica li i{width:9px;height:9px;border-radius:2px}.grafica li b{text-align:right}.sin-datos{color:#777}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:11px;border-bottom:1px solid #e8e3ee;text-align:left}th{background:#f4f0fb}@media print{body{margin:10mm}.graficas{page-break-after:always}.grafica{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><header><img src="${logoReporte}" alt="Logo"><div><h1>${NOMBRE_NEGOCIO}</h1><p>Reporte de estadísticas · ${etiquetaPeriodo(tipo, valor)}</p></div></header><section class="resumen"><div class="dato">Citas activas<strong>${datos.activas.length}</strong></div><div class="dato">Canceladas<strong>${datos.canceladas.length}</strong></div><div class="dato">Ingresos<strong>${dinero(datos.ingresos)}</strong></div></section><h2>Gráficas del periodo</h2><section class="graficas">${graficas}</section><h2>Resultados por personal</h2><table><thead><tr><th>Personal</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porPersonal)}</tbody></table><h2>Resultados por servicio</h2><table><thead><tr><th>Servicio</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porServicio)}</tbody></table></body></html>`);
   ventana.document.close();
   setTimeout(() => ventana.print(), 300);
 }
@@ -956,7 +958,7 @@ function mostrarTransferencias() {
 
 function mostrarSuscripcion() {
   activarMenu("suscripcion");
-  document.getElementById("contenido").innerHTML = `<section class="panel suscripcion"><h2>Mi suscripción</h2><strong>Premium</strong><p>Agenda activa para Oh, ma belle Belleza y Spa.</p></section>`;
+  document.getElementById("contenido").innerHTML = `<section class="panel suscripcion"><h2>Mi suscripción</h2><strong>Premium</strong><p>Agenda activa para ${NOMBRE_NEGOCIO} ${SUBTITULO_NEGOCIO}.</p></section>`;
 }
 
 function historialDeClienta(clienta) {
@@ -1108,7 +1110,7 @@ function mostrarConfiguracion() {
 
       <article class="panel config-card config-company">
         <h2>Logo de la empresa</h2>
-        <div class="logo-config-preview"><img src="${configuracion.logo || "assets/logo-oh-ma-belle-transparent.png"}" alt="Logo actual"></div>
+        <div class="logo-config-preview"><img src="${configuracion.logo || LOGO_PREDETERMINADO}" alt="Logo actual"></div>
         ${puedeEditar() ? `<form class="config-form" onsubmit="guardarConfiguracionEmpresa(event)">
           <label>Seleccionar imagen</label><input id="configLogo" type="file" accept="image/*">
           <div class="config-buttons"><button class="primary-action" type="submit">Guardar logo</button></div>
@@ -1206,7 +1208,7 @@ async function activarNotificaciones() {
 async function probarNotificacion() {
   if (Notification.permission !== "granted") return activarNotificaciones();
   const registro = await obtenerRegistroNotificaciones();
-  await registro.showNotification("Prueba de Oh, ma belle", {
+  await registro.showNotification(`Prueba de ${NOMBRE_NEGOCIO}`, {
     body: "Las notificaciones están funcionando en este celular.",
     icon: "assets/app-icon-192.png",
     badge: "assets/app-icon-192.png",
@@ -1426,7 +1428,7 @@ function abrirResumenInicio(tipo) {
   const titulo = esTurnos ? "Turnos de hoy" : "Cancelaciones de hoy";
   const contenido = lista.map(cita => `<button class="today-item" type="button" onclick="cerrarModalFormulario(); abrirDetalleCita(${cita.id})">
     <time>${cita.hora || "--:--"}</time>
-    <span><strong>${cita.cliente}</strong><small>${nombresServiciosCita(cita)} · ${cita.personal || "Rosa Polet"}</small></span>
+    <span><strong>${cita.cliente}</strong><small>${nombresServiciosCita(cita)} · ${cita.personal || "Sin asignar"}</small></span>
     <b>${dinero(cita.precio || 0)}</b>
   </button>`).join("") || `<div class="empty-summary"><strong>No hay ${esTurnos ? "turnos" : "cancelaciones"} hoy</strong><span>La información aparecerá aquí cuando exista.</span></div>`;
   abrirModal(titulo, `<div class="today-list">${contenido}</div><div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cerrar</button></div>`);
@@ -1437,7 +1439,7 @@ function contactarCancelacion(id) {
   if (!cita) return mostrarMensaje("Cita no encontrada", "Actualiza la agenda e inténtalo otra vez.", "alerta");
   const telefono = String(cita.telefono || "").replace(/\D/g, "");
   if (!/^\d{10}$/.test(telefono)) return mostrarMensaje("Teléfono incorrecto", "Se necesita un teléfono de 10 dígitos para contactar a la clienta.", "alerta");
-  const mensaje = `Hola ${cita.cliente}, somos de Oh, ma belle Belleza y Spa. Lamentamos la cancelación de tu cita de ${nombresServiciosCita(cita)}. Si deseas, con gusto podemos ayudarte a reprogramarla para otra fecha y horario.`;
+  const mensaje = `Hola ${cita.cliente}, somos de ${NOMBRE_NEGOCIO} ${SUBTITULO_NEGOCIO}. Lamentamos la cancelación de tu cita de ${nombresServiciosCita(cita)}. Si deseas, con gusto podemos ayudarte a reprogramarla para otra fecha y horario.`;
   location.href = `https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`;
 }
 
@@ -1459,7 +1461,7 @@ mostrarInicio = function (fecha = hoy()) {
       <div class="cancellation-list">${canceladas.map(cita => `<article class="cancellation-item">
         <div><strong>${cita.cliente}</strong><span>${nombresServiciosCita(cita)}</span></div>
         <div><small>Fecha original</small><b>${formatoFecha(cita.fecha)} · ${cita.hora}</b></div>
-        <div><small>Personal</small><b>${cita.personal || "Rosa Polet"}</b></div>
+        <div><small>Personal</small><b>${cita.personal || "Sin asignar"}</b></div>
         <button class="whatsapp-action" type="button" onclick="contactarCancelacion(${cita.id})">Contactar</button>
       </article>`).join("") || `<div class="empty-summary"><strong>No hay cancelaciones recientes</strong><span>Las cancelaciones aparecerán aquí.</span></div>`}</div>
     </section>
@@ -1490,7 +1492,11 @@ function detallesServiciosCita(cita) {
 }
 
 function nombresServiciosCita(cita) {
-  return detallesServiciosCita(cita).map(item => item.nombre).join(" + ");
+  return detallesServiciosCita(cita).map(nombreDetalleServicio).join(" + ");
+}
+
+function nombreDetalleServicio(item) {
+  return item?.detalle ? `${item.nombre} (${item.detalle})` : item?.nombre || "Servicio";
 }
 
 function duracionTotalCita(cita) {
@@ -1501,18 +1507,29 @@ function abrirModalCita(fecha = hoy(), citaId = null) {
   if (!exigirEdicion()) return;
   const cita = citaId === null ? null : citas.find(item => item.id === citaId);
   if (citaId !== null && !cita) return mostrarMensaje("Cita no encontrada", "Actualiza la página e inténtalo nuevamente.", "alerta");
-  const nombresPersonal = [...new Set(["Rosa Polet", cita?.personal, ...personal.filter(item => item.activo !== false).map(item => item.nombre)].filter(Boolean))];
+  const nombresPersonal = [...new Set([cita?.personal, ...personal.filter(item => item.activo !== false).map(item => item.nombre)].filter(Boolean))];
   const seleccionados = new Set(detallesServiciosCita(cita).map(item => item.nombre));
-  const metodosPago = ["Pago presencial/efectivo", "Transferencia bancaria", "Tarjeta"];
+  const detallesSeleccionados = detallesServiciosCita(cita).reduce((mapa, item) => {
+    if (item.detalle) mapa[item.nombre] = new Set(String(item.detalle).split(",").map(detalle => detalle.trim()).filter(Boolean));
+    return mapa;
+  }, {});
+  const metodosPago = ["Pago presencial/efectivo", "Transferencia bancaria"];
   const metodoActual = cita?.metodoPago || "";
-  if (metodoActual && !metodosPago.includes(metodoActual)) metodosPago.unshift(metodoActual);
+  if (metodoActual && metodoActual !== "Tarjeta" && !metodosPago.includes(metodoActual)) metodosPago.unshift(metodoActual);
   abrirModal(cita ? "Editar cita" : "Agregar cita", `<form class="modal-stack" novalidate onsubmit="guardarCitaModal(event, ${cita ? cita.id : "null"})">
     <label>Fecha</label><input type="date" id="modalCitaFecha" value="${cita?.fecha || fecha}" required>
     <label>Hora</label><input type="time" id="modalCitaHora" value="${cita?.hora || horaActual()}" required>
     <label>Cliente</label><input id="modalCitaCliente" value="${escaparAtributo(cita?.cliente)}" placeholder="Nombre de la clienta" required>
     <label>Teléfono</label><input id="modalCitaTelefono" type="tel" inputmode="numeric" maxlength="10" value="${escaparAtributo(cita?.telefono)}" placeholder="10 dígitos" oninput="this.value=this.value.replace(/\\D/g, '').slice(0, 10); actualizarClientaCita()" required>
     <div id="estadoClientaCita" class="client-match"></div>
-    <label>Servicios</label><div class="appointment-services">${servicios.map((servicio, indice) => `<label><input class="cita-servicio-check" type="checkbox" value="${indice}" ${seleccionados.has(servicio.nombre) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span><strong>${servicio.nombre}</strong><small>${servicio.duracion} min · ${dinero(servicio.precio)}</small></span></label>`).join("")}</div>
+    <label>Servicios</label><div class="appointment-services">${servicios.map((servicio, indice) => {
+      const detalles = Array.isArray(servicio.detalles) ? servicio.detalles : [];
+      const detalleActual = detallesSeleccionados[servicio.nombre] || new Set();
+      return `<div class="appointment-service-option">
+        <label><input class="cita-servicio-check" type="checkbox" value="${indice}" ${seleccionados.has(servicio.nombre) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span><strong>${servicio.nombre}</strong><small>${servicio.duracion} min · ${dinero(servicio.precio)}</small></span></label>
+        ${detalles.length ? `<div class="service-suboptions">${detalles.map(detalle => `<label><input class="cita-detalle-check" data-service-index="${indice}" type="checkbox" value="${escaparAtributo(detalle)}" ${detalleActual.has(detalle) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"> ${detalle}</label>`).join("")}</div>` : ""}
+      </div>`;
+    }).join("")}</div>
     <div id="resumenServiciosCita" class="appointment-summary"></div>
     <label>Personal</label><select id="modalCitaPersonal" required><option value="">Selecciona al personal</option>${nombresPersonal.map(nombre => `<option ${nombre === cita?.personal ? "selected" : ""}>${nombre}</option>`).join("")}</select>
     <label>Total (MXN)</label><input id="modalCitaPrecio" type="number" min="0.01" step="0.01" value="${valorParaEntrada(cita?.precio ?? 0)}" required>
@@ -1552,7 +1569,13 @@ function nombreComparable(valor) {
 function serviciosSeleccionadosFormulario() {
   return [...document.querySelectorAll(".cita-servicio-check:checked")].map(input => {
     const servicio = servicios[Number(input.value)];
-    return { nombre: servicio.nombre, duracion: Number(servicio.duracion), precio: Number(servicio.precio) };
+    const detalles = [...document.querySelectorAll(`.cita-detalle-check[data-service-index="${input.value}"]:checked`)].map(item => item.value);
+    return {
+      nombre: servicio.nombre,
+      detalle: detalles.join(", "),
+      duracion: Number(servicio.duracion),
+      precio: Number(servicio.precio)
+    };
   });
 }
 
@@ -1563,7 +1586,15 @@ function actualizarResumenServiciosCita(actualizarPrecio = true) {
   const total = subtotal;
   if (actualizarPrecio && document.getElementById("modalCitaPrecio")) document.getElementById("modalCitaPrecio").value = valorParaEntrada(total);
   const resumen = document.getElementById("resumenServiciosCita");
-  if (resumen) resumen.innerHTML = `<strong>${seleccion.length} servicio(s) · ${duracion} minutos</strong><span>${dinero(total)}</span>`;
+  document.querySelectorAll(".appointment-service-option").forEach((contenedor, indice) => {
+    const activo = document.querySelector(`.cita-servicio-check[value="${indice}"]`)?.checked;
+    contenedor.classList.toggle("servicio-elegido", !!activo);
+    contenedor.querySelectorAll(".cita-detalle-check").forEach(input => input.disabled = !activo);
+  });
+  if (resumen) {
+    const nombres = seleccion.map(nombreDetalleServicio).join(" + ");
+    resumen.innerHTML = `<strong>${seleccion.length} servicio(s) · ${duracion} minutos</strong><span>${dinero(total)}</span>${nombres ? `<small>${nombres}</small>` : ""}`;
+  }
 }
 
 function horaAMinutos(hora) {
@@ -1612,7 +1643,7 @@ function guardarCitaModal(event, citaId = null) {
     hora: document.getElementById("modalCitaHora").value,
     cliente: document.getElementById("modalCitaCliente").value.trim(),
     telefono,
-    servicio: serviciosDetalle.map(item => item.nombre).join(" + "),
+    servicio: serviciosDetalle.map(nombreDetalleServicio).join(" + "),
     serviciosDetalle,
     duracion: serviciosDetalle.reduce((suma, item) => suma + item.duracion, 0),
     precio: valorDesdeEntrada(document.getElementById("modalCitaPrecio").value),
@@ -1677,7 +1708,7 @@ function abrirDetalleCita(id) {
     <div class="detail-services"><strong>Servicios:</strong>${detallesServiciosCita(cita).map(item => `<div><span>${item.nombre}</span><b>${item.duracion} min · ${dinero(item.precio)}</b></div>`).join("")}</div>
     <p><strong>Duración total:</strong> ${duracionTotalCita(cita)} minutos</p>
     <p><strong>Fecha:</strong> ${formatoFecha(cita.fecha)} ${cita.hora}</p>
-    <p><strong>Personal:</strong> ${cita.personal || "Rosa Polet"}</p>
+    <p><strong>Personal:</strong> ${cita.personal || "Sin asignar"}</p>
     <p><strong>Precio:</strong> ${dinero(cita.precio)}</p>
     <p><strong>Método de pago:</strong> ${cita.metodoPago || "-"}</p>
     <p><strong>Anticipo:</strong> ${dinero(cita.anticipo || 0)}</p>
@@ -1714,7 +1745,7 @@ async function avisarClientaWhatsApp(id) {
   const enlaceConfirmacion = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}confirmar.html?token=${encodeURIComponent(cita.confirmacionToken)}`;
 
   const mensaje = [
-    `Hola ${cita.cliente}, te escribimos de Oh, ma belle Belleza y Spa.`,
+    `Hola ${cita.cliente}, te escribimos de ${NOMBRE_NEGOCIO} ${SUBTITULO_NEGOCIO}.`,
     "",
     "Te recordamos los datos de tu cita:",
     `Fecha: ${formatoFecha(cita.fecha)}`,
@@ -1831,7 +1862,7 @@ function mostrarTicketPago(id) {
   if (estadoVisualCita(cita).color !== "verde") return mostrarMensaje("Ticket aún no disponible", "Completa el pago y marca el servicio como realizado.", "alerta");
   const folio = String(cita.id).slice(-8).padStart(8, "0");
   abrirModal("Ticket de pago", `<article class="ticket-pago">
-    <div class="ticket-brand"><img src="${configuracion.logo || "assets/logo-oh-ma-belle-transparent.png"}" alt="Oh, ma belle"><strong>Oh, ma belle</strong><span>Belleza y Spa</span></div>
+    <div class="ticket-brand"><img src="${configuracion.logo || LOGO_PREDETERMINADO}" alt="${NOMBRE_NEGOCIO}"><strong>${NOMBRE_NEGOCIO}</strong><span>${SUBTITULO_NEGOCIO}</span></div>
     <div class="ticket-status">PAGADO</div>
     <div class="ticket-line"><span>Folio</span><b>#${folio}</b></div>
     <div class="ticket-line"><span>Fecha de pago</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div>
@@ -1841,7 +1872,7 @@ function mostrarTicketPago(id) {
     <div class="ticket-services">${detallesServiciosCita(cita).map(item => `<div><span>${item.nombre}<small>${item.duracion} min</small></span><b>${dinero(item.precio)}</b></div>`).join("")}</div>
     <div class="ticket-line"><span>Duración total</span><b>${duracionTotalCita(cita)} min</b></div>
     <div class="ticket-line"><span>Cita</span><b>${formatoFecha(cita.fecha)} · ${cita.hora}</b></div>
-    <div class="ticket-line"><span>Personal</span><b>${cita.personal || "Rosa Polet"}</b></div>
+    <div class="ticket-line"><span>Personal</span><b>${cita.personal || "Sin asignar"}</b></div>
     <div class="ticket-line"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div>
     <div class="ticket-divider"></div>
     <div class="ticket-total"><span>Total pagado</span><strong>${dinero(cita.precio)}</strong></div>
@@ -1854,11 +1885,11 @@ function imprimirTicket(id) {
   const cita = citas.find(item => item.id === id);
   if (!cita) return;
   const folio = String(cita.id).slice(-8).padStart(8, "0");
-  const logo = configuracion.logo || new URL("assets/logo-oh-ma-belle-transparent.png", window.location.href).href;
+  const logo = configuracion.logo || new URL(LOGO_PREDETERMINADO, window.location.href).href;
   const ventana = window.open("", "_blank", "width=420,height=700");
   if (!ventana) return mostrarMensaje("No se pudo imprimir", "Permite las ventanas emergentes para abrir el ticket.", "alerta");
   const serviciosTicket = detallesServiciosCita(cita).map(item => `<div class="linea"><span>${item.nombre}<small> · ${item.duracion} min</small></span><b>${dinero(item.precio)}</b></div>`).join("");
-  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket #${folio}</title><style>@page{size:80mm auto;margin:5mm}*{box-sizing:border-box}body{width:70mm;margin:0 auto;font-family:Arial,sans-serif;color:#272238}.marca{text-align:center}.marca img{width:52mm;height:24mm;object-fit:contain}.marca h1{font-size:20px;margin:2px}.marca p{margin:0;color:#746d7f}.pagado{width:max-content;margin:14px auto;padding:5px 12px;border:1px solid #2ca77a;color:#167854;border-radius:20px;font-weight:800}.linea,.total{display:flex;justify-content:space-between;gap:12px;padding:6px 0}.linea b{text-align:right}.linea small{display:block;color:#777}.separador{border-top:1px dashed #aaa;margin:9px 0}.total{font-size:18px;font-weight:800}.gracias{text-align:center;margin-top:20px;font-size:12px}</style></head><body><div class="marca"><img src="${logo}" alt="Logo"><h1>Oh, ma belle</h1><p>Belleza y Spa</p></div><div class="pagado">PAGADO</div><div class="linea"><span>Folio</span><b>#${folio}</b></div><div class="linea"><span>Fecha</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div><div class="separador"></div><div class="linea"><span>Clienta</span><b>${cita.cliente}</b></div><div class="separador"></div>${serviciosTicket}<div class="linea"><span>Duración total</span><b>${duracionTotalCita(cita)} min</b></div><div class="separador"></div><div class="linea"><span>Cita</span><b>${formatoFecha(cita.fecha)} ${cita.hora}</b></div><div class="linea"><span>Personal</span><b>${cita.personal || "Rosa Polet"}</b></div><div class="linea"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div><div class="separador"></div><div class="total"><span>Total</span><strong>${dinero(cita.precio)}</strong></div><p class="gracias">Gracias por tu visita</p></body></html>`);
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket #${folio}</title><style>@page{size:80mm auto;margin:5mm}*{box-sizing:border-box}body{width:70mm;margin:0 auto;font-family:Arial,sans-serif;color:#272238}.marca{text-align:center}.marca img{width:52mm;height:24mm;object-fit:contain}.marca h1{font-size:20px;margin:2px}.marca p{margin:0;color:#746d7f}.pagado{width:max-content;margin:14px auto;padding:5px 12px;border:1px solid #2ca77a;color:#167854;border-radius:20px;font-weight:800}.linea,.total{display:flex;justify-content:space-between;gap:12px;padding:6px 0}.linea b{text-align:right}.linea small{display:block;color:#777}.separador{border-top:1px dashed #aaa;margin:9px 0}.total{font-size:18px;font-weight:800}.gracias{text-align:center;margin-top:20px;font-size:12px}</style></head><body><div class="marca"><img src="${logo}" alt="Logo"><h1>${NOMBRE_NEGOCIO}</h1><p>${SUBTITULO_NEGOCIO}</p></div><div class="pagado">PAGADO</div><div class="linea"><span>Folio</span><b>#${folio}</b></div><div class="linea"><span>Fecha</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div><div class="separador"></div><div class="linea"><span>Clienta</span><b>${cita.cliente}</b></div><div class="separador"></div>${serviciosTicket}<div class="linea"><span>Duración total</span><b>${duracionTotalCita(cita)} min</b></div><div class="separador"></div><div class="linea"><span>Cita</span><b>${formatoFecha(cita.fecha)} ${cita.hora}</b></div><div class="linea"><span>Personal</span><b>${cita.personal || "Sin asignar"}</b></div><div class="linea"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div><div class="separador"></div><div class="total"><span>Total</span><strong>${dinero(cita.precio)}</strong></div><p class="gracias">Gracias por tu visita</p></body></html>`);
   ventana.document.close();
   setTimeout(() => ventana.print(), 300);
 }
@@ -1885,7 +1916,7 @@ async function crearImagenTicket(cita) {
   ctx.lineWidth = 5;
   ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
 
-  const logo = await cargarImagenTicket(configuracion.logo || "assets/logo-oh-ma-belle-transparent.png");
+  const logo = await cargarImagenTicket(configuracion.logo || LOGO_PREDETERMINADO);
   if (logo) ctx.drawImage(logo, 245, 55, 410, 150);
   ctx.textAlign = "center";
   ctx.fillStyle = "#342540";
@@ -1893,7 +1924,7 @@ async function crearImagenTicket(cita) {
   ctx.fillText("OH, MA BELLE", 450, 240);
   ctx.font = "24px Arial";
   ctx.fillStyle = "#806b70";
-  ctx.fillText("Belleza y Spa", 450, 278);
+  ctx.fillText(SUBTITULO_NEGOCIO, 450, 278);
 
   ctx.fillStyle = "#e9f8ef";
   ctx.fillRect(325, 310, 250, 58);
@@ -1932,7 +1963,7 @@ async function crearImagenTicket(cita) {
   separador();
   linea("Duración total", `${duracionTotalCita(cita)} min`);
   linea("Cita", `${formatoFecha(cita.fecha)} · ${cita.hora}`);
-  linea("Personal", cita.personal || "Rosa Polet");
+  linea("Personal", cita.personal || "Sin asignar");
   linea("Método", cita.metodoPago || "No especificado");
   separador();
   ctx.font = "700 28px Arial";
@@ -1955,7 +1986,7 @@ async function enviarTicketCliente(id) {
   mostrarMensaje("Preparando ticket", "Se abrirá WhatsApp con el número de la clienta registrada.", "ok");
   const imagen = await crearImagenTicket(cita);
   if (!imagen) return mostrarMensaje("No se pudo crear", "Inténtalo nuevamente.", "alerta");
-  const archivo = new File([imagen], `ticket-oh-ma-belle-${cita.id}.png`, { type: "image/png" });
+  const archivo = new File([imagen], `ticket-beloved-body-${cita.id}.png`, { type: "image/png" });
   const enlace = URL.createObjectURL(imagen);
   const descarga = document.createElement("a");
   descarga.href = enlace;
@@ -1963,7 +1994,7 @@ async function enviarTicketCliente(id) {
   descarga.click();
   setTimeout(() => URL.revokeObjectURL(enlace), 2000);
   const mensaje = [
-    `Hola ${cita.cliente}, te compartimos tu comprobante de pago de Oh, ma belle Belleza y Spa.`,
+    `Hola ${cita.cliente}, te compartimos tu comprobante de pago de ${NOMBRE_NEGOCIO} ${SUBTITULO_NEGOCIO}.`,
     "",
     `Servicio${detallesServiciosCita(cita).length > 1 ? "s" : ""}: ${nombresServiciosCita(cita)}`,
     `Fecha: ${formatoFecha(cita.fecha)} ${cita.hora}`,
@@ -1997,10 +2028,11 @@ mostrarServicios = function (vista = vistaServiciosActual) {
 function vistaServicios() {
   if (!servicios.length) return `<div class="empty-state"><span class="empty-icon services-icon nav-icon"></span><h2>No hay servicios registrados</h2><p>Comienza agregando servicios con el boton "Nuevo Servicio"</p></div>`;
   return `<div class="cards-grid">${servicios.map((servicio, indice) => `<article class="service-card">
-    <div class="service-image ${servicio.color}" ${servicio.imagen ? `style="background-image:url('${servicio.imagen}')"` : ""}></div>
+    <div class="service-image service-image-empty ${servicio.color}"><span>${servicio.nombre}</span></div>
     <div class="service-body">
       <h3>${servicio.nombre}</h3>
       <p class="service-time">${servicio.duracion} minutos</p>
+      ${servicio.detalles?.length ? `<div class="service-detail-tags">${servicio.detalles.map(detalle => `<span>${detalle}</span>`).join("")}</div>` : `<p>Sin detalles agregados.</p>`}
       <div class="service-foot">
         <strong>${dinero(servicio.precio)}</strong>
         ${puedeEditar() ? `<span class="service-actions"><button class="edit-service" type="button" onclick="abrirEditarServicio(${indice})">Editar</button><button class="trash" type="button" onclick="eliminarServicio(${indice})">Eliminar</button></span>` : ""}
@@ -2090,9 +2122,9 @@ function abrirNuevoServicio(indice = null) {
   const servicio = indice !== null ? servicios[indice] : { horarios: horariosBase(), capacidad: 1, duracion: 30, precio: 0, anticipo: 0, pagoEfectivo: true };
   abrirModal(indice !== null ? "Editar Servicio" : "Nuevo Servicio", `<form class="modal-stack" novalidate onsubmit="guardarServicioModal(event, ${indice === null ? "null" : indice})">
     <label>Nombre del Servicio</label><input id="servicioNombreModal" value="${servicio.nombre || ""}" required>
-    <label>Imagen del Servicio</label><input id="servicioImagenModal" type="file" accept="image/*">
     <label>Precio (MXN)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="servicioPrecioModal" type="number" min="0.01" step="0.01" value="${valorParaEntrada(servicio.precio || 0)}" required></div>
     <label>Duración (minutos)</label><input id="servicioDuracionModal" type="number" min="1" value="${servicio.duracion || 30}" required>
+    <label>Detalles para elegir (uno por línea)</label><textarea id="servicioDetallesModal" rows="4" placeholder="Ejemplo: Efectos (luz)&#10;Pedrería (blandas)">${(servicio.detalles || []).join("\n")}</textarea>
     <h3>Personal Asignado</h3>
     <div class="check-grid">${personal.map(p => `<label class="check-line"><input class="servicioPersonalModal" type="checkbox" value="${p.nombre}" ${(servicio.personalAsignado || []).includes(p.nombre) ? "checked" : ""}> ${p.nombre}</label>`).join("") || `<p class="texto-suave">No hay personal agregado todavía.</p>`}</div>
     <h3>Horarios</h3>${camposHorarios("servicio", servicio.horarios || horariosBase())}
@@ -2108,13 +2140,12 @@ function abrirEditarServicio(indice) {
 function guardarServicioModal(event, indice) {
   event.preventDefault();
   if (!exigirEdicion()) return;
-  leerArchivo(document.getElementById("servicioImagenModal"), imagenNueva => {
     const actual = indice !== null ? servicios[indice] : {};
     const servicio = {
       nombre: document.getElementById("servicioNombreModal").value.trim(),
       descripcion: actual.descripcion || "",
       confirmacion: actual.confirmacion || "",
-      imagen: imagenNueva || actual.imagen || "",
+      imagen: "",
       precio: valorDesdeEntrada(document.getElementById("servicioPrecioModal").value),
       capacidad: actual.capacidad || 1,
       anticipo: actual.anticipo || 0,
@@ -2122,6 +2153,7 @@ function guardarServicioModal(event, indice) {
       pagoEfectivo: actual.pagoEfectivo !== false,
       pagoTransferencia: !!actual.pagoTransferencia,
       personalAsignado: [...document.querySelectorAll(".servicioPersonalModal:checked")].map(item => item.value),
+      detalles: document.getElementById("servicioDetallesModal").value.split("\n").map(item => item.trim()).filter(Boolean),
       horarios: leerHorarios("servicio"),
       color: actual.color || ["rosa", "dorado", "uva", "verde"][servicios.length % 4]
     };
@@ -2131,5 +2163,4 @@ function guardarServicioModal(event, indice) {
     guardar();
     cerrarModalFormulario();
     mostrarServicios("servicios");
-  });
 }

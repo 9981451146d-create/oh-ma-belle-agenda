@@ -1,4 +1,4 @@
-const CACHE = "oh-ma-belle-pwa-v22";
+const CACHE = "beloved-body-pwa-v23";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -6,7 +6,7 @@ const ARCHIVOS = [
   "./style.css",
   "./script.js",
   "./manifest.webmanifest",
-  "./assets/logo-oh-ma-belle-transparent.png",
+  "./assets/logo-beloved-body.png",
   "./assets/user-icon-transparent.png",
   "./assets/app-icon-192.png",
   "./assets/app-icon-512.png",
@@ -55,7 +55,7 @@ self.addEventListener("fetch", event => {
 self.addEventListener("push", event => {
   let datos = {};
   try { datos = event.data ? event.data.json() : {}; } catch { datos = { body: event.data?.text() || "Tienes una cita próxima." }; }
-  event.waitUntil(self.registration.showNotification(datos.title || "Oh, ma belle", {
+  event.waitUntil(self.registration.showNotification(datos.title || "Beloved Body", {
     body: datos.body || "Tienes una cita próxima.",
     icon: "assets/app-icon-192.png",
     badge: "assets/app-icon-192.png",
