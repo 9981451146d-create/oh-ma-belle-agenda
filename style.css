@@ -1847,6 +1847,10 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
   font-weight: 800;
 }
 
+.service-detail-tags span strong {
+  color: #4b3920;
+}
+
 .service-foot {
   display: flex;
   align-items: center;
@@ -2380,6 +2384,17 @@ body.modo-oscuro .service-detail-tags span {
   color: #ead8bd;
 }
 
+body.modo-oscuro .service-subgroup > strong,
+body.modo-oscuro .service-detail-tags span strong {
+  color: #f7e5c8;
+}
+
+body.modo-oscuro .service-suboptions .cita-detalle-text {
+  background: #111521;
+  border-color: #38402f;
+  color: #eef2ff;
+}
+
 body.modo-oscuro .history-stats strong,
 body.modo-oscuro .history-amount,
 body.modo-oscuro .history-info h3 {
@@ -2544,8 +2559,17 @@ body.modo-oscuro .client-notes {
 .appointment-services small { color: var(--muted); }
 .service-suboptions {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   padding: 0 12px 12px 40px;
+}
+.service-subgroup {
+  display: grid;
+  gap: 5px;
+}
+.service-subgroup > strong {
+  color: #6f5a38;
+  font-size: 12px;
+  text-transform: uppercase;
 }
 .service-suboptions label {
   min-height: 34px;
@@ -2554,6 +2578,16 @@ body.modo-oscuro .client-notes {
   background: #f8f1e7;
   color: #5f5141;
   font-size: 13px;
+}
+.service-suboptions input[type="text"],
+.service-suboptions .cita-detalle-text {
+  min-height: 38px;
+  width: 100%;
+  border: 1px solid #eadfca;
+  border-radius: 8px;
+  background: #fffaf2;
+  padding: 8px 10px;
+  color: #4b4036;
 }
 .appointment-service-option:not(.servicio-elegido) .service-suboptions {
   opacity: .45;

@@ -6,6 +6,11 @@ const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftq
 const NOMBRE_NEGOCIO = "Beloved Body";
 const SUBTITULO_NEGOCIO = "Salón Spa";
 const LOGO_PREDETERMINADO = "assets/logo-beloved-body.png";
+const detallesManicureBase = [
+  { grupo: "Efectos", opciones: ["Azul", "Morado", "Rojo"] },
+  { grupo: "Detalles", opciones: ["Fino", "Delgado"] },
+  { grupo: "Otros", opciones: [] }
+];
 const configuracionBase = {
   logo: LOGO_PREDETERMINADO,
   moneda: "MXN",
@@ -20,7 +25,7 @@ const usuariosBase = [
 
 const serviciosBase = [
   { nombre: "Pedicure", duracion: 60, precio: 350, color: "rosa" },
-  { nombre: "Manicure", duracion: 45, precio: 280, color: "dorado", detalles: ["Efectos (luz)", "Pedrería (blandas)"] },
+  { nombre: "Manicure", duracion: 45, precio: 280, color: "dorado", detalles: detallesManicureBase },
   { nombre: "Pestañas", duracion: 90, precio: 650, color: "uva" },
   { nombre: "Masajes", duracion: 60, precio: 500, color: "verde" },
   { nombre: "Cejas", duracion: 30, precio: 180, color: "rosa" },
@@ -315,9 +320,7 @@ function normalizarDatos() {
     pagoTransferencia: !!servicio.pagoTransferencia,
     color: servicio.color || ["rosa", "dorado", "uva", "verde"][indice % 4],
     personalAsignado: Array.isArray(servicio.personalAsignado) ? servicio.personalAsignado : [],
-    detalles: Array.isArray(servicio.detalles) && servicio.detalles.length
-      ? servicio.detalles.map(item => String(item).trim()).filter(Boolean)
-      : ((servicio.nombre || "").toLowerCase() === "manicure" ? ["Efectos (luz)", "Pedrería (blandas)"] : []),
+    detalles: normalizarDetallesServicio(servicio),
     horarios: normalizarHorarios(servicio.horarios)
   }));
   personal = personal.filter(persona => !personalRetirado.includes(nombreComparable(persona?.nombre))).map(persona => ({
@@ -1210,8 +1213,8 @@ async function probarNotificacion() {
   const registro = await obtenerRegistroNotificaciones();
   await registro.showNotification(`Prueba de ${NOMBRE_NEGOCIO}`, {
     body: "Las notificaciones están funcionando en este celular.",
-    icon: "assets/app-icon-192.png",
-    badge: "assets/app-icon-192.png",
+    icon: "assets/beloved-body-icon-192.png",
+    badge: "assets/beloved-body-icon-192.png",
     tag: "prueba-notificaciones"
   });
 }
@@ -1523,11 +1526,14 @@ function abrirModalCita(fecha = hoy(), citaId = null) {
     <label>Teléfono</label><input id="modalCitaTelefono" type="tel" inputmode="numeric" maxlength="10" value="${escaparAtributo(cita?.telefono)}" placeholder="10 dígitos" oninput="this.value=this.value.replace(/\\D/g, '').slice(0, 10); actualizarClientaCita()" required>
     <div id="estadoClientaCita" class="client-match"></div>
     <label>Servicios</label><div class="appointment-services">${servicios.map((servicio, indice) => {
-      const detalles = Array.isArray(servicio.detalles) ? servicio.detalles : [];
+      const detalles = normalizarDetallesServicio(servicio);
       const detalleActual = detallesSeleccionados[servicio.nombre] || new Set();
       return `<div class="appointment-service-option">
         <label><input class="cita-servicio-check" type="checkbox" value="${indice}" ${seleccionados.has(servicio.nombre) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span><strong>${servicio.nombre}</strong><small>${servicio.duracion} min · ${dinero(servicio.precio)}</small></span></label>
-        ${detalles.length ? `<div class="service-suboptions">${detalles.map(detalle => `<label><input class="cita-detalle-check" data-service-index="${indice}" type="checkbox" value="${escaparAtributo(detalle)}" ${detalleActual.has(detalle) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"> ${detalle}</label>`).join("")}</div>` : ""}
+        ${detalles.length ? `<div class="service-suboptions">${detalles.map(grupo => `<div class="service-subgroup"><strong>${grupo.grupo}</strong>${grupo.opciones.length ? grupo.opciones.map(opcion => {
+          const valor = detalleSeleccionadoValor(grupo.grupo, opcion);
+          return `<label><input class="cita-detalle-check" data-service-index="${indice}" type="checkbox" value="${escaparAtributo(valor)}" ${detalleActual.has(valor) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"> ${opcion}</label>`;
+        }).join("") : `<input class="cita-detalle-text" data-service-index="${indice}" data-group="${escaparAtributo(grupo.grupo)}" value="${escaparAtributo([...detalleActual].find(item => item.startsWith(`${grupo.grupo}: `))?.replace(`${grupo.grupo}: `, "") || "")}" placeholder="Escribe otro detalle" oninput="actualizarResumenServiciosCita()">`}</div>`).join("")}</div>` : ""}
       </div>`;
     }).join("")}</div>
     <div id="resumenServiciosCita" class="appointment-summary"></div>
@@ -1566,10 +1572,49 @@ function nombreComparable(valor) {
   return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
 }
 
+function clonarDetalles(detalles) {
+  return detalles.map(item => ({ grupo: item.grupo, opciones: [...item.opciones] }));
+}
+
+function normalizarDetallesServicio(servicio = {}) {
+  const nombre = nombreComparable(servicio.nombre);
+  if (nombre === "manicure") return clonarDetalles(detallesManicureBase);
+  if (!Array.isArray(servicio.detalles)) return [];
+  if (servicio.detalles.some(item => item && typeof item === "object")) {
+    return servicio.detalles.map(item => ({
+      grupo: String(item.grupo || "Detalles").trim(),
+      opciones: Array.isArray(item.opciones) ? item.opciones.map(opcion => String(opcion).trim()).filter(Boolean) : []
+    })).filter(item => item.grupo);
+  }
+  const opciones = servicio.detalles.map(item => String(item).trim()).filter(Boolean);
+  return opciones.length ? [{ grupo: "Detalles", opciones }] : [];
+}
+
+function textoDetallesServicio(detalles = []) {
+  return normalizarDetallesServicio({ detalles }).map(item => item.opciones.length ? `${item.grupo}: ${item.opciones.join(", ")}` : `${item.grupo}:`).join("\n");
+}
+
+function leerDetallesServicioTexto(texto) {
+  return String(texto || "").split("\n").map(linea => linea.trim()).filter(Boolean).map(linea => {
+    const partes = linea.split(":");
+    if (partes.length === 1) return { grupo: "Detalles", opciones: [linea] };
+    const grupo = partes.shift().trim();
+    const opciones = partes.join(":").split(",").map(item => item.trim()).filter(Boolean);
+    return { grupo, opciones };
+  }).filter(item => item.grupo);
+}
+
+function detalleSeleccionadoValor(grupo, opcion = "") {
+  const limpio = String(opcion || "").trim();
+  return limpio ? `${grupo}: ${limpio}` : "";
+}
+
 function serviciosSeleccionadosFormulario() {
   return [...document.querySelectorAll(".cita-servicio-check:checked")].map(input => {
     const servicio = servicios[Number(input.value)];
-    const detalles = [...document.querySelectorAll(`.cita-detalle-check[data-service-index="${input.value}"]:checked`)].map(item => item.value);
+    const detallesChecks = [...document.querySelectorAll(`.cita-detalle-check[data-service-index="${input.value}"]:checked`)].map(item => item.value);
+    const detallesTexto = [...document.querySelectorAll(`.cita-detalle-text[data-service-index="${input.value}"]`)].map(item => detalleSeleccionadoValor(item.dataset.group || "Otros", item.value)).filter(Boolean);
+    const detalles = [...detallesChecks, ...detallesTexto];
     return {
       nombre: servicio.nombre,
       detalle: detalles.join(", "),
@@ -1590,6 +1635,7 @@ function actualizarResumenServiciosCita(actualizarPrecio = true) {
     const activo = document.querySelector(`.cita-servicio-check[value="${indice}"]`)?.checked;
     contenedor.classList.toggle("servicio-elegido", !!activo);
     contenedor.querySelectorAll(".cita-detalle-check").forEach(input => input.disabled = !activo);
+    contenedor.querySelectorAll(".cita-detalle-text").forEach(input => input.disabled = !activo);
   });
   if (resumen) {
     const nombres = seleccion.map(nombreDetalleServicio).join(" + ");
@@ -2032,7 +2078,7 @@ function vistaServicios() {
     <div class="service-body">
       <h3>${servicio.nombre}</h3>
       <p class="service-time">${servicio.duracion} minutos</p>
-      ${servicio.detalles?.length ? `<div class="service-detail-tags">${servicio.detalles.map(detalle => `<span>${detalle}</span>`).join("")}</div>` : `<p>Sin detalles agregados.</p>`}
+      ${normalizarDetallesServicio(servicio).length ? `<div class="service-detail-tags">${normalizarDetallesServicio(servicio).map(grupo => `<span><strong>${grupo.grupo}</strong>${grupo.opciones.length ? ` · ${grupo.opciones.join(", ")}` : ""}</span>`).join("")}</div>` : `<p>Sin detalles agregados.</p>`}
       <div class="service-foot">
         <strong>${dinero(servicio.precio)}</strong>
         ${puedeEditar() ? `<span class="service-actions"><button class="edit-service" type="button" onclick="abrirEditarServicio(${indice})">Editar</button><button class="trash" type="button" onclick="eliminarServicio(${indice})">Eliminar</button></span>` : ""}
@@ -2124,7 +2170,7 @@ function abrirNuevoServicio(indice = null) {
     <label>Nombre del Servicio</label><input id="servicioNombreModal" value="${servicio.nombre || ""}" required>
     <label>Precio (MXN)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="servicioPrecioModal" type="number" min="0.01" step="0.01" value="${valorParaEntrada(servicio.precio || 0)}" required></div>
     <label>Duración (minutos)</label><input id="servicioDuracionModal" type="number" min="1" value="${servicio.duracion || 30}" required>
-    <label>Detalles para elegir (uno por línea)</label><textarea id="servicioDetallesModal" rows="4" placeholder="Ejemplo: Efectos (luz)&#10;Pedrería (blandas)">${(servicio.detalles || []).join("\n")}</textarea>
+    <label>Detalles para elegir</label><textarea id="servicioDetallesModal" rows="5" placeholder="Ejemplo:&#10;Efectos: Azul, Morado, Rojo&#10;Detalles: Fino, Delgado&#10;Otros:">${textoDetallesServicio(servicio.detalles || [])}</textarea>
     <h3>Personal Asignado</h3>
     <div class="check-grid">${personal.map(p => `<label class="check-line"><input class="servicioPersonalModal" type="checkbox" value="${p.nombre}" ${(servicio.personalAsignado || []).includes(p.nombre) ? "checked" : ""}> ${p.nombre}</label>`).join("") || `<p class="texto-suave">No hay personal agregado todavía.</p>`}</div>
     <h3>Horarios</h3>${camposHorarios("servicio", servicio.horarios || horariosBase())}
@@ -2153,7 +2199,7 @@ function guardarServicioModal(event, indice) {
       pagoEfectivo: actual.pagoEfectivo !== false,
       pagoTransferencia: !!actual.pagoTransferencia,
       personalAsignado: [...document.querySelectorAll(".servicioPersonalModal:checked")].map(item => item.value),
-      detalles: document.getElementById("servicioDetallesModal").value.split("\n").map(item => item.trim()).filter(Boolean),
+      detalles: leerDetallesServicioTexto(document.getElementById("servicioDetallesModal").value),
       horarios: leerHorarios("servicio"),
       color: actual.color || ["rosa", "dorado", "uva", "verde"][servicios.length % 4]
     };

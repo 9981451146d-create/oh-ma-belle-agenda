@@ -1,4 +1,4 @@
-const CACHE = "beloved-body-pwa-v23";
+const CACHE = "beloved-body-pwa-v24";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -8,8 +8,9 @@ const ARCHIVOS = [
   "./manifest.webmanifest",
   "./assets/logo-beloved-body.png",
   "./assets/user-icon-transparent.png",
-  "./assets/app-icon-192.png",
-  "./assets/app-icon-512.png",
+  "./assets/beloved-body-icon-192.png",
+  "./assets/beloved-body-icon-512.png",
+  "./assets/beloved-body-icon-maskable-512.png",
   "./assets/sounds/intro.wav",
   "./assets/sounds/tap.wav",
   "./assets/sounds/success.wav",
@@ -57,8 +58,8 @@ self.addEventListener("push", event => {
   try { datos = event.data ? event.data.json() : {}; } catch { datos = { body: event.data?.text() || "Tienes una cita próxima." }; }
   event.waitUntil(self.registration.showNotification(datos.title || "Beloved Body", {
     body: datos.body || "Tienes una cita próxima.",
-    icon: "assets/app-icon-192.png",
-    badge: "assets/app-icon-192.png",
+    icon: "assets/beloved-body-icon-192.png",
+    badge: "assets/beloved-body-icon-192.png",
     tag: datos.tag || "recordatorio-cita",
     data: { url: datos.url || "./" },
     vibrate: [300, 120, 300, 120, 450],
