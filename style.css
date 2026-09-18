@@ -2736,6 +2736,23 @@ body.modo-oscuro .client-notes {
   font-size: 12px;
   text-transform: uppercase;
 }
+.service-dependent-options {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: -2px 0 5px 28px;
+  padding: 12px;
+  border-left: 3px solid #d5b47c;
+  border-radius: 0 7px 7px 0;
+  background: #fffaf2;
+}
+.service-dependent-options[hidden] { display: none; }
+.service-dependent-options > strong {
+  grid-column: 1 / -1;
+  color: #815f2d;
+  font-size: 12px;
+}
 .service-suboptions label {
   min-height: 34px;
   align-items: flex-start;
@@ -3173,8 +3190,13 @@ body.modo-oscuro .client-notes {
   }
 
   .appointment-services,
-  .service-subgroup {
+  .service-subgroup,
+  .service-dependent-options {
     grid-template-columns: 1fr;
+  }
+
+  .service-dependent-options {
+    margin-left: 12px;
   }
 
   .modal-actions {

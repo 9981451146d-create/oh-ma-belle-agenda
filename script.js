@@ -6,34 +6,43 @@ const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftq
 const NOMBRE_NEGOCIO = "Beloved Body";
 const SUBTITULO_NEGOCIO = "Salón Spa";
 const LOGO_PREDETERMINADO = "assets/logo-beloved-body.png";
-const MIGRACION_DATOS_ACTUAL = "20260918-catalogo-completo-domingo";
+const MIGRACION_DATOS_ACTUAL = "20260918-catalogo-jerarquico-domingo";
 const opcionServicio = (nombre, precio, duracion, nota = "") => ({ nombre, precio, duracion, nota });
+const opcionConVariantes = (nombre, subgrupo, subopciones) => ({ nombre, precio: 0, duracion: 0, subgrupo, subopciones });
 const detallesManicureBase = [
   {
     grupo: "Elige el servicio",
     seleccion: "una",
     opciones: [
-      opcionServicio("Soft Gel · 1 a 5 colores", 390, 90),
+      opcionConVariantes("Soft Gel", "Cantidad de colores", [
+        opcionServicio("1 a 5 colores", 390, 90)
+      ]),
       opcionServicio("Rubber", 430, 75),
       opcionServicio("Builder", 450, 90),
-      opcionServicio("Acrílico · 1 y 2 cortas", 400, 120),
-      opcionServicio("Acrílico · 3 y 4 medianas", 500, 120),
-      opcionServicio("Acrílico · 5 y 6 largas", 650, 135),
-      opcionServicio("Acrílico · 7 y 8 extralargas", 750, 150),
-      opcionServicio("Mani Spa · Básico", 350, 45),
-      opcionServicio("Mani Spa · Gel", 150, 30),
-      opcionServicio("Mani Spa · Básico + Gel", 500, 60),
-      opcionServicio("Mani Spa · Deluxe", 450, 60),
-      opcionServicio("Mani Spa · Deluxe + Gel", 600, 75),
-      opcionServicio("Mani Spa · Premium", 550, 75),
-      opcionServicio("Mani Spa · Premium + Gel", 700, 90),
-      opcionServicio("Pedi Spa · Básico", 450, 60),
-      opcionServicio("Pedi Spa · Gel", 200, 30),
-      opcionServicio("Pedi Spa · Básico + Gel", 600, 75),
-      opcionServicio("Pedi Spa · Deluxe", 550, 75),
-      opcionServicio("Pedi Spa · Deluxe + Gel", 750, 90),
-      opcionServicio("Pedi Spa · Premium", 650, 90),
-      opcionServicio("Pedi Spa · Premium + Gel", 850, 105)
+      opcionConVariantes("Acrílico", "Largo", [
+        opcionServicio("1 y 2 · Cortas", 400, 120),
+        opcionServicio("3 y 4 · Medianas", 500, 120),
+        opcionServicio("5 y 6 · Largas", 650, 135),
+        opcionServicio("7 y 8 · Extralargas", 750, 150)
+      ]),
+      opcionConVariantes("Mani Spa", "Nivel y acabado", [
+        opcionServicio("Básico", 350, 45),
+        opcionServicio("Gel", 150, 30),
+        opcionServicio("Básico + Gel", 500, 60),
+        opcionServicio("Deluxe", 450, 60),
+        opcionServicio("Deluxe + Gel", 600, 75),
+        opcionServicio("Premium", 550, 75),
+        opcionServicio("Premium + Gel", 700, 90)
+      ]),
+      opcionConVariantes("Pedi Spa", "Nivel y acabado", [
+        opcionServicio("Básico", 450, 60),
+        opcionServicio("Gel", 200, 30),
+        opcionServicio("Básico + Gel", 600, 75),
+        opcionServicio("Deluxe", 550, 75),
+        opcionServicio("Deluxe + Gel", 750, 90),
+        opcionServicio("Premium", 650, 90),
+        opcionServicio("Premium + Gel", 850, 105)
+      ])
     ]
   },
   {
@@ -1748,12 +1757,7 @@ function abrirModalCita(fecha = hoy(), citaId = null) {
       const detalleActual = detallesSeleccionados[servicio.nombre] || new Set();
       return `<div class="appointment-service-option">
         <label><input class="cita-servicio-check" type="checkbox" value="${indice}" ${seleccionados.has(servicio.nombre) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span><strong>${servicio.nombre}</strong><small>Desde ${dinero(servicio.precio)} · elige una opción</small></span></label>
-        ${detalles.length ? `<div class="service-suboptions">${detalles.map((grupo, grupoIndice) => `<div class="service-subgroup"><strong>${grupo.grupo}</strong>${grupo.opciones.length ? grupo.opciones.map(opcionOriginal => {
-          const opcion = datoOpcion(opcionOriginal);
-          const valor = detalleSeleccionadoValor(grupo.grupo, opcion);
-          const tipo = grupo.seleccion === "una" ? "radio" : "checkbox";
-          return `<label><input class="cita-detalle-check" data-service-index="${indice}" data-price="${opcion.precio}" data-duration="${opcion.duracion}" data-option-name="${escaparAtributo(opcion.nombre)}" data-additive="${grupo.seleccion === "varias"}" name="servicio-${indice}-grupo-${grupoIndice}" type="${tipo}" value="${escaparAtributo(valor)}" ${detalleActual.has(valor) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span>${opcion.nombre}<small>${dinero(opcion.precio)} · ${opcion.duracion} min${opcion.nota ? ` · ${opcion.nota}` : ""}</small></span></label>`;
-        }).join("") : `<input class="cita-detalle-text" data-service-index="${indice}" data-group="${escaparAtributo(grupo.grupo)}" value="${escaparAtributo([...detalleActual].find(item => item.startsWith(`${grupo.grupo}: `))?.replace(`${grupo.grupo}: `, "") || "")}" placeholder="Notas u observaciones" oninput="actualizarResumenServiciosCita()">`}</div>`).join("")}</div>` : ""}
+        ${detalles.length ? `<div class="service-suboptions">${detalles.map((grupo, grupoIndice) => `<div class="service-subgroup"><strong>${grupo.grupo}</strong>${renderOpcionesServicio(grupo, indice, grupoIndice, detalleActual)}</div>`).join("")}</div>` : ""}
       </div>`;
     }).join("")}</div>
     <div id="resumenServiciosCita" class="appointment-summary"></div>
@@ -1796,7 +1800,10 @@ function clonarDetalles(detalles) {
   return detalles.map(item => ({
     grupo: item.grupo,
     seleccion: item.seleccion || "varias",
-    opciones: (item.opciones || []).map(opcion => typeof opcion === "object" ? { ...opcion } : opcion)
+    opciones: (item.opciones || []).map(opcion => typeof opcion === "object" ? {
+      ...opcion,
+      subopciones: Array.isArray(opcion.subopciones) ? opcion.subopciones.map(subopcion => ({ ...subopcion })) : []
+    } : opcion)
   }));
 }
 
@@ -1813,8 +1820,10 @@ function datoOpcion(opcion) {
     nombre: String(opcion.nombre || "Opción").trim(),
     precio: Number(opcion.precio || 0),
     duracion: Number(opcion.duracion || 0),
-    nota: String(opcion.nota || "").trim()
-  } : { nombre: String(opcion || "").trim(), precio: 0, duracion: 0, nota: "" };
+    nota: String(opcion.nota || "").trim(),
+    subgrupo: String(opcion.subgrupo || "Elige una variante").trim(),
+    subopciones: Array.isArray(opcion.subopciones) ? opcion.subopciones.map(datoOpcion).filter(item => item.nombre) : []
+  } : { nombre: String(opcion || "").trim(), precio: 0, duracion: 0, nota: "", subgrupo: "", subopciones: [] };
 }
 
 function normalizarDetallesServicio(servicio = {}) {
@@ -1851,14 +1860,34 @@ function detalleSeleccionadoValor(grupo, opcion = "") {
   return limpio ? `${grupo}: ${limpio}` : "";
 }
 
+function renderOpcionesServicio(grupo, indiceServicio, indiceGrupo, detalleActual) {
+  if (!grupo.opciones.length) {
+    return `<input class="cita-detalle-text" data-service-index="${indiceServicio}" data-group="${escaparAtributo(grupo.grupo)}" value="${escaparAtributo([...detalleActual].find(item => item.startsWith(`${grupo.grupo}: `))?.replace(`${grupo.grupo}: `, "") || "")}" placeholder="Notas u observaciones" oninput="actualizarResumenServiciosCita()">`;
+  }
+  return grupo.opciones.map((opcionOriginal, indiceOpcion) => {
+    const opcion = datoOpcion(opcionOriginal);
+    const valor = detalleSeleccionadoValor(grupo.grupo, opcion);
+    const tipo = grupo.seleccion === "una" ? "radio" : "checkbox";
+    const tieneVariantes = opcion.subopciones.length > 0;
+    const principal = `<label class="service-choice ${tieneVariantes ? "has-children" : ""}"><input class="cita-detalle-check" data-service-index="${indiceServicio}" data-level="parent" data-has-children="${tieneVariantes}" data-price="${opcion.precio}" data-duration="${opcion.duracion}" data-additive="${grupo.seleccion === "varias"}" name="servicio-${indiceServicio}-grupo-${indiceGrupo}" type="${tipo}" value="${escaparAtributo(valor)}" ${detalleActual.has(valor) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span>${opcion.nombre}${tieneVariantes ? `<small>Selecciona ${opcion.subgrupo.toLowerCase()}</small>` : `<small>${dinero(opcion.precio)} · ${opcion.duracion} min${opcion.nota ? ` · ${opcion.nota}` : ""}</small>`}</span></label>`;
+    if (!tieneVariantes) return principal;
+    const hijas = opcion.subopciones.map((subopcionOriginal, indiceHija) => {
+      const subopcion = datoOpcion(subopcionOriginal);
+      const valorHija = detalleSeleccionadoValor(opcion.subgrupo, subopcion);
+      return `<label><input class="cita-detalle-check cita-subdetalle-check" data-service-index="${indiceServicio}" data-level="child" data-parent-value="${escaparAtributo(valor)}" data-price="${subopcion.precio}" data-duration="${subopcion.duracion}" data-additive="false" name="servicio-${indiceServicio}-grupo-${indiceGrupo}-opcion-${indiceOpcion}" type="radio" value="${escaparAtributo(valorHija)}" ${detalleActual.has(valorHija) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span>${subopcion.nombre}<small>${dinero(subopcion.precio)} · ${subopcion.duracion} min${subopcion.nota ? ` · ${subopcion.nota}` : ""}</small></span></label>`;
+    }).join("");
+    return `${principal}<div class="service-dependent-options" data-parent-value="${escaparAtributo(valor)}"><strong>${opcion.subgrupo}</strong>${hijas}</div>`;
+  }).join("");
+}
+
 function serviciosSeleccionadosFormulario() {
   return [...document.querySelectorAll(".cita-servicio-check:checked")].map(input => {
     const servicio = servicios[Number(input.value)];
-    const controles = [...document.querySelectorAll(`.cita-detalle-check[data-service-index="${input.value}"]:checked`)];
+    const controles = [...document.querySelectorAll(`.cita-detalle-check[data-service-index="${input.value}"]:checked:not(:disabled)`)];
     const detallesChecks = controles.map(item => item.value);
     const detallesTexto = [...document.querySelectorAll(`.cita-detalle-text[data-service-index="${input.value}"]`)].map(item => detalleSeleccionadoValor(item.dataset.group || "Otros", item.value)).filter(Boolean);
     const detalles = [...detallesChecks, ...detallesTexto];
-    const principal = controles.find(item => item.dataset.additive !== "true");
+    const principal = controles.find(item => item.dataset.level === "child") || controles.find(item => item.dataset.additive !== "true");
     const extras = controles.filter(item => item.dataset.additive === "true");
     const precioBase = principal ? Number(principal.dataset.price || 0) : Number(servicio.precio);
     const duracionBase = principal ? Number(principal.dataset.duration || 0) : Number(servicio.duracion);
@@ -1876,10 +1905,19 @@ function actualizarResumenServiciosCita(actualizarPrecio = true) {
     const activo = document.querySelector(`.cita-servicio-check[value="${indice}"]`)?.checked;
     if (activo) {
       contenedor.querySelectorAll('.service-subgroup').forEach(grupo => {
-        const radios = [...grupo.querySelectorAll('input[type="radio"]')];
-        if (radios.length && !radios.some(input => input.checked)) radios[0].checked = true;
+        const principales = [...grupo.querySelectorAll(':scope > label input[data-level="parent"][type="radio"]')];
+        if (principales.length && !principales.some(input => input.checked)) principales[0].checked = true;
       });
     }
+    contenedor.querySelectorAll('.service-dependent-options').forEach(subgrupo => {
+      const valorPadre = subgrupo.dataset.parentValue || "";
+      const padreActivo = [...contenedor.querySelectorAll('input[data-level="parent"]')].some(input => input.checked && input.value === valorPadre);
+      subgrupo.hidden = !activo || !padreActivo;
+      const hijas = [...subgrupo.querySelectorAll('.cita-subdetalle-check')];
+      hijas.forEach(input => input.disabled = !activo || !padreActivo);
+      if (!padreActivo) hijas.forEach(input => input.checked = false);
+      else if (hijas.length && !hijas.some(input => input.checked)) hijas[0].checked = true;
+    });
   });
   const seleccion = serviciosSeleccionadosFormulario();
   const duracion = seleccion.reduce((suma, item) => suma + item.duracion, 0);
@@ -1890,7 +1928,7 @@ function actualizarResumenServiciosCita(actualizarPrecio = true) {
   document.querySelectorAll(".appointment-service-option").forEach((contenedor, indice) => {
     const activo = document.querySelector(`.cita-servicio-check[value="${indice}"]`)?.checked;
     contenedor.classList.toggle("servicio-elegido", !!activo);
-    contenedor.querySelectorAll(".cita-detalle-check").forEach(input => input.disabled = !activo);
+    contenedor.querySelectorAll(".cita-detalle-check:not(.cita-subdetalle-check)").forEach(input => input.disabled = !activo);
     contenedor.querySelectorAll(".cita-detalle-text").forEach(input => input.disabled = !activo);
   });
   if (resumen) {
@@ -2334,7 +2372,7 @@ function vistaServicios() {
     <div class="service-body">
       <h3>${servicio.nombre}</h3>
       <p class="service-time">Opciones desde ${servicio.duracion} minutos</p>
-      ${normalizarDetallesServicio(servicio).length ? `<div class="service-detail-tags">${normalizarDetallesServicio(servicio).map(grupo => `<span><strong>${grupo.grupo}</strong>${grupo.opciones.length ? `<small>${grupo.opciones.slice(0, 4).map(opcion => datoOpcion(opcion).nombre).join(" · ")}${grupo.opciones.length > 4 ? ` · +${grupo.opciones.length - 4} más` : ""}</small>` : `<small>Campo libre</small>`}</span>`).join("")}</div>` : `<p>Sin detalles agregados.</p>`}
+      ${normalizarDetallesServicio(servicio).length ? `<div class="service-detail-tags">${normalizarDetallesServicio(servicio).map(grupo => `<span><strong>${grupo.grupo}</strong>${grupo.opciones.length ? `<small>${grupo.opciones.slice(0, 4).map(opcionOriginal => { const opcion = datoOpcion(opcionOriginal); return `${opcion.nombre}${opcion.subopciones.length ? ` (${opcion.subopciones.length} variantes)` : ""}`; }).join(" · ")}${grupo.opciones.length > 4 ? ` · +${grupo.opciones.length - 4} más` : ""}</small>` : `<small>Campo libre</small>`}</span>`).join("")}</div>` : `<p>Sin detalles agregados.</p>`}
       <div class="service-foot">
         <strong>Desde ${dinero(servicio.precio)}</strong>
         ${puedeEditar() ? `<span class="service-actions"><button class="edit-service" type="button" onclick="abrirEditarServicio(${indice})">Editar</button><button class="trash" type="button" onclick="eliminarServicio(${indice})">Eliminar</button></span>` : ""}
