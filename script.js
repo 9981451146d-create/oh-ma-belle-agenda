@@ -6,11 +6,50 @@ const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftq
 const NOMBRE_NEGOCIO = "Beloved Body";
 const SUBTITULO_NEGOCIO = "Salón Spa";
 const LOGO_PREDETERMINADO = "assets/logo-beloved-body.png";
-const MIGRACION_DATOS_ACTUAL = "20260914-beloved-body-logo-servicios";
+const MIGRACION_DATOS_ACTUAL = "20260918-catalogo-completo-domingo";
+const opcionServicio = (nombre, precio, duracion, nota = "") => ({ nombre, precio, duracion, nota });
 const detallesManicureBase = [
-  { grupo: "Efectos", opciones: ["Azul", "Morado", "Rojo"] },
-  { grupo: "Detalles", opciones: ["Fino", "Delgado"] },
-  { grupo: "Otros", opciones: [] }
+  {
+    grupo: "Elige el servicio",
+    seleccion: "una",
+    opciones: [
+      opcionServicio("Soft Gel · 1 a 5 colores", 390, 90),
+      opcionServicio("Rubber", 430, 75),
+      opcionServicio("Builder", 450, 90),
+      opcionServicio("Acrílico · 1 y 2 cortas", 400, 120),
+      opcionServicio("Acrílico · 3 y 4 medianas", 500, 120),
+      opcionServicio("Acrílico · 5 y 6 largas", 650, 135),
+      opcionServicio("Acrílico · 7 y 8 extralargas", 750, 150),
+      opcionServicio("Mani Spa · Básico", 350, 45),
+      opcionServicio("Mani Spa · Gel", 150, 30),
+      opcionServicio("Mani Spa · Básico + Gel", 500, 60),
+      opcionServicio("Mani Spa · Deluxe", 450, 60),
+      opcionServicio("Mani Spa · Deluxe + Gel", 600, 75),
+      opcionServicio("Mani Spa · Premium", 550, 75),
+      opcionServicio("Mani Spa · Premium + Gel", 700, 90),
+      opcionServicio("Pedi Spa · Básico", 450, 60),
+      opcionServicio("Pedi Spa · Gel", 200, 30),
+      opcionServicio("Pedi Spa · Básico + Gel", 600, 75),
+      opcionServicio("Pedi Spa · Deluxe", 550, 75),
+      opcionServicio("Pedi Spa · Deluxe + Gel", 750, 90),
+      opcionServicio("Pedi Spa · Premium", 650, 90),
+      opcionServicio("Pedi Spa · Premium + Gel", 850, 105)
+    ]
+  },
+  {
+    grupo: "Efectos adicionales",
+    seleccion: "varias",
+    opciones: [
+      opcionServicio("Efecto espejo", 12, 5, "cada uña"),
+      opcionServicio("Efecto mate", 8, 5, "cada uña"),
+      opcionServicio("Relieves", 14, 10, "cada uña"),
+      opcionServicio("Piedra tornasol", 10, 5, "4 a 10 por piedra"),
+      opcionServicio("Nail Art · francés, líneas o rayas", 13, 10, "cada uña"),
+      opcionServicio("Dijes", 12, 5, "4 a 12 por pieza"),
+      opcionServicio("Efecto ojo de gato", 11, 5, "cada uña")
+    ]
+  },
+  { grupo: "Observaciones", seleccion: "texto", opciones: [] }
 ];
 const configuracionBase = {
   logo: LOGO_PREDETERMINADO,
@@ -25,13 +64,27 @@ const usuariosBase = [
 ];
 
 const serviciosBase = [
-  { nombre: "Pedicure", duracion: 60, precio: 350, color: "rosa" },
-  { nombre: "Manicure", duracion: 45, precio: 280, color: "dorado", detalles: detallesManicureBase },
-  { nombre: "Pestañas", duracion: 90, precio: 650, color: "uva" },
-  { nombre: "Masajes", duracion: 60, precio: 500, color: "verde" },
-  { nombre: "Cejas", duracion: 30, precio: 180, color: "rosa" },
-  { nombre: "Peinados", duracion: 75, precio: 450, color: "dorado" },
-  { nombre: "Tintes", duracion: 120, precio: 900, color: "uva" }
+  { nombre: "Manicure y Spa", duracion: 30, precio: 150, color: "dorado", detalles: detallesManicureBase },
+  { nombre: "Masajes", duracion: 30, precio: 450, color: "verde", detalles: [{ grupo: "Elige el masaje", seleccion: "una", opciones: [
+    opcionServicio("Descontracturante de tejido profundo", 950, 90),
+    opcionServicio("Reductivo · 1 sesión", 600, 45),
+    opcionServicio("Medias piernas · circulación", 490, 30),
+    opcionServicio("Piedras calientes", 1100, 60),
+    opcionServicio("Relajante", 700, 60),
+    opcionServicio("Croncel, cera y cráneo", 450, 40)
+  ] }] },
+  { nombre: "Cejas", duracion: 50, precio: 300, color: "rosa", detalles: [{ grupo: "Elige el servicio", seleccion: "una", opciones: [
+    opcionServicio("Laminado de cejas", 300, 50)
+  ] }] },
+  { nombre: "Pestañas", duracion: 45, precio: 400, color: "uva", detalles: [{ grupo: "Elige el servicio", seleccion: "una", opciones: [
+    opcionServicio("Full Set Clásicas", 750, 90),
+    opcionServicio("Full Set Hawaiano", 850, 90),
+    opcionServicio("Full Set Volumen 5D", 950, 90),
+    opcionServicio("Full Set 3D", 700, 90),
+    opcionServicio("Full Set Efecto Anime", 899, 90),
+    opcionServicio("Lash Lifting", 400, 60),
+    opcionServicio("Pestañas inferiores", 400, 45)
+  ] }] }
 ];
 
 const imagenesServiciosBase = {};
@@ -339,6 +392,7 @@ function normalizarDatos() {
     configuracion.migracionDatos = MIGRACION_DATOS_ACTUAL;
     datosMigrados = true;
   }
+  if (migracionPendiente) servicios = serviciosBase.map(servicio => clonarServicioBase(servicio));
   servicios = servicios.map((servicio, indice) => ({
     nombre: servicio.nombre === "Pestanas" ? "Pestañas" : (servicio.nombre || "Servicio"),
     descripcion: servicio.descripcion || "",
@@ -367,6 +421,12 @@ function normalizarDatos() {
     activo: persona.activo !== false,
     horarios: normalizarHorarios(persona.horarios)
   }));
+  if (migracionPendiente) {
+    [...servicios, ...personal].forEach(item => {
+      const domingo = item.horarios?.find(horario => horario.dia === "Domingo");
+      if (domingo) Object.assign(domingo, { activo: true, inicio: "09:00", fin: "18:00" });
+    });
+  }
   clientas = (Array.isArray(clientas) ? clientas : []).map(clienta => ({
     id: clienta.id || idNuevo(),
     nombre: String(clienta.nombre || "Clienta").trim(),
@@ -1671,7 +1731,7 @@ function abrirModalCita(fecha = hoy(), citaId = null) {
   const nombresPersonal = [...new Set([cita?.personal, ...personal.filter(item => item.activo !== false).map(item => item.nombre)].filter(Boolean))];
   const seleccionados = new Set(detallesServiciosCita(cita).map(item => item.nombre));
   const detallesSeleccionados = detallesServiciosCita(cita).reduce((mapa, item) => {
-    if (item.detalle) mapa[item.nombre] = new Set(String(item.detalle).split(",").map(detalle => detalle.trim()).filter(Boolean));
+    if (item.detalle) mapa[item.nombre] = new Set(String(item.detalle).split(" · ").map(detalle => detalle.trim()).filter(Boolean));
     return mapa;
   }, {});
   const metodosPago = ["Pago presencial/efectivo", "Transferencia bancaria"];
@@ -1687,11 +1747,13 @@ function abrirModalCita(fecha = hoy(), citaId = null) {
       const detalles = normalizarDetallesServicio(servicio);
       const detalleActual = detallesSeleccionados[servicio.nombre] || new Set();
       return `<div class="appointment-service-option">
-        <label><input class="cita-servicio-check" type="checkbox" value="${indice}" ${seleccionados.has(servicio.nombre) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span><strong>${servicio.nombre}</strong><small>${servicio.duracion} min · ${dinero(servicio.precio)}</small></span></label>
-        ${detalles.length ? `<div class="service-suboptions">${detalles.map(grupo => `<div class="service-subgroup"><strong>${grupo.grupo}</strong>${grupo.opciones.length ? grupo.opciones.map(opcion => {
+        <label><input class="cita-servicio-check" type="checkbox" value="${indice}" ${seleccionados.has(servicio.nombre) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span><strong>${servicio.nombre}</strong><small>Desde ${dinero(servicio.precio)} · elige una opción</small></span></label>
+        ${detalles.length ? `<div class="service-suboptions">${detalles.map((grupo, grupoIndice) => `<div class="service-subgroup"><strong>${grupo.grupo}</strong>${grupo.opciones.length ? grupo.opciones.map(opcionOriginal => {
+          const opcion = datoOpcion(opcionOriginal);
           const valor = detalleSeleccionadoValor(grupo.grupo, opcion);
-          return `<label><input class="cita-detalle-check" data-service-index="${indice}" type="checkbox" value="${escaparAtributo(valor)}" ${detalleActual.has(valor) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"> ${opcion}</label>`;
-        }).join("") : `<input class="cita-detalle-text" data-service-index="${indice}" data-group="${escaparAtributo(grupo.grupo)}" value="${escaparAtributo([...detalleActual].find(item => item.startsWith(`${grupo.grupo}: `))?.replace(`${grupo.grupo}: `, "") || "")}" placeholder="Escribe otro detalle" oninput="actualizarResumenServiciosCita()">`}</div>`).join("")}</div>` : ""}
+          const tipo = grupo.seleccion === "una" ? "radio" : "checkbox";
+          return `<label><input class="cita-detalle-check" data-service-index="${indice}" data-price="${opcion.precio}" data-duration="${opcion.duracion}" data-option-name="${escaparAtributo(opcion.nombre)}" data-additive="${grupo.seleccion === "varias"}" name="servicio-${indice}-grupo-${grupoIndice}" type="${tipo}" value="${escaparAtributo(valor)}" ${detalleActual.has(valor) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span>${opcion.nombre}<small>${dinero(opcion.precio)} · ${opcion.duracion} min${opcion.nota ? ` · ${opcion.nota}` : ""}</small></span></label>`;
+        }).join("") : `<input class="cita-detalle-text" data-service-index="${indice}" data-group="${escaparAtributo(grupo.grupo)}" value="${escaparAtributo([...detalleActual].find(item => item.startsWith(`${grupo.grupo}: `))?.replace(`${grupo.grupo}: `, "") || "")}" placeholder="Notas u observaciones" oninput="actualizarResumenServiciosCita()">`}</div>`).join("")}</div>` : ""}
       </div>`;
     }).join("")}</div>
     <div id="resumenServiciosCita" class="appointment-summary"></div>
@@ -1731,58 +1793,94 @@ function nombreComparable(valor) {
 }
 
 function clonarDetalles(detalles) {
-  return detalles.map(item => ({ grupo: item.grupo, opciones: [...item.opciones] }));
+  return detalles.map(item => ({
+    grupo: item.grupo,
+    seleccion: item.seleccion || "varias",
+    opciones: (item.opciones || []).map(opcion => typeof opcion === "object" ? { ...opcion } : opcion)
+  }));
+}
+
+function clonarServicioBase(servicio) {
+  return {
+    ...servicio,
+    detalles: clonarDetalles(servicio.detalles || []),
+    horarios: horariosBase()
+  };
+}
+
+function datoOpcion(opcion) {
+  return typeof opcion === "object" ? {
+    nombre: String(opcion.nombre || "Opción").trim(),
+    precio: Number(opcion.precio || 0),
+    duracion: Number(opcion.duracion || 0),
+    nota: String(opcion.nota || "").trim()
+  } : { nombre: String(opcion || "").trim(), precio: 0, duracion: 0, nota: "" };
 }
 
 function normalizarDetallesServicio(servicio = {}) {
   const nombre = nombreComparable(servicio.nombre);
-  if (nombre === "manicure") return clonarDetalles(detallesManicureBase);
+  if (nombre === "manicure" || nombre === "manicure y spa") return clonarDetalles(servicio.detalles?.length ? servicio.detalles : detallesManicureBase);
   if (!Array.isArray(servicio.detalles)) return [];
   if (servicio.detalles.some(item => item && typeof item === "object")) {
     return servicio.detalles.map(item => ({
       grupo: String(item.grupo || "Detalles").trim(),
-      opciones: Array.isArray(item.opciones) ? item.opciones.map(opcion => String(opcion).trim()).filter(Boolean) : []
+      seleccion: ["una", "varias", "texto"].includes(item.seleccion) ? item.seleccion : "varias",
+      opciones: Array.isArray(item.opciones) ? item.opciones.map(datoOpcion).filter(opcion => opcion.nombre) : []
     })).filter(item => item.grupo);
   }
   const opciones = servicio.detalles.map(item => String(item).trim()).filter(Boolean);
-  return opciones.length ? [{ grupo: "Detalles", opciones }] : [];
+  return opciones.length ? [{ grupo: "Detalles", seleccion: "varias", opciones: opciones.map(datoOpcion) }] : [];
 }
 
 function textoDetallesServicio(detalles = []) {
-  return normalizarDetallesServicio({ detalles }).map(item => item.opciones.length ? `${item.grupo}: ${item.opciones.join(", ")}` : `${item.grupo}:`).join("\n");
+  return normalizarDetallesServicio({ detalles }).map(item => item.opciones.length ? `${item.grupo}: ${item.opciones.map(opcion => opcion.nombre).join(", ")}` : `${item.grupo}:`).join("\n");
 }
 
 function leerDetallesServicioTexto(texto) {
   return String(texto || "").split("\n").map(linea => linea.trim()).filter(Boolean).map(linea => {
     const partes = linea.split(":");
-    if (partes.length === 1) return { grupo: "Detalles", opciones: [linea] };
+    if (partes.length === 1) return { grupo: "Detalles", seleccion: "varias", opciones: [datoOpcion(linea)] };
     const grupo = partes.shift().trim();
-    const opciones = partes.join(":").split(",").map(item => item.trim()).filter(Boolean);
-    return { grupo, opciones };
+    const opciones = partes.join(":").split(",").map(item => datoOpcion(item)).filter(item => item.nombre);
+    return { grupo, seleccion: "varias", opciones };
   }).filter(item => item.grupo);
 }
 
 function detalleSeleccionadoValor(grupo, opcion = "") {
-  const limpio = String(opcion || "").trim();
+  const limpio = datoOpcion(opcion).nombre;
   return limpio ? `${grupo}: ${limpio}` : "";
 }
 
 function serviciosSeleccionadosFormulario() {
   return [...document.querySelectorAll(".cita-servicio-check:checked")].map(input => {
     const servicio = servicios[Number(input.value)];
-    const detallesChecks = [...document.querySelectorAll(`.cita-detalle-check[data-service-index="${input.value}"]:checked`)].map(item => item.value);
+    const controles = [...document.querySelectorAll(`.cita-detalle-check[data-service-index="${input.value}"]:checked`)];
+    const detallesChecks = controles.map(item => item.value);
     const detallesTexto = [...document.querySelectorAll(`.cita-detalle-text[data-service-index="${input.value}"]`)].map(item => detalleSeleccionadoValor(item.dataset.group || "Otros", item.value)).filter(Boolean);
     const detalles = [...detallesChecks, ...detallesTexto];
+    const principal = controles.find(item => item.dataset.additive !== "true");
+    const extras = controles.filter(item => item.dataset.additive === "true");
+    const precioBase = principal ? Number(principal.dataset.price || 0) : Number(servicio.precio);
+    const duracionBase = principal ? Number(principal.dataset.duration || 0) : Number(servicio.duracion);
     return {
       nombre: servicio.nombre,
-      detalle: detalles.join(", "),
-      duracion: Number(servicio.duracion),
-      precio: Number(servicio.precio)
+      detalle: detalles.join(" · "),
+      duracion: duracionBase + extras.reduce((total, item) => total + Number(item.dataset.duration || 0), 0),
+      precio: precioBase + extras.reduce((total, item) => total + Number(item.dataset.price || 0), 0)
     };
   });
 }
 
 function actualizarResumenServiciosCita(actualizarPrecio = true) {
+  document.querySelectorAll(".appointment-service-option").forEach((contenedor, indice) => {
+    const activo = document.querySelector(`.cita-servicio-check[value="${indice}"]`)?.checked;
+    if (activo) {
+      contenedor.querySelectorAll('.service-subgroup').forEach(grupo => {
+        const radios = [...grupo.querySelectorAll('input[type="radio"]')];
+        if (radios.length && !radios.some(input => input.checked)) radios[0].checked = true;
+      });
+    }
+  });
   const seleccion = serviciosSeleccionadosFormulario();
   const duracion = seleccion.reduce((suma, item) => suma + item.duracion, 0);
   const subtotal = seleccion.reduce((suma, item) => suma + item.precio, 0);
@@ -2235,10 +2333,10 @@ function vistaServicios() {
     <div class="service-image service-image-empty ${servicio.color}"><span>${servicio.nombre}</span></div>
     <div class="service-body">
       <h3>${servicio.nombre}</h3>
-      <p class="service-time">${servicio.duracion} minutos</p>
-      ${normalizarDetallesServicio(servicio).length ? `<div class="service-detail-tags">${normalizarDetallesServicio(servicio).map(grupo => `<span><strong>${grupo.grupo}</strong>${grupo.opciones.length ? ` · ${grupo.opciones.join(", ")}` : ""}</span>`).join("")}</div>` : `<p>Sin detalles agregados.</p>`}
+      <p class="service-time">Opciones desde ${servicio.duracion} minutos</p>
+      ${normalizarDetallesServicio(servicio).length ? `<div class="service-detail-tags">${normalizarDetallesServicio(servicio).map(grupo => `<span><strong>${grupo.grupo}</strong>${grupo.opciones.length ? `<small>${grupo.opciones.slice(0, 4).map(opcion => datoOpcion(opcion).nombre).join(" · ")}${grupo.opciones.length > 4 ? ` · +${grupo.opciones.length - 4} más` : ""}</small>` : `<small>Campo libre</small>`}</span>`).join("")}</div>` : `<p>Sin detalles agregados.</p>`}
       <div class="service-foot">
-        <strong>${dinero(servicio.precio)}</strong>
+        <strong>Desde ${dinero(servicio.precio)}</strong>
         ${puedeEditar() ? `<span class="service-actions"><button class="edit-service" type="button" onclick="abrirEditarServicio(${indice})">Editar</button><button class="trash" type="button" onclick="eliminarServicio(${indice})">Eliminar</button></span>` : ""}
       </div>
     </div>
@@ -2328,7 +2426,8 @@ function abrirNuevoServicio(indice = null) {
     <label>Nombre del Servicio</label><input id="servicioNombreModal" value="${servicio.nombre || ""}" required>
     <label>Precio (MXN)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="servicioPrecioModal" type="number" min="0.01" step="0.01" value="${valorParaEntrada(servicio.precio || 0)}" required></div>
     <label>Duración (minutos)</label><input id="servicioDuracionModal" type="number" min="1" value="${servicio.duracion || 30}" required>
-    <label>Detalles para elegir</label><textarea id="servicioDetallesModal" rows="5" placeholder="Ejemplo:&#10;Efectos: Azul, Morado, Rojo&#10;Detalles: Fino, Delgado&#10;Otros:">${textoDetallesServicio(servicio.detalles || [])}</textarea>
+    <label>Subcategorías y opciones</label><textarea id="servicioDetallesModal" rows="7" placeholder="Ejemplo:&#10;Tipo: Clásico, Premium&#10;Extras: Efecto espejo, Nail Art">${textoDetallesServicio(servicio.detalles || [])}</textarea>
+    <p class="texto-suave">El catálogo incluido conserva automáticamente los precios y tiempos de cada opción.</p>
     <h3>Personal Asignado</h3>
     <div class="check-grid">${personal.map(p => `<label class="check-line"><input class="servicioPersonalModal" type="checkbox" value="${p.nombre}" ${(servicio.personalAsignado || []).includes(p.nombre) ? "checked" : ""}> ${p.nombre}</label>`).join("") || `<p class="texto-suave">No hay personal agregado todavía.</p>`}</div>
     <h3>Horarios</h3>${camposHorarios("servicio", servicio.horarios || horariosBase())}
@@ -2357,7 +2456,9 @@ function guardarServicioModal(event, indice) {
       pagoEfectivo: actual.pagoEfectivo !== false,
       pagoTransferencia: !!actual.pagoTransferencia,
       personalAsignado: [...document.querySelectorAll(".servicioPersonalModal:checked")].map(item => item.value),
-      detalles: leerDetallesServicioTexto(document.getElementById("servicioDetallesModal").value),
+      detalles: indice !== null && document.getElementById("servicioDetallesModal").value.trim() === textoDetallesServicio(actual.detalles || []).trim()
+        ? actual.detalles
+        : leerDetallesServicioTexto(document.getElementById("servicioDetallesModal").value),
       horarios: leerHorarios("servicio"),
       color: actual.color || ["rosa", "dorado", "uva", "verde"][servicios.length % 4]
     };

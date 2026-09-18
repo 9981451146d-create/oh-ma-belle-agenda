@@ -2721,25 +2721,40 @@ body.modo-oscuro .client-notes {
 .appointment-services small { color: var(--muted); }
 .service-suboptions {
   display: grid;
-  gap: 8px;
-  padding: 0 12px 12px 40px;
+  gap: 14px;
+  padding: 4px 14px 16px;
+  border-top: 1px solid #eee6da;
 }
 .service-subgroup {
   display: grid;
-  gap: 5px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
 }
 .service-subgroup > strong {
+  grid-column: 1 / -1;
   color: #6f5a38;
   font-size: 12px;
   text-transform: uppercase;
 }
 .service-suboptions label {
   min-height: 34px;
-  padding: 6px 8px;
+  align-items: flex-start;
+  padding: 9px;
   border-radius: 6px;
   background: #f8f1e7;
   color: #5f5141;
   font-size: 13px;
+}
+.service-suboptions label span {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  font-weight: 750;
+}
+.service-suboptions label small {
+  color: #766a5e;
+  font-size: 11px;
+  font-weight: 600;
 }
 .service-suboptions input[type="text"],
 .service-suboptions .cita-detalle-text {
@@ -2752,7 +2767,26 @@ body.modo-oscuro .client-notes {
   color: #4b4036;
 }
 .appointment-service-option:not(.servicio-elegido) .service-suboptions {
-  opacity: .45;
+  display: none;
+}
+
+.service-detail-tags {
+  display: grid;
+  gap: 8px;
+}
+
+.service-detail-tags > span {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #eee6da;
+  border-radius: 7px;
+  background: #fbf8f2;
+}
+
+.service-detail-tags > span small {
+  color: var(--muted);
+  line-height: 1.45;
 }
 .detail-services { display: grid; gap: 8px; margin-bottom: 16px; }
 .detail-services > div,
@@ -3136,6 +3170,11 @@ body.modo-oscuro .client-notes {
 
   .horario-row > div span {
     display: none;
+  }
+
+  .appointment-services,
+  .service-subgroup {
+    grid-template-columns: 1fr;
   }
 
   .modal-actions {
