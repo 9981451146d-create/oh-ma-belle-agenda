@@ -5,8 +5,9 @@ const CODIGO_ADMINISTRACION = "2009";
 const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftqIr75NoU9-JgWF9EcPzm-MptOXP4abYmzM";
 const NOMBRE_NEGOCIO = "Beloved Body";
 const SUBTITULO_NEGOCIO = "Salón Spa";
-const LOGO_PREDETERMINADO = "assets/logo-beloved-body.png";
+const LOGO_PREDETERMINADO = "assets/logo-beloved-body-transparent.png";
 const MIGRACION_DATOS_ACTUAL = "20260918-catalogo-jerarquico-domingo";
+const MIGRACION_LOGO_ACTUAL = "20260918-identidad-beloved-transparente";
 const opcionServicio = (nombre, precio, duracion, nota = "") => ({ nombre, precio, duracion, nota });
 const opcionConVariantes = (nombre, subgrupo, subopciones) => ({ nombre, precio: 0, duracion: 0, subgrupo, subopciones });
 const detallesManicureBase = [
@@ -117,7 +118,9 @@ let mensajesWhatsApp = [];
 let chatWhatsAppActivo = "";
 let reintentoRemoto = null;
 let eventoInstalacion = null;
-let tokenSesion = localStorage.getItem(`${CLAVE}-token`) || sessionStorage.getItem(`${CLAVE}-token`) || "";
+// Solo "Recordarme" conserva la sesion despues de recargar la pagina.
+sessionStorage.removeItem(`${CLAVE}-token`);
+let tokenSesion = localStorage.getItem(`${CLAVE}-token`) || "";
 let versionRemota = null;
 
 normalizarDatos();
@@ -396,12 +399,16 @@ function normalizarDatos() {
     tipoCambio: Number(configuracion?.tipoCambio || configuracionBase.tipoCambio)
   };
   const migracionPendiente = configuracion.migracionDatos !== MIGRACION_DATOS_ACTUAL;
-  if (migracionPendiente || !configuracion.logo || configuracion.logo.includes("logo-oh-ma-belle")) {
+  const migracionLogoPendiente = configuracion.migracionLogo !== MIGRACION_LOGO_ACTUAL;
+  if (migracionLogoPendiente || !configuracion.logo || configuracion.logo.includes("logo-oh-ma-belle")) {
     configuracion.logo = LOGO_PREDETERMINADO;
-    configuracion.migracionDatos = MIGRACION_DATOS_ACTUAL;
+    configuracion.migracionLogo = MIGRACION_LOGO_ACTUAL;
     datosMigrados = true;
   }
-  if (migracionPendiente) servicios = serviciosBase.map(servicio => clonarServicioBase(servicio));
+  if (migracionPendiente) {
+    configuracion.migracionDatos = MIGRACION_DATOS_ACTUAL;
+    servicios = serviciosBase.map(servicio => clonarServicioBase(servicio));
+  }
   servicios = servicios.map((servicio, indice) => ({
     nombre: servicio.nombre === "Pestanas" ? "Pestañas" : (servicio.nombre || "Servicio"),
     descripcion: servicio.descripcion || "",
@@ -557,8 +564,8 @@ async function iniciarSesion() {
     localStorage.setItem(`${CLAVE}-token`, tokenSesion);
     sessionStorage.removeItem(`${CLAVE}-token`);
   } else {
-    sessionStorage.setItem(`${CLAVE}-token`, tokenSesion);
     localStorage.removeItem(`${CLAVE}-token`);
+    sessionStorage.removeItem(`${CLAVE}-token`);
   }
   remotoListo = true;
   if (!await cargarRemoto()) return;

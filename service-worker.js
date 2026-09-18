@@ -1,4 +1,4 @@
-const CACHE = "beloved-body-pwa-v28";
+const CACHE = "beloved-body-pwa-v29";
 const ARCHIVOS = [
   "./",
   "./index.html",
@@ -6,7 +6,7 @@ const ARCHIVOS = [
   "./style.css",
   "./script.js",
   "./manifest.webmanifest",
-  "./assets/logo-beloved-body.png",
+  "./assets/logo-beloved-body-transparent.png",
   "./assets/user-icon-transparent.png",
   "./assets/beloved-body-icon-192.png",
   "./assets/beloved-body-icon-512.png",

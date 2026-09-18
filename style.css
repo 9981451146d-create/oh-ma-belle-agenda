@@ -1,16 +1,16 @@
 :root {
-  --navy: #111b3d;
-  --violet: #522d63;
-  --berry: #b73565;
-  --rose: #ce426e;
-  --gold: #c98a26;
-  --sage: #8e9a6b;
-  --bg: #f7f8fb;
+  --navy: #302a24;
+  --violet: #856537;
+  --berry: #a77d45;
+  --rose: #bd955e;
+  --gold: #b88a49;
+  --sage: #6f7860;
+  --bg: #faf8f4;
   --panel: #ffffff;
-  --line: #e9edf3;
-  --text: #202538;
-  --muted: #7a8496;
-  --shadow: 0 14px 36px rgba(25, 31, 56, 0.08);
+  --line: #e9e1d5;
+  --text: #302a24;
+  --muted: #766f66;
+  --shadow: 0 14px 36px rgba(74, 58, 39, 0.09);
 }
 
 html,
@@ -107,8 +107,8 @@ button {
   place-items: center;
   padding: 22px;
   background:
-    radial-gradient(circle at 74% 8%, rgba(204, 137, 38, 0.45), transparent 24%),
-    linear-gradient(145deg, #111b3d, #2d1b4e 40%, #bc3c66 72%, #d8943b);
+    radial-gradient(circle at 74% 8%, rgba(213, 180, 124, 0.55), transparent 25%),
+    linear-gradient(145deg, #302a24, #5f5141 42%, #a77d45 74%, #ead8bd);
   background-size: 150% 150%;
   animation: moverFondo 8s ease-in-out infinite alternate;
 }
@@ -122,9 +122,9 @@ button {
   width: min(390px, 100%);
   padding: 28px 34px 26px;
   border-radius: 8px;
-  background: rgba(15, 22, 50, 0.48);
+  background: rgba(48, 42, 36, 0.62);
   border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 24px 70px rgba(5, 10, 30, 0.34);
+  box-shadow: 0 24px 70px rgba(48, 38, 25, 0.32);
   backdrop-filter: blur(12px);
   color: white;
   animation: subir 650ms ease both;
@@ -192,7 +192,7 @@ button {
 }
 
 .login-card button:hover {
-  background: #d8557e;
+  background: #c39a66;
   transform: translateY(-1px);
 }
 
@@ -415,7 +415,7 @@ button {
 }
 
 .sidebar button.nav-activo {
-  background: linear-gradient(135deg, #695df4, #6d63ef);
+  background: linear-gradient(135deg, #a77d45, #9a7440);
   color: #ffffff;
   box-shadow: 0 12px 24px rgba(93, 85, 216, 0.22);
 }
@@ -467,7 +467,7 @@ button {
   border-radius: 8px;
   background: #ffffff;
   border: 1px solid var(--line);
-  color: #675dec;
+  color: #9a7440;
   box-shadow: 0 6px 16px rgba(19, 25, 45, 0.05);
 }
 
@@ -475,7 +475,7 @@ button {
   width: auto;
   min-width: 92px;
   padding: 0 14px;
-  background: linear-gradient(135deg, #522d63, #b73565);
+  background: linear-gradient(135deg, #856537, #a77d45);
   color: #fff;
   font-size: 13px;
   font-weight: 800;
@@ -515,7 +515,7 @@ button {
 }
 
 .kpi-action { cursor: pointer; }
-.kpi-action:focus-visible { outline: 3px solid #8c72be; outline-offset: 3px; }
+.kpi-action:focus-visible { outline: 3px solid #b88a49; outline-offset: 3px; }
 .kpi-action:active { transform: translateY(1px); }
 
 .today-list { display: grid; gap: 10px; padding: 18px 22px; }
@@ -532,7 +532,7 @@ button {
   border: 1px solid var(--line);
   border-radius: 8px;
 }
-.today-item time { font-weight: 800; color: #6b3d77; }
+.today-item time { font-weight: 800; color: #856537; }
 .today-item span { min-width: 0; display: grid; gap: 3px; }
 .today-item small { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .empty-summary { display: grid; gap: 6px; padding: 28px 18px; text-align: center; color: var(--muted); }
@@ -555,7 +555,7 @@ button {
 .cancellation-item b { overflow-wrap: anywhere; }
 .cancellation-item .whatsapp-action { min-height: 42px; padding: 0 16px; }
 body.modo-oscuro .today-item,
-body.modo-oscuro .cancellation-item { color: #f5edf8; background: #251c2b; border-color: #4a3b50; }
+body.modo-oscuro .cancellation-item { color: #f6f1e8; background: #251c2b; border-color: #4a3b50; }
 body.modo-oscuro .empty-summary strong { color: #fff; }
 
 @keyframes aparecer {
@@ -586,8 +586,8 @@ body.modo-oscuro .empty-summary strong { color: #fff; }
   display: grid;
   place-items: center;
   border-radius: 8px;
-  background: #eeeefe;
-  color: #6d63ef;
+  background: #f4ecdf;
+  color: #9a7440;
   font-style: normal;
   font-weight: 800;
 }
@@ -756,7 +756,7 @@ table button {
 .acciones-cita button:nth-child(3),
 table button {
   background: #fff0f3;
-  color: #b73565;
+  color: #a77d45;
 }
 
 .foto-grid {
@@ -818,7 +818,7 @@ table button {
 }
 
 .rosa {
-  background: linear-gradient(135deg, #c63f70, #ee8aa7);
+  background: linear-gradient(135deg, #a77d45, #d5b47c);
 }
 
 .dorado {
@@ -826,7 +826,7 @@ table button {
 }
 
 .uva {
-  background: linear-gradient(135deg, #37204f, #8e3f75);
+  background: linear-gradient(135deg, #4b4036, #856537);
 }
 
 .verde {
@@ -957,7 +957,7 @@ table button {
   min-height: 42px;
   padding: 0 18px;
   border-radius: 8px;
-  background: linear-gradient(135deg, #695df4, #6d63ef) !important;
+  background: linear-gradient(135deg, #a77d45, #9a7440) !important;
   color: #ffffff !important;
   font-weight: 800;
   box-shadow: 0 10px 22px rgba(93, 85, 216, 0.2);
@@ -1055,8 +1055,8 @@ table button {
   width: 26px;
   height: 26px;
   border-radius: 8px;
-  background: #f0efff;
-  color: #5f55dc;
+  background: #f6f1e8;
+  color: #856537;
   font-weight: 900;
 }
 
@@ -1083,7 +1083,7 @@ table button {
 }
 
 .cal-cita span {
-  color: #5f55dc;
+  color: #856537;
 }
 
 .cal-cita small {
@@ -1244,7 +1244,7 @@ table button {
 }
 
 .horario-row a {
-  color: #695df4;
+  color: #a77d45;
   font-weight: 800;
   text-decoration: none;
 }
@@ -1417,7 +1417,7 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
   border-radius: 50%;
   position: relative;
   transform: perspective(800px) rotateX(58deg) rotateZ(-18deg);
-  box-shadow: 0 34px 0 #d9c4e8, 0 45px 28px rgba(65, 48, 111, 0.22);
+  box-shadow: 0 34px 0 #dfc8a6, 0 45px 28px rgba(65, 48, 111, 0.22);
   border: 10px solid #fff;
 }
 
@@ -1459,7 +1459,7 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
 .pie-legend em {
   font-style: normal;
   font-weight: 800;
-  color: #6d63ef;
+  color: #9a7440;
 }
 
 .chart-empty {
@@ -1569,7 +1569,7 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
   margin: 24px auto 0;
   padding: 24px;
   position: relative;
-  border: 1px solid #e8dfeb;
+  border: 1px solid #ece2d6;
   background: #fffdfd;
   color: #30293a;
   box-shadow: 0 14px 35px rgba(55, 39, 70, 0.1);
@@ -1657,7 +1657,7 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
 }
 
 .ticket-total strong {
-  color: #6d54b5;
+  color: #9a7440;
   font-size: 22px;
 }
 
@@ -1706,7 +1706,7 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
 }
 
 .tabs-app button.activo {
-  background: linear-gradient(135deg, #695df4, #6d63ef);
+  background: linear-gradient(135deg, #a77d45, #9a7440);
   color: #ffffff;
   box-shadow: 0 10px 22px rgba(93, 85, 216, 0.18);
 }
@@ -1788,7 +1788,7 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
 .person-photo:not([style]) {
   background:
     radial-gradient(circle at 20% 20%, rgba(255,255,255,0.35), transparent 30%),
-    linear-gradient(135deg, #b73565, #e7b35f);
+    linear-gradient(135deg, #a77d45, #e7b35f);
 }
 
 .service-image-empty {
@@ -1861,7 +1861,7 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
 }
 
 .service-foot strong {
-  color: #6d63ef;
+  color: #9a7440;
   font-size: 20px;
 }
 
@@ -1886,9 +1886,9 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
 }
 
 .service-foot .edit-service {
-  background: #f1efff;
-  color: #5f55dc;
-  border-color: #dcd6ff;
+  background: #f6f1e8;
+  color: #856537;
+  border-color: #e8d8c0;
 }
 
 .service-foot .trash {
@@ -1963,8 +1963,8 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
   width: 64px;
   height: 64px;
   padding: 8px;
-  background: #f7f0ff;
-  border: 1px solid #eadcfb;
+  background: #faf5ed;
+  border: 1px solid #eee1cf;
   border-radius: 18px;
   overflow: visible;
 }
@@ -2023,7 +2023,7 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
   height: 18px;
   min-height: 18px;
   padding: 0;
-  accent-color: #695df4;
+  accent-color: #a77d45;
 }
 
 .horario-row > div {
@@ -2060,7 +2060,7 @@ body.modo-oscuro .confirmation-waiting { color: #f5d487; background: #382f1d; bo
 .notification-off { background: #fff1f3; color: #b4233f; }
 .notification-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
 .notification-actions button { min-height: 42px; padding: 0 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--text); font-weight: 800; }
-.notification-actions .primary-action { border-color: transparent; background: linear-gradient(135deg, #522d63, #b73565); color: #fff; }
+.notification-actions .primary-action { border-color: transparent; background: linear-gradient(135deg, #856537, #a77d45); color: #fff; }
 body.modo-oscuro .notification-on { background: #183629; color: #8ceab3; }
 body.modo-oscuro .notification-off { background: #3b2028; color: #ffafbd; }
 
@@ -2098,7 +2098,7 @@ body.modo-oscuro .notification-off { background: #3b2028; color: #ffafbd; }
   gap: 5px;
   padding: 14px;
   border-radius: 10px;
-  background: #f6f4ff;
+  background: #faf7f1;
   color: #4e4672;
 }
 
@@ -2272,16 +2272,16 @@ body.modo-oscuro .notification-off { background: #3b2028; color: #ffafbd; }
 .switch-line input {
   width: 20px;
   height: 20px;
-  accent-color: #695df4;
+  accent-color: #a77d45;
 }
 
 body.modo-oscuro {
   --bg: #10131d;
   --panel: #171b28;
   --line: #2a3040;
-  --text: #eef2ff;
+  --text: #f7f2e9;
   background: #10131d;
-  color: #eef2ff;
+  color: #f7f2e9;
 }
 
 body.modo-oscuro .app,
@@ -2301,7 +2301,7 @@ body.modo-oscuro .service-card,
 body.modo-oscuro .person-card,
 body.modo-oscuro .cal-cell {
   background: #171b28;
-  color: #eef2ff;
+  color: #f7f2e9;
   border-color: #2a3040;
 }
 
@@ -2336,14 +2336,14 @@ body.modo-oscuro .modal-stack select,
 body.modo-oscuro .modal-stack textarea,
 body.modo-oscuro .config-form input {
   background: #111522;
-  color: #eef2ff;
+  color: #f7f2e9;
   border-color: #30384c;
 }
 
 body.modo-oscuro .logo-config-preview,
 body.modo-oscuro .exchange-box {
   background: #111522;
-  color: #eef2ff;
+  color: #f7f2e9;
   border-color: #30384c;
 }
 
@@ -2351,7 +2351,7 @@ body.modo-oscuro .stats-actions button,
 body.modo-oscuro .config-buttons button,
 body.modo-oscuro .table-actions button {
   background: #111522;
-  color: #eef2ff;
+  color: #f7f2e9;
   border-color: #30384c;
 }
 
@@ -2359,7 +2359,7 @@ body.modo-oscuro th,
 body.modo-oscuro .calendar-weekdays,
 body.modo-oscuro .cal-empty {
   background: #111522;
-  color: #eef2ff;
+  color: #f7f2e9;
 }
 
 body.modo-oscuro td,
@@ -2384,7 +2384,7 @@ body.modo-oscuro .stats-picker input,
 body.modo-oscuro .stats-picker select,
 body.modo-oscuro .pago-actions button {
   background: #111522;
-  color: #eef2ff;
+  color: #f7f2e9;
   border-color: #30384c;
 }
 
@@ -2413,7 +2413,7 @@ body.modo-oscuro .cal-cita.cita-verde {
 
 body.modo-oscuro .ticket-pago {
   background: #111522;
-  color: #eef2ff;
+  color: #f7f2e9;
   border-color: #30384c;
 }
 
@@ -2457,7 +2457,7 @@ body.modo-oscuro .topbar button,
 body.modo-oscuro .section-head button,
 body.modo-oscuro .service-foot button {
   background: #111522;
-  color: #eef2ff;
+  color: #f7f2e9;
   border-color: #30384c;
 }
 
@@ -2476,7 +2476,7 @@ body.modo-oscuro .kpi i {
 }
 
 .content {
-  background: linear-gradient(120deg, #f7f8fb, #fff4f8, #f1efff, #f7f8fb);
+  background: linear-gradient(120deg, #f7f8fb, #fff4f8, #f6f1e8, #f7f8fb);
   background-size: 240% 240%;
   animation: moverContenido 14s ease-in-out infinite alternate;
   min-height: calc(100vh - 68px);
@@ -2502,7 +2502,7 @@ body.modo-oscuro .kpi i {
 }
 
 .tabs-app button.activo {
-  background: linear-gradient(135deg, #695df4, #6d63ef);
+  background: linear-gradient(135deg, #a77d45, #9a7440);
 }
 
 body.modo-oscuro .client-card,
@@ -2513,7 +2513,7 @@ body.modo-oscuro .appointment-summary,
 body.modo-oscuro .history-stats article,
 body.modo-oscuro .history-entry {
   background: #171b28;
-  color: #eef2ff;
+  color: #f7f2e9;
   border-color: #38402f;
 }
 
@@ -2531,7 +2531,7 @@ body.modo-oscuro .service-detail-tags span strong {
 body.modo-oscuro .service-suboptions .cita-detalle-text {
   background: #111521;
   border-color: #38402f;
-  color: #eef2ff;
+  color: #f7f2e9;
 }
 
 body.modo-oscuro .whatsapp-search input,
@@ -2540,7 +2540,7 @@ body.modo-oscuro .conversation-list button,
 body.modo-oscuro .message-bubble {
   background: #111521;
   border-color: #38402f;
-  color: #eef2ff;
+  color: #f7f2e9;
 }
 
 body.modo-oscuro .conversation-list button.activo {
@@ -2560,7 +2560,7 @@ body.modo-oscuro .message-bubble.entrante {
 body.modo-oscuro .history-stats strong,
 body.modo-oscuro .history-amount,
 body.modo-oscuro .history-info h3 {
-  color: #eef2ff;
+  color: #f7f2e9;
 }
 
 body.modo-oscuro .client-notes {
@@ -2606,7 +2606,7 @@ body.modo-oscuro .client-notes {
 }
 
 .client-search button {
-  background: #6d63ef;
+  background: #9a7440;
   color: white;
   font-weight: 800;
 }
@@ -2634,37 +2634,37 @@ body.modo-oscuro .client-notes {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #f0efff;
-  color: #5f55dc;
+  background: #f6f1e8;
+  color: #856537;
   font-size: 24px;
   font-weight: 900;
 }
 
 .client-card h3 { margin: 0 0 5px; }
-.client-card a { color: #6d63ef; font-weight: 800; }
+.client-card a { color: #9a7440; font-weight: 800; }
 .client-card p { color: var(--muted); }
 .client-actions { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
-.client-actions button { min-height: 36px; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: #5f55dc; font-weight: 800; }
+.client-actions button { min-height: 36px; padding: 0 13px; border: 1px solid var(--line); border-radius: 7px; background: #fff; color: #856537; font-weight: 800; }
 .client-history { display: grid; gap: 20px; }
 .history-profile { display: flex; align-items: center; gap: 14px; }
 .history-profile h2, .history-profile p { margin: 0; }
-.history-profile a { color: #6d63ef; font-weight: 800; }
+.history-profile a { color: #9a7440; font-weight: 800; }
 .history-profile p { margin-top: 4px; color: var(--muted); font-size: 13px; }
 .history-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 .history-stats article { min-width: 0; padding: 15px; border: 1px solid var(--line); border-radius: 8px; background: #faf9ff; }
 .history-stats span { display: block; margin-bottom: 8px; color: var(--muted); font-size: 12px; font-weight: 700; }
 .history-stats strong { display: block; overflow-wrap: anywhere; color: #41386d; font-size: 17px; }
-.client-notes { padding: 14px 16px; border-left: 4px solid #cf4f78; border-radius: 0 8px 8px 0; background: #fff6fa; }
+.client-notes { padding: 14px 16px; border-left: 4px solid #bd955e; border-radius: 0 8px 8px 0; background: #fff6fa; }
 .client-notes p { margin: 5px 0 0; }
 .history-section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .history-section-title h3 { margin: 0; }
 .history-section-title span { color: var(--muted); font-size: 13px; }
 .history-timeline { display: grid; gap: 10px; }
-.history-entry { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--line); border-left: 5px solid #cf4f78; border-radius: 8px; background: var(--panel); }
+.history-entry { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px; border: 1px solid var(--line); border-left: 5px solid #bd955e; border-radius: 8px; background: var(--panel); }
 .history-entry.history-amarillo { border-left-color: #d7a52b; }
 .history-entry.history-verde { border-left-color: #2ca77a; }
 .history-date { display: grid; text-align: center; }
-.history-date strong { color: #5f55dc; font-size: 24px; line-height: 1; }
+.history-date strong { color: #856537; font-size: 24px; line-height: 1; }
 .history-date span, .history-date small { color: var(--muted); font-size: 11px; }
 .history-info h3 { margin: 0 0 5px; font-size: 16px; }
 .history-info p { margin: 0 0 7px; color: var(--muted); font-size: 13px; }
@@ -2679,8 +2679,8 @@ body.modo-oscuro .client-notes {
   gap: 4px;
   padding: 12px;
   border-radius: 8px;
-  background: #f4f2ff;
-  color: #5f55dc;
+  background: #f7f2e9;
+  color: #856537;
 }
 
 .appointment-summary {
@@ -2716,7 +2716,7 @@ body.modo-oscuro .client-notes {
   cursor: pointer;
 }
 
-.appointment-services input { width: 18px; height: 18px; flex: 0 0 18px; accent-color: #6d63ef; }
+.appointment-services input { width: 18px; height: 18px; flex: 0 0 18px; accent-color: #9a7440; }
 .appointment-services span { display: grid; gap: 3px; }
 .appointment-services small { color: var(--muted); }
 .service-suboptions {
@@ -3261,7 +3261,7 @@ body.modo-oscuro .client-notes {
     visibility: visible;
     text-align: center;
     color: #fff;
-    background: #522d63;
+    background: #856537;
     font: 700 22px/1.4 Arial, sans-serif;
   }
 }
@@ -3283,3 +3283,4 @@ body.modo-oscuro .client-notes {
   font-size: 14px;
   overflow: visible;
 }
+
