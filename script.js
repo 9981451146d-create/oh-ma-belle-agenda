@@ -116,6 +116,7 @@ let guardadoRemotoPendiente = false;
 let datosMigrados = false;
 let mensajesWhatsApp = [];
 let chatWhatsAppActivo = "";
+let servicioDetallesEdicion = [];
 let reintentoRemoto = null;
 let eventoInstalacion = null;
 // Solo "Recordarme" conserva la sesion despues de recargar la pagina.
@@ -432,6 +433,7 @@ function normalizarDatos() {
     nombre: persona.nombre || "Personal",
     descripcion: persona.descripcion || "",
     email: persona.email || "",
+    telefono: String(persona.telefono || "").replace(/\D/g, "").slice(0, 10),
     foto: persona.foto || "",
     fraccion: Number(persona.fraccion || 30),
     activo: persona.activo !== false,
@@ -450,6 +452,8 @@ function normalizarDatos() {
     notas: String(clienta.notas || ""),
     creadaEn: clienta.creadaEn || new Date().toISOString()
   })).filter((clienta, indice, lista) => clienta.telefono && lista.findIndex(item => item.telefono === clienta.telefono) === indice);
+  const clientasEliminadas = new Set(Array.isArray(configuracion.clientasEliminadas) ? configuracion.clientasEliminadas : []);
+  clientas = clientas.filter(clienta => !clientasEliminadas.has(clienta.telefono));
   citas = citas.map(cita => ({
     ...cita,
     servicio: cita.servicio === "Pestanas" ? "Pestañas" : cita.servicio,
@@ -469,7 +473,7 @@ function normalizarDatos() {
   }));
   citas.forEach(cita => {
     let clienta = clientas.find(item => item.telefono === cita.telefono);
-    if (!clienta && /^\d{10}$/.test(cita.telefono || "")) {
+    if (!clienta && /^\d{10}$/.test(cita.telefono || "") && !clientasEliminadas.has(cita.telefono)) {
       clienta = { id: idNuevo(), nombre: cita.cliente || "Clienta", telefono: cita.telefono, notas: "", creadaEn: new Date().toISOString() };
       clientas.push(clienta);
     }
@@ -483,7 +487,8 @@ function horariosBase() {
     dia,
     activo: true,
     inicio: "09:00",
-    fin: "18:00"
+    fin: "18:00",
+    intervalos: [{ inicio: "09:00", fin: "18:00" }]
   }));
 }
 
@@ -491,11 +496,16 @@ function normalizarHorarios(horarios) {
   const lista = Array.isArray(horarios) ? horarios : horariosBase();
   const normalizados = lista.map(item => ({
     ...item,
-    dia: item.dia === "Miercoles" ? "Miércoles" : item.dia === "Sabado" ? "Sábado" : item.dia
+    dia: item.dia === "Miercoles" ? "Miércoles" : item.dia === "Sabado" ? "Sábado" : item.dia,
+    intervalos: Array.isArray(item.intervalos) && item.intervalos.length
+      ? item.intervalos.map(intervalo => ({ inicio: intervalo.inicio || "09:00", fin: intervalo.fin || "18:00" }))
+      : [{ inicio: item.inicio || "09:00", fin: item.fin || "18:00" }]
   }));
   return horariosBase().map(base => {
     const guardado = normalizados.find(item => item.dia === base.dia);
-    return guardado ? { ...base, ...guardado } : base;
+    if (!guardado) return base;
+    const intervalos = guardado.intervalos?.length ? guardado.intervalos : base.intervalos;
+    return { ...base, ...guardado, inicio: intervalos[0].inicio, fin: intervalos[0].fin, intervalos };
   });
 }
 
@@ -1093,7 +1103,7 @@ function mostrarClientas(busqueda = "") {
 function tarjetaClienta(clienta) {
       const historial = historialDeClienta(clienta);
       const ultima = historial[0];
-      return `<article class="client-card"><div class="client-avatar">${clienta.nombre.charAt(0).toUpperCase()}</div><div><h3>${clienta.nombre}</h3><a href="tel:${clienta.telefono}">${clienta.telefono}</a><p>${historial.length} visita(s)${ultima ? ` · Última: ${formatoFecha(ultima.fecha)}` : ""}</p></div><div class="client-actions"><button type="button" onclick="verHistorialClienta(${clienta.id})">Ver historial</button>${puedeEditar() ? `<button type="button" onclick="abrirClientaModal(${clienta.id})">Editar</button>` : ""}</div></article>`;
+      return `<article class="client-card"><div class="client-avatar">${clienta.nombre.charAt(0).toUpperCase()}</div><div><h3>${clienta.nombre}</h3><a href="tel:${clienta.telefono}">${clienta.telefono}</a><p>${historial.length} visita(s)${ultima ? ` · Última: ${formatoFecha(ultima.fecha)}` : ""}</p></div><div class="client-actions"><button type="button" onclick="verHistorialClienta(${clienta.id})">Ver historial</button>${puedeEditar() ? `<button type="button" onclick="abrirClientaModal(${clienta.id})">Editar</button><button class="trash" type="button" onclick="eliminarClienta(${clienta.id})">Eliminar</button>` : ""}</div></article>`;
 }
 
 function distanciaTexto(a, b) {
@@ -1153,9 +1163,21 @@ function guardarClientaModal(event, id = null) {
   if (clientas.some(item => item.telefono === telefono && item.id !== id)) return mostrarMensaje("Clienta existente", "Ese teléfono ya pertenece a otra clienta.", "alerta");
   const anterior = clientas.find(item => item.id === id);
   const clienta = { id: anterior?.id || idNuevo(), nombre, telefono, notas: document.getElementById("clientaNotas").value.trim(), creadaEn: anterior?.creadaEn || new Date().toISOString() };
+  configuracion.clientasEliminadas = (configuracion.clientasEliminadas || []).filter(numero => numero !== telefono);
   if (anterior) clientas[clientas.indexOf(anterior)] = clienta; else clientas.push(clienta);
   citas.forEach(cita => { if (cita.clienteId === clienta.id || cita.telefono === anterior?.telefono) { cita.clienteId = clienta.id; cita.cliente = clienta.nombre; cita.telefono = clienta.telefono; } });
   guardar(); cerrarModalFormulario(); mostrarClientas(); mostrarMensaje("Clienta guardada", "Su historial quedó actualizado.", "ok");
+}
+
+function eliminarClienta(id) {
+  if (!exigirEdicion()) return;
+  const clienta = clientas.find(item => item.id === id);
+  if (!clienta || !confirm(`¿Segura que quieres eliminar a ${clienta.nombre}? Sus citas históricas no se borrarán.`)) return;
+  configuracion.clientasEliminadas = [...new Set([...(configuracion.clientasEliminadas || []), clienta.telefono])];
+  clientas = clientas.filter(item => item.id !== id);
+  guardar();
+  mostrarClientas();
+  mostrarMensaje("Clienta eliminada", `${clienta.nombre} ya no aparece en el directorio.`, "ok");
 }
 
 function verHistorialClienta(id) {
@@ -1807,10 +1829,7 @@ function clonarDetalles(detalles) {
   return detalles.map(item => ({
     grupo: item.grupo,
     seleccion: item.seleccion || "varias",
-    opciones: (item.opciones || []).map(opcion => typeof opcion === "object" ? {
-      ...opcion,
-      subopciones: Array.isArray(opcion.subopciones) ? opcion.subopciones.map(subopcion => ({ ...subopcion })) : []
-    } : opcion)
+    opciones: (item.opciones || []).map(opcion => datoOpcion(opcion))
   }));
 }
 
@@ -1871,20 +1890,24 @@ function renderOpcionesServicio(grupo, indiceServicio, indiceGrupo, detalleActua
   if (!grupo.opciones.length) {
     return `<input class="cita-detalle-text" data-service-index="${indiceServicio}" data-group="${escaparAtributo(grupo.grupo)}" value="${escaparAtributo([...detalleActual].find(item => item.startsWith(`${grupo.grupo}: `))?.replace(`${grupo.grupo}: `, "") || "")}" placeholder="Notas u observaciones" oninput="actualizarResumenServiciosCita()">`;
   }
-  return grupo.opciones.map((opcionOriginal, indiceOpcion) => {
-    const opcion = datoOpcion(opcionOriginal);
-    const valor = detalleSeleccionadoValor(grupo.grupo, opcion);
-    const tipo = grupo.seleccion === "una" ? "radio" : "checkbox";
-    const tieneVariantes = opcion.subopciones.length > 0;
-    const principal = `<label class="service-choice ${tieneVariantes ? "has-children" : ""}"><input class="cita-detalle-check" data-service-index="${indiceServicio}" data-level="parent" data-has-children="${tieneVariantes}" data-price="${opcion.precio}" data-duration="${opcion.duracion}" data-additive="${grupo.seleccion === "varias"}" name="servicio-${indiceServicio}-grupo-${indiceGrupo}" type="${tipo}" value="${escaparAtributo(valor)}" ${detalleActual.has(valor) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span>${opcion.nombre}${tieneVariantes ? `<small>Selecciona ${opcion.subgrupo.toLowerCase()}</small>` : `<small>${dinero(opcion.precio)} · ${opcion.duracion} min${opcion.nota ? ` · ${opcion.nota}` : ""}</small>`}</span></label>`;
-    if (!tieneVariantes) return principal;
-    const hijas = opcion.subopciones.map((subopcionOriginal, indiceHija) => {
-      const subopcion = datoOpcion(subopcionOriginal);
-      const valorHija = detalleSeleccionadoValor(opcion.subgrupo, subopcion);
-      return `<label><input class="cita-detalle-check cita-subdetalle-check" data-service-index="${indiceServicio}" data-level="child" data-parent-value="${escaparAtributo(valor)}" data-price="${subopcion.precio}" data-duration="${subopcion.duracion}" data-additive="false" name="servicio-${indiceServicio}-grupo-${indiceGrupo}-opcion-${indiceOpcion}" type="radio" value="${escaparAtributo(valorHija)}" ${detalleActual.has(valorHija) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span>${subopcion.nombre}<small>${dinero(subopcion.precio)} · ${subopcion.duracion} min${subopcion.nota ? ` · ${subopcion.nota}` : ""}</small></span></label>`;
-    }).join("");
-    return `${principal}<div class="service-dependent-options" data-parent-value="${escaparAtributo(valor)}"><strong>${opcion.subgrupo}</strong>${hijas}</div>`;
-  }).join("");
+  return grupo.opciones.map((opcion, indiceOpcion) => renderOpcionServicioRecursiva({
+    opcion: datoOpcion(opcion), indiceServicio, indiceGrupo, detalleActual,
+    etiquetaGrupo: grupo.grupo, tipo: grupo.seleccion === "una" ? "radio" : "checkbox",
+    nombreGrupo: `servicio-${indiceServicio}-grupo-${indiceGrupo}`, ruta: `${indiceGrupo}-${indiceOpcion}`, padreRuta: `raiz-${indiceGrupo}`
+  })).join("");
+}
+
+function renderOpcionServicioRecursiva({ opcion, indiceServicio, indiceGrupo, detalleActual, etiquetaGrupo, tipo, nombreGrupo, ruta, padreRuta }) {
+  const valor = detalleSeleccionadoValor(etiquetaGrupo, opcion);
+  const tieneHijas = opcion.subopciones.length > 0;
+  const control = `<label class="service-choice ${tieneHijas ? "has-children" : ""}"><input class="cita-detalle-check" data-service-index="${indiceServicio}" data-node-path="${ruta}" data-parent-path="${padreRuta}" data-price="${opcion.precio}" data-duration="${opcion.duracion}" name="${nombreGrupo}" type="${tipo}" value="${escaparAtributo(valor)}" ${detalleActual.has(valor) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span>${opcion.nombre}<small>${tieneHijas ? `Selecciona ${opcion.subgrupo || "una subcategoría"}` : `${dinero(opcion.precio)} · ${opcion.duracion} min${opcion.nota ? ` · ${opcion.nota}` : ""}`}</small></span></label>`;
+  if (!tieneHijas) return control;
+  const hijas = opcion.subopciones.map((hija, indiceHija) => renderOpcionServicioRecursiva({
+    opcion: datoOpcion(hija), indiceServicio, indiceGrupo, detalleActual,
+    etiquetaGrupo: opcion.subgrupo || "Subcategoría", tipo: "radio",
+    nombreGrupo: `${nombreGrupo}-ruta-${ruta}`, ruta: `${ruta}-${indiceHija}`, padreRuta: ruta
+  })).join("");
+  return `${control}<div class="service-dependent-options" data-parent-path="${ruta}" hidden><strong>${opcion.subgrupo || "Subcategoría"}</strong>${hijas}</div>`;
 }
 
 function serviciosSeleccionadosFormulario() {
@@ -1894,15 +1917,13 @@ function serviciosSeleccionadosFormulario() {
     const detallesChecks = controles.map(item => item.value);
     const detallesTexto = [...document.querySelectorAll(`.cita-detalle-text[data-service-index="${input.value}"]`)].map(item => detalleSeleccionadoValor(item.dataset.group || "Otros", item.value)).filter(Boolean);
     const detalles = [...detallesChecks, ...detallesTexto];
-    const principal = controles.find(item => item.dataset.level === "child") || controles.find(item => item.dataset.additive !== "true");
-    const extras = controles.filter(item => item.dataset.additive === "true");
-    const precioBase = principal ? Number(principal.dataset.price || 0) : Number(servicio.precio);
-    const duracionBase = principal ? Number(principal.dataset.duration || 0) : Number(servicio.duracion);
+    const precioOpciones = controles.reduce((total, item) => total + Number(item.dataset.price || 0), 0);
+    const duracionOpciones = controles.reduce((total, item) => total + Number(item.dataset.duration || 0), 0);
     return {
       nombre: servicio.nombre,
       detalle: detalles.join(" · "),
-      duracion: duracionBase + extras.reduce((total, item) => total + Number(item.dataset.duration || 0), 0),
-      precio: precioBase + extras.reduce((total, item) => total + Number(item.dataset.price || 0), 0)
+      duracion: duracionOpciones > 0 ? duracionOpciones : Number(servicio.duracion),
+      precio: precioOpciones > 0 ? precioOpciones : Number(servicio.precio)
     };
   });
 }
@@ -1911,19 +1932,19 @@ function actualizarResumenServiciosCita(actualizarPrecio = true) {
   document.querySelectorAll(".appointment-service-option").forEach((contenedor, indice) => {
     const activo = document.querySelector(`.cita-servicio-check[value="${indice}"]`)?.checked;
     if (activo) {
-      contenedor.querySelectorAll('.service-subgroup').forEach(grupo => {
-        const principales = [...grupo.querySelectorAll(':scope > label input[data-level="parent"][type="radio"]')];
+      contenedor.querySelectorAll('.service-subgroup').forEach((grupo, indiceGrupo) => {
+        const principales = [...grupo.querySelectorAll(`input[data-parent-path="raiz-${indiceGrupo}"][type="radio"]`)];
         if (principales.length && !principales.some(input => input.checked)) principales[0].checked = true;
       });
     }
     contenedor.querySelectorAll('.service-dependent-options').forEach(subgrupo => {
-      const valorPadre = subgrupo.dataset.parentValue || "";
-      const padreActivo = [...contenedor.querySelectorAll('input[data-level="parent"]')].some(input => input.checked && input.value === valorPadre);
+      const rutaPadre = subgrupo.dataset.parentPath || "";
+      const padreActivo = !!contenedor.querySelector(`input[data-node-path="${rutaPadre}"]:checked:not(:disabled)`);
       subgrupo.hidden = !activo || !padreActivo;
-      const hijas = [...subgrupo.querySelectorAll('.cita-subdetalle-check')];
-      hijas.forEach(input => input.disabled = !activo || !padreActivo);
-      if (!padreActivo) hijas.forEach(input => input.checked = false);
-      else if (hijas.length && !hijas.some(input => input.checked)) hijas[0].checked = true;
+      const hijasDirectas = [...subgrupo.querySelectorAll(`input[data-parent-path="${rutaPadre}"]`)];
+      hijasDirectas.forEach(input => input.disabled = !activo || !padreActivo);
+      if (!padreActivo) subgrupo.querySelectorAll("input").forEach(input => { input.disabled = true; input.checked = false; });
+      else if (hijasDirectas.length && !hijasDirectas.some(input => input.checked)) hijasDirectas[0].checked = true;
     });
   });
   const seleccion = serviciosSeleccionadosFormulario();
@@ -1935,7 +1956,9 @@ function actualizarResumenServiciosCita(actualizarPrecio = true) {
   document.querySelectorAll(".appointment-service-option").forEach((contenedor, indice) => {
     const activo = document.querySelector(`.cita-servicio-check[value="${indice}"]`)?.checked;
     contenedor.classList.toggle("servicio-elegido", !!activo);
-    contenedor.querySelectorAll(".cita-detalle-check:not(.cita-subdetalle-check)").forEach(input => input.disabled = !activo);
+    contenedor.querySelectorAll(".cita-detalle-check").forEach(input => {
+      if ((input.dataset.parentPath || "").startsWith("raiz-")) input.disabled = !activo;
+    });
     contenedor.querySelectorAll(".cita-detalle-text").forEach(input => input.disabled = !activo);
   });
   if (resumen) {
@@ -2031,6 +2054,7 @@ function guardarCitaModal(event, citaId = null) {
   if (hayConflictoDeHorario(cita, citaAnterior?.id ?? null)) return mostrarErrorCita("Horario ocupado", `${cita.personal} ya tiene una cita que coincide con ese horario.`, ["modalCitaFecha", "modalCitaHora", "modalCitaPersonal"]);
   cita.liquidada = cita.anticipo + totalAbonos(cita) >= cita.precio;
   if (!clienta) {
+    configuracion.clientasEliminadas = (configuracion.clientasEliminadas || []).filter(numero => numero !== cita.telefono);
     clienta = { id: idNuevo(), nombre: cita.cliente, telefono: cita.telefono, notas: "", creadaEn: new Date().toISOString() };
     clientas.push(clienta);
   } else {
@@ -2378,14 +2402,35 @@ function vistaServicios() {
     <div class="service-image service-image-empty ${servicio.color}"><span>${servicio.nombre}</span></div>
     <div class="service-body">
       <h3>${servicio.nombre}</h3>
-      <p class="service-time">Opciones desde ${servicio.duracion} minutos</p>
+      <p class="service-time">Opciones desde ${duracionMinimaServicio(servicio)} minutos</p>
       ${normalizarDetallesServicio(servicio).length ? `<div class="service-detail-tags">${normalizarDetallesServicio(servicio).map(grupo => `<span><strong>${grupo.grupo}</strong>${grupo.opciones.length ? `<small>${grupo.opciones.slice(0, 4).map(opcionOriginal => { const opcion = datoOpcion(opcionOriginal); return `${opcion.nombre}${opcion.subopciones.length ? ` (${opcion.subopciones.length} variantes)` : ""}`; }).join(" · ")}${grupo.opciones.length > 4 ? ` · +${grupo.opciones.length - 4} más` : ""}</small>` : `<small>Campo libre</small>`}</span>`).join("")}</div>` : `<p>Sin detalles agregados.</p>`}
       <div class="service-foot">
-        <strong>Desde ${dinero(servicio.precio)}</strong>
+        <strong>Desde ${dinero(precioMinimoServicio(servicio))}</strong>
         ${puedeEditar() ? `<span class="service-actions"><button class="edit-service" type="button" onclick="abrirEditarServicio(${indice})">Editar</button><button class="trash" type="button" onclick="eliminarServicio(${indice})">Eliminar</button></span>` : ""}
       </div>
     </div>
   </article>`).join("")}</div>`;
+}
+
+function opcionesPlanasServicio(servicio) {
+  const resultado = [];
+  const recorrer = opciones => (opciones || []).forEach(opcionOriginal => {
+    const opcion = datoOpcion(opcionOriginal);
+    resultado.push(opcion);
+    recorrer(opcion.subopciones);
+  });
+  normalizarDetallesServicio(servicio).forEach(grupo => recorrer(grupo.opciones));
+  return resultado;
+}
+
+function precioMinimoServicio(servicio) {
+  const valores = [Number(servicio.precio || 0), ...opcionesPlanasServicio(servicio).map(opcion => opcion.precio)].filter(valor => valor > 0);
+  return valores.length ? Math.min(...valores) : 0;
+}
+
+function duracionMinimaServicio(servicio) {
+  const valores = [Number(servicio.duracion || 0), ...opcionesPlanasServicio(servicio).map(opcion => opcion.duracion)].filter(valor => valor > 0);
+  return valores.length ? Math.min(...valores) : 0;
 }
 
 function vistaPersonal() {
@@ -2394,25 +2439,57 @@ function vistaPersonal() {
     <div class="person-photo" ${persona.foto ? `style="background-image:url('${persona.foto}')"` : ""}></div>
     <div class="service-body">
       <h3>${persona.nombre}</h3>
+      ${persona.telefono ? `<p class="service-time">WhatsApp: ${persona.telefono}</p>` : ""}
       <div class="service-foot"><strong class="activo-dot">Activo</strong>${puedeEditar() ? `<span><button type="button" onclick="abrirEditarPersonal(${indice})">Editar</button><button class="trash" type="button" onclick="eliminarPersonal(${indice})">Eliminar</button></span>` : ""}</div>
     </div>
   </article>`).join("")}</div>`;
 }
 
 function camposHorarios(prefix, datos = horariosBase()) {
-  return `<div class="horarios-box">${datos.map((item, indice) => `<div class="horario-row">
-    <label><input type="checkbox" id="${prefix}Dia${indice}" ${item.activo ? "checked" : ""}> ${item.dia}</label>
-    <div><input type="time" id="${prefix}Inicio${indice}" value="${item.inicio || "09:00"}"><span>a</span><input type="time" id="${prefix}Fin${indice}" value="${item.fin || "18:00"}"><button type="button">−</button></div>
-    <a href="#">+ Agregar horario</a>
+  const normalizados = normalizarHorarios(datos);
+  return `<div class="horarios-box" id="${prefix}Horarios">${normalizados.map((item, indice) => `<div class="horario-row" data-day-index="${indice}" data-day="${item.dia}">
+    <label><input type="checkbox" class="horario-dia-activo" ${item.activo ? "checked" : ""}> ${item.dia}</label>
+    <div class="horario-intervalos">${item.intervalos.map(intervalo => filaIntervaloHorario(intervalo)).join("")}</div>
+    <button class="add-schedule" type="button" onclick="agregarIntervaloHorario('${prefix}', ${indice})">+ Agregar otro horario</button>
   </div>`).join("")}</div>`;
 }
 
+function filaIntervaloHorario(intervalo = { inicio: "09:00", fin: "18:00" }) {
+  return `<div class="horario-intervalo"><input class="horario-inicio" type="time" value="${intervalo.inicio || "09:00"}"><span>a</span><input class="horario-fin" type="time" value="${intervalo.fin || "18:00"}"><button type="button" title="Eliminar horario" onclick="eliminarIntervaloHorario(this)">−</button></div>`;
+}
+
+function agregarIntervaloHorario(prefix, indiceDia) {
+  const contenedor = document.querySelector(`#${prefix}Horarios [data-day-index="${indiceDia}"] .horario-intervalos`);
+  if (contenedor) contenedor.insertAdjacentHTML("beforeend", filaIntervaloHorario());
+}
+
+function eliminarIntervaloHorario(boton) {
+  const contenedor = boton.closest(".horario-intervalos");
+  if (!contenedor) return;
+  if (contenedor.children.length === 1) return mostrarMensaje("Horario necesario", "Cada día debe conservar al menos un horario.", "alerta");
+  boton.closest(".horario-intervalo")?.remove();
+}
+
 function leerHorarios(prefix) {
-  return horariosBase().map((item, indice) => ({
-    dia: item.dia,
-    activo: document.getElementById(`${prefix}Dia${indice}`).checked,
-    inicio: document.getElementById(`${prefix}Inicio${indice}`).value,
-    fin: document.getElementById(`${prefix}Fin${indice}`).value
+  return [...document.querySelectorAll(`#${prefix}Horarios .horario-row`)].map(fila => {
+    const intervalos = [...fila.querySelectorAll(".horario-intervalo")].map(intervalo => ({
+      inicio: intervalo.querySelector(".horario-inicio").value,
+      fin: intervalo.querySelector(".horario-fin").value
+    }));
+    return {
+      dia: fila.dataset.day,
+      activo: fila.querySelector(".horario-dia-activo").checked,
+      inicio: intervalos[0]?.inicio || "09:00",
+      fin: intervalos[0]?.fin || "18:00",
+      intervalos
+    };
+  });
+}
+
+function horariosCorrectos(horarios) {
+  return horarios.every(dia => !dia.activo || dia.intervalos.every((intervalo, indice, lista) => {
+    if (!intervalo.inicio || !intervalo.fin || horaAMinutos(intervalo.inicio) >= horaAMinutos(intervalo.fin)) return false;
+    return !lista.some((otro, otroIndice) => otroIndice !== indice && horaAMinutos(intervalo.inicio) < horaAMinutos(otro.fin) && horaAMinutos(intervalo.fin) > horaAMinutos(otro.inicio));
   }));
 }
 
@@ -2423,6 +2500,7 @@ function abrirNuevoPersonal(indice = null) {
     <label>Nombre completo</label><input id="personalNombre" value="${persona.nombre || ""}" placeholder="Sebastián Pérez" required>
     <label>Foto</label><input id="personalFoto" type="file" accept="image/*">
     <label>Email para notificaciones (opcional)</label><input id="personalEmail" type="email" value="${persona.email || ""}" placeholder="ejemplo@email.com">
+    <label>Número de WhatsApp</label><input id="personalTelefono" type="tel" inputmode="numeric" maxlength="10" value="${persona.telefono || ""}" placeholder="10 dígitos" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)" required>
     <h3>Horario de trabajo</h3>${camposHorarios("personal", persona.horarios || horariosBase())}
     <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar Personal</button></div>
   </form>`);
@@ -2438,17 +2516,21 @@ function guardarPersonalModal(event, indice) {
   const inputFoto = document.getElementById("personalFoto");
   leerArchivo(inputFoto, fotoNueva => {
     const actual = indice !== null ? personal[indice] : {};
+    const horarios = leerHorarios("personal");
     const persona = {
       id: actual.id || idNuevo(),
       nombre: document.getElementById("personalNombre").value.trim(),
       descripcion: actual.descripcion || "",
       email: document.getElementById("personalEmail").value.trim(),
+      telefono: document.getElementById("personalTelefono").value.trim(),
       fraccion: actual.fraccion || 30,
       foto: fotoNueva || actual.foto || "",
       activo: true,
-      horarios: leerHorarios("personal")
+      horarios
     };
     if (!persona.nombre) return mostrarMensaje("Completa los datos", "Agrega el nombre del personal.", "alerta");
+    if (!/^\d{10}$/.test(persona.telefono)) return mostrarMensaje("WhatsApp incorrecto", "El número de WhatsApp debe tener exactamente 10 dígitos.", "alerta");
+    if (!horariosCorrectos(horarios)) return mostrarMensaje("Revisa los horarios", "La hora final debe ser posterior a la inicial y los horarios del mismo día no pueden cruzarse.", "alerta");
     if (indice !== null) personal[indice] = persona;
     else personal.push(persona);
     guardar();
@@ -2464,21 +2546,106 @@ function eliminarPersonal(indice) {
   mostrarServicios("personal");
 }
 
+function opcionEdicionPorRuta(ruta) {
+  const partes = String(ruta).split(".").map(Number);
+  let opciones = servicioDetallesEdicion[partes.shift()]?.opciones;
+  let opcion = null;
+  for (const indice of partes) {
+    opcion = opciones?.[indice];
+    opciones = opcion?.subopciones;
+  }
+  return opcion;
+}
+
+function actualizarGrupoServicioEdicion(indice, campo, valor) {
+  if (servicioDetallesEdicion[indice]) servicioDetallesEdicion[indice][campo] = valor;
+}
+
+function actualizarOpcionServicioEdicion(ruta, campo, valor) {
+  const opcion = opcionEdicionPorRuta(ruta);
+  if (!opcion) return;
+  opcion[campo] = ["precio", "duracion"].includes(campo) ? Number(valor || 0) : valor;
+}
+
+function renderOpcionEditor(opcionOriginal, ruta, nivel = 0) {
+  const opcion = datoOpcion(opcionOriginal);
+  return `<div class="catalog-option-editor" style="--catalog-level:${nivel}">
+    <div class="catalog-option-fields">
+      <input value="${escaparAtributo(opcion.nombre)}" placeholder="Nombre de la opción" oninput="actualizarOpcionServicioEdicion('${ruta}','nombre',this.value)">
+      <label>Precio<input type="number" min="0" step="0.01" value="${valorParaEntrada(opcion.precio)}" oninput="actualizarOpcionServicioEdicion('${ruta}','precio',this.value)"></label>
+      <label>Minutos<input type="number" min="0" value="${opcion.duracion}" oninput="actualizarOpcionServicioEdicion('${ruta}','duracion',this.value)"></label>
+      <button class="trash" type="button" title="Eliminar opción" onclick="eliminarOpcionServicioEdicion('${ruta}')">Eliminar</button>
+    </div>
+    ${opcion.subopciones.length ? `<label class="catalog-subgroup-name">Nombre de la subcategoría<input value="${escaparAtributo(opcion.subgrupo)}" placeholder="Ej. Largo, efecto o acabado" oninput="actualizarOpcionServicioEdicion('${ruta}','subgrupo',this.value)"></label>` : ""}
+    <div class="catalog-children">${opcion.subopciones.map((hija, indice) => renderOpcionEditor(hija, `${ruta}.${indice}`, nivel + 1)).join("")}</div>
+    <button class="catalog-add-child" type="button" onclick="agregarSubopcionServicioEdicion('${ruta}')">+ Agregar subcategoría a esta opción</button>
+  </div>`;
+}
+
+function renderEditorDetallesServicio() {
+  const contenedor = document.getElementById("editorDetallesServicio");
+  if (!contenedor) return;
+  contenedor.innerHTML = servicioDetallesEdicion.map((grupo, indiceGrupo) => `<section class="catalog-group-editor">
+    <div class="catalog-group-head">
+      <input value="${escaparAtributo(grupo.grupo)}" placeholder="Nombre de la categoría" oninput="actualizarGrupoServicioEdicion(${indiceGrupo},'grupo',this.value)">
+      <select onchange="actualizarGrupoServicioEdicion(${indiceGrupo},'seleccion',this.value)"><option value="una" ${grupo.seleccion === "una" ? "selected" : ""}>Elegir una</option><option value="varias" ${grupo.seleccion === "varias" ? "selected" : ""}>Permitir varias</option><option value="texto" ${grupo.seleccion === "texto" ? "selected" : ""}>Texto libre</option></select>
+      <button class="trash" type="button" onclick="eliminarGrupoServicioEdicion(${indiceGrupo})">Eliminar categoría</button>
+    </div>
+    <div class="catalog-options">${(grupo.opciones || []).map((opcion, indice) => renderOpcionEditor(opcion, `${indiceGrupo}.${indice}`)).join("")}</div>
+    ${grupo.seleccion !== "texto" ? `<button type="button" onclick="agregarOpcionServicioEdicion(${indiceGrupo})">+ Agregar opción</button>` : ""}
+  </section>`).join("") || `<p class="texto-suave">Aún no hay categorías. Agrega una para comenzar.</p>`;
+}
+
+function agregarGrupoServicioEdicion() {
+  servicioDetallesEdicion.push({ grupo: "Nueva categoría", seleccion: "una", opciones: [] });
+  renderEditorDetallesServicio();
+}
+
+function eliminarGrupoServicioEdicion(indice) {
+  servicioDetallesEdicion.splice(indice, 1);
+  renderEditorDetallesServicio();
+}
+
+function agregarOpcionServicioEdicion(indiceGrupo) {
+  servicioDetallesEdicion[indiceGrupo]?.opciones.push(datoOpcion({ nombre: "Nueva opción", precio: 0, duracion: 0 }));
+  renderEditorDetallesServicio();
+}
+
+function agregarSubopcionServicioEdicion(ruta) {
+  const opcion = opcionEdicionPorRuta(ruta);
+  if (!opcion) return;
+  if (!opcion.subgrupo) opcion.subgrupo = "Subcategoría";
+  opcion.subopciones.push(datoOpcion({ nombre: "Nueva subcategoría", precio: 0, duracion: 0 }));
+  renderEditorDetallesServicio();
+}
+
+function eliminarOpcionServicioEdicion(ruta) {
+  const partes = String(ruta).split(".").map(Number);
+  const indiceGrupo = partes.shift();
+  const indiceOpcion = partes.pop();
+  let opciones = servicioDetallesEdicion[indiceGrupo]?.opciones;
+  for (const indice of partes) opciones = opciones?.[indice]?.subopciones;
+  if (opciones) opciones.splice(indiceOpcion, 1);
+  renderEditorDetallesServicio();
+}
+
 function abrirNuevoServicio(indice = null) {
   if (!exigirEdicion()) return;
   const servicio = indice !== null ? servicios[indice] : { horarios: horariosBase(), capacidad: 1, duracion: 30, precio: 0, anticipo: 0, pagoEfectivo: true };
+  servicioDetallesEdicion = clonarDetalles(normalizarDetallesServicio(servicio));
   abrirModal(indice !== null ? "Editar Servicio" : "Nuevo Servicio", `<form class="modal-stack" novalidate onsubmit="guardarServicioModal(event, ${indice === null ? "null" : indice})">
     <label>Nombre del Servicio</label><input id="servicioNombreModal" value="${servicio.nombre || ""}" required>
-    <label>Precio (MXN)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="servicioPrecioModal" type="number" min="0.01" step="0.01" value="${valorParaEntrada(servicio.precio || 0)}" required></div>
-    <label>Duración (minutos)</label><input id="servicioDuracionModal" type="number" min="1" value="${servicio.duracion || 30}" required>
-    <label>Subcategorías y opciones</label><textarea id="servicioDetallesModal" rows="7" placeholder="Ejemplo:&#10;Tipo: Clásico, Premium&#10;Extras: Efecto espejo, Nail Art">${textoDetallesServicio(servicio.detalles || [])}</textarea>
-    <p class="texto-suave">El catálogo incluido conserva automáticamente los precios y tiempos de cada opción.</p>
+    <label>Precio base (MXN)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="servicioPrecioModal" type="number" min="0" step="0.01" value="${valorParaEntrada(servicio.precio || 0)}" required></div>
+    <label>Duración base (minutos)</label><input id="servicioDuracionModal" type="number" min="0" value="${servicio.duracion || 0}" required>
+    <div class="catalog-editor-title"><div><h3>Categorías y subcategorías</h3><p class="texto-suave">Puedes agregar tantos niveles como necesites. Cada opción puede tener su propio precio y tiempo.</p></div><button type="button" onclick="agregarGrupoServicioEdicion()">+ Categoría</button></div>
+    <div id="editorDetallesServicio" class="catalog-editor"></div>
     <h3>Personal Asignado</h3>
     <div class="check-grid">${personal.map(p => `<label class="check-line"><input class="servicioPersonalModal" type="checkbox" value="${p.nombre}" ${(servicio.personalAsignado || []).includes(p.nombre) ? "checked" : ""}> ${p.nombre}</label>`).join("") || `<p class="texto-suave">No hay personal agregado todavía.</p>`}</div>
     <h3>Horarios</h3>${camposHorarios("servicio", servicio.horarios || horariosBase())}
     <label>Anticipación mínima para reservar</label><select id="servicioAnticipacionModal"><option>Sin anticipación</option><option>1 hora antes</option><option>24 horas antes</option></select>
     <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar Servicio</button></div>
   </form>`);
+  renderEditorDetallesServicio();
 }
 
 function abrirEditarServicio(indice) {
@@ -2489,6 +2656,7 @@ function guardarServicioModal(event, indice) {
   event.preventDefault();
   if (!exigirEdicion()) return;
     const actual = indice !== null ? servicios[indice] : {};
+    const horarios = leerHorarios("servicio");
     const servicio = {
       nombre: document.getElementById("servicioNombreModal").value.trim(),
       descripcion: actual.descripcion || "",
@@ -2501,13 +2669,13 @@ function guardarServicioModal(event, indice) {
       pagoEfectivo: actual.pagoEfectivo !== false,
       pagoTransferencia: !!actual.pagoTransferencia,
       personalAsignado: [...document.querySelectorAll(".servicioPersonalModal:checked")].map(item => item.value),
-      detalles: indice !== null && document.getElementById("servicioDetallesModal").value.trim() === textoDetallesServicio(actual.detalles || []).trim()
-        ? actual.detalles
-        : leerDetallesServicioTexto(document.getElementById("servicioDetallesModal").value),
-      horarios: leerHorarios("servicio"),
+      detalles: clonarDetalles(servicioDetallesEdicion).filter(grupo => grupo.grupo),
+      horarios,
       color: actual.color || ["rosa", "dorado", "uva", "verde"][servicios.length % 4]
     };
-    if (!servicio.nombre || servicio.precio <= 0 || servicio.duracion <= 0) return mostrarMensaje("Completa los datos", "Agrega nombre, precio y duración del servicio.", "alerta");
+    if (!servicio.nombre || servicio.precio < 0 || servicio.duracion < 0) return mostrarMensaje("Completa los datos", "Agrega un nombre y revisa que precio y duración no sean negativos.", "alerta");
+    if (precioMinimoServicio(servicio) <= 0 || duracionMinimaServicio(servicio) <= 0) return mostrarMensaje("Faltan precios o tiempos", "Agrega precio y duración al servicio base o a sus opciones.", "alerta");
+    if (!horariosCorrectos(horarios)) return mostrarMensaje("Revisa los horarios", "La hora final debe ser posterior a la inicial y los horarios del mismo día no pueden cruzarse.", "alerta");
     if (indice !== null) servicios[indice] = servicio;
     else servicios.push(servicio);
     guardar();
