@@ -1,108 +1,101 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nuez de Avellana | Inventario</title>
-<link rel="stylesheet" href="style.css?v=escaner-compras-20261005">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#856537">
+  <meta name="facebook-domain-verification" content="v8hqwmgv880lox4raxlxnfjjf2fx7w">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Beloved Body">
+  <title>Beloved Body | Agenda</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/beloved-body-icon-192.png">
+  <link rel="apple-touch-icon" href="assets/beloved-body-icon-192.png">
+  <link rel="stylesheet" href="style.css?v=20261005-metas-39">
 </head>
 <body>
-  <div class="login" id="pantallaLogin">
-    <nav class="login-nav">
-      <div class="logo">
-        <img class="logo-foto" src="avellana.svg" alt="Nuez de avellana">
-        <span>Nuez de Avellana</span>
-      </div>
-    </nav>
-
-    <section class="login-hero">
-      <div class="hero-texto">
-        <span class="etiqueta">Sistema de control interno</span>
-        <h1>Control de surtido para máquinas y contenedores.</h1>
-        <p>
-          Registra entradas, salidas por espiral, contenedores adicionales,
-          ajustes de reportes y existencias de Nuez de Avellana.
-        </p>
-
-        <div class="beneficios-linea">
-          <span>Inventario actualizado</span>
-          <span>Control de movimientos</span>
-          <span>Reportes claros</span>
-        </div>
-      </div>
-
-      <div class="login-panel">
-        <div id="formLogin">
-          <h2>Bienvenido a Nuez de Avellana</h2>
-          <p class="subtexto">
-            Accede a tu cuenta para continuar gestionando tu inventario,
-            reportes, productos y movimientos.
-          </p>
-
-          <label for="usuario">Usuario</label>
-          <input type="text" id="usuario" placeholder="Ingresa tu usuario" autocomplete="username">
-
-          <label for="clave">Contraseña</label>
-          <input type="password" id="clave" placeholder="Ingresa tu contraseña" autocomplete="current-password">
-
-          <button type="button" onclick="iniciarSesion()">Iniciar sesión</button>
-          <p class="error" id="mensaje"></p>
-        </div>
-      </div>
-    </section>
+  <div id="introAplicacion" class="app-intro" hidden aria-hidden="true">
+    <img src="assets/logo-beloved-body-transparent.png" alt="Beloved Body Salón Spa">
   </div>
 
-  <div id="sistema">
+  <section class="login" id="pantallaLogin">
+    <div class="login-card">
+      <img class="login-logo" src="assets/logo-beloved-body-transparent.png" alt="Beloved Body Salón Spa">
+      <img class="avatar-img" src="assets/user-icon-transparent.png" alt="">
+
+      <label for="usuario">Usuario</label>
+      <select id="usuario" onchange="usuarioSeleccionado()">
+        <option value="">Selecciona un usuario</option>
+      </select>
+
+      <div id="campoClave" class="campo-clave">
+        <label for="clave">Contraseña</label>
+        <input id="clave" type="password" placeholder="Contraseña" autocomplete="current-password" onkeydown="if(event.key === 'Enter') iniciarSesion()">
+      </div>
+
+      <button type="button" onclick="iniciarSesion()">Entrar</button>
+      <div class="login-options">
+        <label><input id="recordarme" type="checkbox"> Recordarme</label>
+        <span>Beloved Body</span>
+      </div>
+      <p class="error" id="mensaje"></p>
+    </div>
+  </section>
+
+  <section id="sistema" class="app">
     <aside class="sidebar">
-      <div class="sidebar-logo">
-        <img class="logo-foto" src="avellana.svg" alt="Nuez de avellana">
+      <div class="brand">
+        <img src="assets/logo-beloved-body-transparent.png" alt="Beloved Body">
         <div>
-          <strong>Nuez de Avellana</strong>
-          <span>Inventario</span>
+          <strong>Beloved Body</strong>
+          <span id="rolActual">Agenda</span>
         </div>
       </div>
 
-      <button type="button" onclick="mostrarInicio()"><img class="menu-foto" src="assets/icon-inicio.svg" alt=""><span>Inicio</span></button>
-      <button type="button" onclick="mostrarInventario()"><img class="menu-foto" src="assets/icon-inventario.svg" alt=""><span>Inventario</span></button>
-      <button type="button" onclick="mostrarProductos()"><img class="menu-foto" src="assets/icon-productos.svg" alt=""><span>Productos</span></button>
-      <button type="button" data-menu="escanear" onclick="mostrarEscanerCompras()"><img class="menu-foto" src="assets/icon-movimientos.svg" alt=""><span>Escanear</span></button>
-      <button type="button" onclick="mostrarMovimientos()"><img class="menu-foto" src="assets/icon-movimientos.svg" alt=""><span>Movimientos</span></button>
-      <button type="button" data-menu="reportes" onclick="mostrarPanelReportesAnalisis()"><img class="menu-foto" src="assets/icon-reportes.svg" alt=""><span>Reportes y análisis</span></button>
-      <button type="button" onclick="mostrarCierreMes()"><img class="menu-foto" src="assets/icon-cierre.svg" alt=""><span>Cierre de mes</span></button>
-      <button type="button" onclick="mostrarConfiguracion()"><img class="menu-foto" src="assets/icon-config.svg" alt=""><span>Configuración</span></button>
-
-      <button class="salir" type="button" onclick="cerrarSesion()"><img class="menu-foto" src="assets/icon-salir.svg" alt=""><span>Cerrar sesión</span></button>
+      <nav aria-label="Menu principal">
+        <button class="nav-activo" type="button" data-seccion="inicio" onclick="mostrarInicio()"><img class="menu-icon" src="assets/icons/inicio.png" alt="">Inicio</button>
+        <button type="button" data-seccion="estadisticas" onclick="mostrarEstadisticas()"><img class="menu-icon" src="assets/icons/estadisticas.png" alt="">Estadísticas</button>
+        <button type="button" data-seccion="metas" onclick="mostrarMetas()"><span class="meta-menu-icon" aria-hidden="true">◎</span>Metas</button>
+        <button type="button" data-seccion="servicios" onclick="mostrarServicios()"><img class="menu-icon" src="assets/icons/servicios.png" alt="">Servicios</button>
+        <button type="button" data-seccion="clientas" onclick="mostrarClientas()"><img class="menu-icon" src="assets/icons/personal.png" alt="">Clientas</button>
+        <button type="button" data-seccion="configuracion" onclick="mostrarConfiguracion()"><img class="menu-icon" src="assets/icons/configuracion.png" alt="">Configuración</button>
+        <button class="salir" type="button" onclick="cerrarSesion()"><img class="menu-icon" src="assets/icons/cerrar-sesion.png" alt="">Salir</button>
+      </nav>
     </aside>
 
-    <main class="dashboard">
-      <header class="dashboard-header">
+    <main class="main">
+      <header class="topbar">
         <div>
-          <span class="eyebrow">Panel operativo</span>
-          <h1>Control de inventario</h1>
-          <p>Productos, existencias, máquinas, ajustes y ventas en un solo sistema.</p>
+          <p>belovedbody.local/agenda</p>
+          <span class="premium">Agenda</span>
         </div>
+        <button id="botonInstalar" class="install-app-button" type="button" onclick="instalarAplicacion()" title="Instalar aplicación" aria-label="Instalar aplicación" hidden>Instalar</button>
+        <button type="button" onclick="mostrarServicios('personal')" title="Personal"><img src="assets/icons/personal.png" alt=""></button>
+        <button type="button" onclick="mostrarConfiguracion()" title="Configuración"><img src="assets/icons/configuracion.png" alt=""></button>
+        <button type="button" onclick="cerrarSesion()" title="Salir"><img src="assets/icons/cerrar-sesion.png" alt=""></button>
       </header>
 
-      <section id="contenido"></section>
+      <section id="contenido" class="content"></section>
     </main>
-  </div>
+  </section>
 
   <div id="mensajeGuardado" class="modal" role="status" aria-live="polite">
-    <div class="modal-contenido">
-      <h2 id="tituloMensaje">Guardado con éxito</h2>
+    <div class="modal-box">
+      <h2 id="tituloMensaje">Listo</h2>
       <p id="textoMensaje"></p>
     </div>
   </div>
 
-  <div id="modalProducto" class="modal">
-    <div class="modal-contenido modal-producto">
-      <div id="detalleProducto"></div>
-      <button class="boton-peligro" type="button" onclick="cerrarDetalleProducto()">Cerrar</button>
+  <div id="modalFormulario" class="modal">
+    <div class="modal-form">
+      <button class="modal-close" type="button" onclick="cerrarModalFormulario()">×</button>
+      <div id="modalContenido"></div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=escaner-compras-20261005"></script>
-<script src="script.js?v=escaner-compras-20261005"></script>
+  <script src="script.js?v=20261005-metas-39"></script>
 </body>
 </html>
+

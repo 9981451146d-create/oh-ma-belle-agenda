@@ -1,138 +1,217 @@
-﻿const CONFIG = window.NA_CONFIG || {};
-const CLAVE = CONFIG.claveDatos || "nuez-avellana-inventario-v4";
-const CODIGO_EMPRESA = CONFIG.codigoEmpresa || "EMPRESA123";
-const CODIGO_CIERRE = CONFIG.codigoDueno || "1234";
-
-const productosIniciales = [
-  "Agua de coco 330ml", "Agua kirkland", "Aguas s m", "Alegria sabores", "Alegrias", "Almendra",
-  "Avena taifelds", "Barra coco", "Barra de cereal", "Barra stila", "Café clásico 315 ml",
-  "Café varios315ml", "Canelitas", "Chips papas BP", "Chocolate zero", "Coca Light 600ml",
-  "Coca cola 600ml", "Electrolitos 625ml", "Free life", "Galleta artesanal", "Garbanzo / Chile BP",
-  "Halls", "Jugo Natura 200ml", "Jugo del valle 237 ml", "Jumex 200ml", "Kelloggs",
-  "Lechita chocolate 200ml", "Lipton 600ml", "Manzana (fruta)", "Manzanita sol 400ml",
-  "Marinela (principie/triqui/plati", "Nuez caramelizada Bp", "Obleas", "Palanqueta",
-  "Picositas Bp", "Pistache Bp", "Sabrita A doritos rufles ranche", "Sabrita B fritos chetos churrum",
-  "Squirt", "Taifelds", "Tea latte chai 330", "Te verde 500ml", "Troddos", "Yakult rojo", "Yogurt activia"
+const CLAVE = "oh-ma-belle-agenda-v1";
+const SUPABASE_URL = "https://vgmyzhmbuteixvlvwxjc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_5b7OS0T91SbgnCog14YXEw_tr7lD3WT";
+const CODIGO_ADMINISTRACION = "2009";
+const VAPID_PUBLIC_KEY = "BPkgnzBm9iqn5ZYXETtJ37oweVMi4EEuXu-uoWxewe5MG3W9bxeftqIr75NoU9-JgWF9EcPzm-MptOXP4abYmzM";
+const NOMBRE_NEGOCIO = "Beloved Body";
+const SUBTITULO_NEGOCIO = "Salón Spa";
+const LOGO_PREDETERMINADO = "assets/logo-beloved-body-transparent.png";
+const MIGRACION_DATOS_ACTUAL = "20260918-catalogo-jerarquico-domingo";
+const MIGRACION_LOGO_ACTUAL = "20260918-identidad-beloved-transparente";
+const opcionServicio = (nombre, precio, duracion, nota = "") => ({ nombre, precio, duracion, nota });
+const opcionConVariantes = (nombre, subgrupo, subopciones) => ({ nombre, precio: 0, duracion: 0, subgrupo, subopciones });
+const detallesManicureBase = [
+  {
+    grupo: "Elige el servicio",
+    seleccion: "una",
+    opciones: [
+      opcionConVariantes("Soft Gel", "Cantidad de colores", [
+        opcionServicio("1 a 5 colores", 390, 90)
+      ]),
+      opcionServicio("Rubber", 430, 75),
+      opcionServicio("Builder", 450, 90),
+      opcionConVariantes("Acrílico", "Largo", [
+        opcionServicio("1 y 2 · Cortas", 400, 120),
+        opcionServicio("3 y 4 · Medianas", 500, 120),
+        opcionServicio("5 y 6 · Largas", 650, 135),
+        opcionServicio("7 y 8 · Extralargas", 750, 150)
+      ]),
+      opcionConVariantes("Mani Spa", "Nivel y acabado", [
+        opcionServicio("Básico", 350, 45),
+        opcionServicio("Gel", 150, 30),
+        opcionServicio("Básico + Gel", 500, 60),
+        opcionServicio("Deluxe", 450, 60),
+        opcionServicio("Deluxe + Gel", 600, 75),
+        opcionServicio("Premium", 550, 75),
+        opcionServicio("Premium + Gel", 700, 90)
+      ]),
+      opcionConVariantes("Pedi Spa", "Nivel y acabado", [
+        opcionServicio("Básico", 450, 60),
+        opcionServicio("Gel", 200, 30),
+        opcionServicio("Básico + Gel", 600, 75),
+        opcionServicio("Deluxe", 550, 75),
+        opcionServicio("Deluxe + Gel", 750, 90),
+        opcionServicio("Premium", 650, 90),
+        opcionServicio("Premium + Gel", 850, 105)
+      ])
+    ]
+  },
+  {
+    grupo: "Efectos adicionales",
+    seleccion: "varias",
+    opciones: [
+      opcionServicio("Efecto espejo", 12, 5, "cada uña"),
+      opcionServicio("Efecto mate", 8, 5, "cada uña"),
+      opcionServicio("Relieves", 14, 10, "cada uña"),
+      opcionServicio("Piedra tornasol", 10, 5, "4 a 10 por piedra"),
+      opcionServicio("Nail Art · francés, líneas o rayas", 13, 10, "cada uña"),
+      opcionServicio("Dijes", 12, 5, "4 a 12 por pieza"),
+      opcionServicio("Efecto ojo de gato", 11, 5, "cada uña")
+    ]
+  },
+  { grupo: "Observaciones", seleccion: "texto", opciones: [] }
 ];
-
-const inventarioInicial20260824 = [
-  ["Agua de coco 330ml", 10], ["Agua kirkland", 77], ["Aguas s m", 117], ["Alegria sabores", 0],
-  ["Alegrias", 0], ["Almendra", 0], ["Almendra BG/ gr", 0], ["Arandanno/ Cacahuate", 0],
-  ["Taifelds", 0], ["Barra coco", 0], ["Barra crujiente", 0], ["Barra de cereal", 24],
-  ["Barra stila", 0], ["Barrinolas", 204], ["Bocadillos", 0], ["Cacahuate", 0],
-  ["Café clásico 315 ml", 55], ["Café varios315ml", 70], ["Canelitas", 0], ["Chips papas BG", 0],
-  ["Chips papas BP", 4], ["Platano horneado tumbis BG", 0], ["Platano horneado tumbis BP", 0],
-  ["Chocolate zero", 10], ["Coca cola 400 ml", 0], ["Coca cola 600ml", 0], ["Coca Light 600ml", 0],
-  ["Electrolitos 625ml", 32], ["Free life", 21], ["Galletas artesanal", 42], ["Garbanzo / Chile BP", 0],
-  ["Garbanzo con chile BG", 0], ["haba BG", 1], ["haba BP", 2], ["Halls", 24],
-  ["Jugo del valle 237 ml", 3], ["Jugo Natura 200ml", 0], ["Jumex 200ml", 0], ["Kelloggs", 9],
-  ["Kisses", 0], ["Lechita chocolate 200ml", 2], ["Lechita fresa 180ml", 0], ["Lipton 600ml", 8],
-  ["Maicito chetto BG", 0], ["Maicito chetto Bp", 0], ["Mandarina (fruta)", 0], ["Manzana (fruta)", 5],
-  ["Manzanita sol 400ml", 16], ["Mix cacahuate", 0], ["Mix frutas BG", 0], ["Mix frutas Bp", 0],
-  ["Nuez caramelizada BG", 0], ["Nuez caramelizada Bp", 0], ["Nuez de la india Bg", 0],
-  ["Nuez de la india Bp", 0], ["Nuez pecana BG", 0], ["Nuez pecana BP", 0], ["Oblea redonda", 0],
-  ["Obleas", 0], ["Palanqueta", 24], ["Papas BG", 0], ["Pasa/ Chocolate", 0], ["Pera (fruta)", 0],
-  ["Picositas BG", 0], ["Picositas Bp", 0], ["Pistache Bg", 0], ["Pistache Bp", 0],
-  ["Platano (fruta)", 0], ["Platano c/chile", 0], ["Platano c/chile BG", 0], ["Queso cotagge", 0],
-  ["Rollo guayaba", 0], ["Rosas", 68], ["Sabrita A)doritos,rufles,ranc", 12],
-  ["Sabrita B)chetos,fritos,chur", 2], ["Squirt", 15], ["Te verde 500ml", 25], ["Tea latte chai 330", 0],
-  ["Yakult azul", 0], ["Yakult rojo", 0], ["Yogurt activia", 0], ["Yomilala fresa 180ml", 0],
-  ["Lechita vainilla sm 180ml", 0], ["Lechita chocolate sm 180ml", 0], ["Coca cola 400ml", 0],
-  ["Coca cola 500ml", 136], ["Mango (fruta)", 0], ["Arcoiris/emp/chokis paquetin", 0],
-  ["Welchs gomitas", 44], ["Marinela (principie/triqui/plati", 63], ["Mamut mini (4pzs)", 0],
-  ["Galleta emperador bg", 0], ["Mamut", 0], ["Mamut mini", 0], ["Brownies", 0], ["Troddos", 2],
-  ["Charritos", 0], ["Orejas", 0], ["Buñuelos", 0], ["Chizitos", 0], ["Paleta Payaso mini", 1],
-  ["Cremax choco/vainilla", 22], ["Pelota futbol", 0], ["Coca cola lata", 0], ["Rocko", 0],
-  ["Paleta gomita", 0], ["Almendron BG", 1], ["Almendron Bp", 0], ["Nuez chocolate BG", 0],
-  ["Nuez chocolate Bp", 0], ["Frijolito choco BG", 0], ["Frijolito choco Bp", 0], ["Balones mundial", 0],
-  ["Mascota mexico mate", 0], ["Mascota mexico brillosa", 0], ["Mascota mate canada", 0],
-  ["Mascota brillosa canada", 0], ["Mascota USA mate", 0], ["Mascota USA brillosa", 0],
-  ["Mascota copa mundial", 0], ["Cajita crorazón natural", 5], ["Cajita crorazón color", 0],
-  ["Cajitas mamá", 4], ["Prestzels choco BG", 0], ["Prestzels choco Bp", 0], ["Malvavisco BG", 0],
-  ["Malvavisco Bp", 0], ["Doraditas", 19], ["Pelon", 5], ["Pelonetes", 16], ["Tutsi", 0],
-  ["Tutsi pq", 0], ["Palomitas mix bg", 0], ["Palomitas mix bp", 1], ["snikers", 4],
-  ["Free life G", 0], ["Arizona", 22], ["m&m", 7], ["Danone", 0]
-];
-
-const inventarioInicial20260827 = [
-  ["Agua de coco 330ml", 1], ["Agua kirkland", 156], ["Aguas s m", 136], ["Alegrias", 0],
-  ["Almendra", 0], ["Almendra BG/ gr", 0], ["Barra de cereal", 1], ["Barrinolas", 148],
-  ["Café clásico 315 ml", 134], ["Café varios315ml", 0], ["Chips papas BG", 0], ["Chips papas BP", 0],
-  ["Chocolate zero", 45], ["Coca cola 400 ml", 0], ["Coca cola 600ml", 0], ["Electrolitos 625ml", 57],
-  ["Free life", 6], ["Galletas artesanal", 9], ["haba BG", 1], ["haba BP", 0],
-  ["Halls", 48], ["Jugo del valle 237 ml", 32], ["Jumex 200ml", 21], ["Kelloggs", 30],
-  ["Lechita chocolate 200ml", 68], ["Lipton 600ml", 22], ["Manzana (fruta)", 0], ["Manzanita sol 400ml", 55],
-  ["Palanqueta", 45], ["Rosas", 68], ["Sabrita A)doritos,rufles,ranc", 0],
-  ["Sabrita B)chetos,fritos,chur", 0], ["Squirt", 49], ["Te verde 500ml", 39], ["Yakult rojo", 10],
-  ["Coca cola 400ml", -8], ["Coca cola 500ml", 185], ["Welchs gomitas", 62],
-  ["Marinela (principie/triqui/plati", 217], ["Brownies", 33], ["Troddos", 100], ["Chizitos", 30],
-  ["Paleta Payaso mini", 26], ["Cremax choco/vainilla", 100], ["Almendron BG", 0], ["Almendron Bp", 0],
-  ["Cajita crorazón natural", 5], ["Cajita crorazón color", 0], ["Cajitas mamá", 4], ["Doraditas", 67],
-  ["Pelonetes", 50], ["Tutsi", 0], ["Tutsi pq", 9], ["Palomitas mix bg", 0],
-  ["Palomitas mix bp", 0], ["snikers", 1], ["Free life G", 15], ["Arizona", 110],
-  ["m&m", 12], ["Danone", 5], ["Nachos Cheddar Pop BG", 0], ["Nachos Cheddar Pop BP", 0]
-];
-
-let usuarios = cargar("usuarios") || [{ usuario: "admin", clave: "1234", rol: "dueno" }, { usuario: "admin1", clave: "4321", rol: "limitado" }];
-let productos = cargar("productos") || productosIniciales.map(nombre => productoNuevo(nombre));
-let movimientos = cargar("movimientos") || [];
-let mesesCerrados = cargar("mesesCerrados") || [];
-let configuracionEspirales = cargar("configuracionEspirales") || {};
-let fotosControles = cargar("fotosControles") || {};
-let ajustesSistema = cargar("ajustesSistema") || {
-  modoOscuro: false,
-  animacionLogin: true,
-  fotosSalidaObligatorias: CONFIG.fotosSalidaObligatorias ?? true,
-  productosEliminados: []
+const configuracionBase = {
+  logo: LOGO_PREDETERMINADO,
+  moneda: "MXN",
+  tipoCambio: 17.6087,
+  tipoCambioFecha: "",
+  tipoCambioConsultadoEn: "",
+  metasMensuales: {}
 };
-let productoEditando = null;
+const usuariosBase = [
+  { usuario: "maria", rol: "editora", nombre: "Maestra Maria" },
+  { usuario: "rosa", rol: "editora", nombre: "Rosa Polet" }
+];
+
+const serviciosBase = [
+  { nombre: "Manicure y Spa", duracion: 30, precio: 150, color: "dorado", detalles: detallesManicureBase },
+  { nombre: "Masajes", duracion: 30, precio: 450, color: "verde", detalles: [{ grupo: "Elige el masaje", seleccion: "una", opciones: [
+    opcionServicio("Descontracturante de tejido profundo", 950, 90),
+    opcionServicio("Reductivo · 1 sesión", 600, 45),
+    opcionServicio("Medias piernas · circulación", 490, 30),
+    opcionServicio("Piedras calientes", 1100, 60),
+    opcionServicio("Relajante", 700, 60),
+    opcionServicio("Croncel, cera y cráneo", 450, 40)
+  ] }] },
+  { nombre: "Cejas", duracion: 50, precio: 300, color: "rosa", detalles: [{ grupo: "Elige el servicio", seleccion: "una", opciones: [
+    opcionServicio("Laminado de cejas", 300, 50)
+  ] }] },
+  { nombre: "Pestañas", duracion: 45, precio: 400, color: "uva", detalles: [{ grupo: "Elige el servicio", seleccion: "una", opciones: [
+    opcionServicio("Full Set Clásicas", 750, 90),
+    opcionServicio("Full Set Hawaiano", 850, 90),
+    opcionServicio("Full Set Volumen 5D", 950, 90),
+    opcionServicio("Full Set 3D", 700, 90),
+    opcionServicio("Full Set Efecto Anime", 899, 90),
+    opcionServicio("Lash Lifting", 400, 60),
+    opcionServicio("Pestañas inferiores", 400, 45)
+  ] }] }
+];
+
+const imagenesServiciosBase = {};
+const personalRetirado = ["rosa polet", "elizabet", "elizabeth"];
+
+let usuarios = cargar("usuarios") || usuariosBase.map(usuario => ({ ...usuario }));
 let usuarioActual = null;
-let permitirProductoSimilar = false;
-let alertasSesionMostradas = false;
-let colaAlertasInventario = [];
-let alertaPendienteTrasAnalizar = false;
-let productoEntradaSugerido = "";
-let guardadoNubeHabilitado = false;
-let controlSalidaEditando = null;
-let compraEscaneadaProvisional = [];
-let camaraEscanerStream = null;
-let detectorCodigoBarras = null;
-let escanerCodigoActivo = false;
-let ultimoCodigoEscaneado = { codigo: "", momento: 0 };
-
-const espiralesPorMaquina = {
-  "MAQ 1": [
-    [1, 3, 5, 7, 9, 11, 12, 13, 14, 15, 17, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-    [31, 32, 33, 34, 35, 36, 37, 38],
-    [39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50],
-    [51, 52, 53, 54, 55],
-    [56, 57, 58, 59, 60]
-  ],
-  "MAQ 2": [
-    [1, 3, 5, 7, 9, 11, 12, 13, 14, 15, 17, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-    [31, 32, 33, 34, 35, 36, 37, 38],
-    [39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55],
-    [56, 57, 58, 59, 60]
-  ],
-  "MAQ 3": [
-    [1, 3, 5, 7, 9, 11, 12, 13, 14, 15, 17, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-    [31, 32, 33, 34, 35, 36, 37, 38],
-    [39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53],
-    [54, 55, 56, 57, 58, 59, 60]
-  ],
-  "MAQ 4": [
-    [1, 3, 5, 7, 9, 11, 12, 13, 14, 15, 17, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-    [31, 32, 33, 34, 35, 36, 37, 38],
-    [39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53],
-    [54, 55, 56, 57, 58, 59, 60]
-  ]
-};
+let servicios = cargar("servicios") || serviciosBase;
+let citas = cargar("citas") || [];
+let bloqueos = cargar("bloqueos") || [];
+let personal = cargar("personal") || [];
+let clientas = cargar("clientas") || [];
+let modoOscuro = cargar("modoOscuro") || false;
+let sonidosActivos = cargar("sonidosActivos") !== false;
+let configuracion = cargar("configuracion") || { ...configuracionBase };
+let remotoListo = false;
+let guardandoRemoto = false;
+let guardadoRemotoPendiente = false;
+let datosMigrados = false;
+let mensajesWhatsApp = [];
+let chatWhatsAppActivo = "";
+let servicioDetallesEdicion = [];
+let reintentoRemoto = null;
+let eventoInstalacion = null;
+// Solo "Recordarme" conserva la sesion despues de recargar la pagina.
+sessionStorage.removeItem(`${CLAVE}-token`);
+let tokenSesion = localStorage.getItem(`${CLAVE}-token`) || "";
+let versionRemota = null;
 
 normalizarDatos();
-aplicarConfiguracionVisual();
 
-function productoNuevo(nombre) {
-  return { nombre, fechaEntrada: hoy(), fechaBaja: "", observaciones: "", precio: 0, stockInicial: 0, bajaMovimientoId: null };
+function mostrarIntroAplicacion() {
+  const instalada = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  const intro = document.getElementById("introAplicacion");
+  if (!instalada || !intro) return;
+  const movimientoReducido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const inicioSalida = movimientoReducido ? 650 : 2700;
+  const finIntro = movimientoReducido ? 850 : 3400;
+  intro.hidden = false;
+  document.body.classList.add("intro-activa");
+  reproducirSonido("intro", 0.75);
+  window.setTimeout(() => intro.classList.add("intro-saliendo"), inicioSalida);
+  window.setTimeout(() => {
+    intro.hidden = true;
+    intro.classList.remove("intro-saliendo");
+    document.body.classList.remove("intro-activa");
+  }, finIntro);
+}
+
+mostrarIntroAplicacion();
+
+function reproducirSonido(tipo, volumen = 0.14) {
+  if (!sonidosActivos) return;
+  const rutas = { intro: "assets/sounds/intro.wav", tap: "assets/sounds/tap.wav", success: "assets/sounds/success.wav", danger: "assets/sounds/danger.wav" };
+  if (!rutas[tipo]) return;
+  const audio = new Audio(rutas[tipo]);
+  audio.volume = volumen;
+  audio.play().catch(() => {});
+}
+
+document.addEventListener("click", event => {
+  const boton = event.target.closest("button");
+  if (boton && !boton.disabled) reproducirSonido("tap", 0.55);
+}, true);
+
+if ("serviceWorker" in navigator) {
+  let recargandoPorActualizacion = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (recargandoPorActualizacion) return;
+    recargandoPorActualizacion = true;
+    window.location.reload();
+  });
+  window.addEventListener("load", async () => {
+    try {
+      const registro = await navigator.serviceWorker.register("service-worker.js", { updateViaCache: "none" });
+      await registro.update();
+    } catch (error) {
+      console.warn("No se pudo activar el modo instalable:", error);
+    }
+  });
+}
+
+window.addEventListener("beforeinstallprompt", event => {
+  event.preventDefault();
+  eventoInstalacion = event;
+  const boton = document.getElementById("botonInstalar");
+  if (boton) boton.hidden = false;
+});
+
+function actualizarBotonInstalacion() {
+  const boton = document.getElementById("botonInstalar");
+  if (!boton) return;
+  const instalada = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  boton.hidden = instalada || (!eventoInstalacion && !esIOS);
+}
+
+document.addEventListener("DOMContentLoaded", actualizarBotonInstalacion);
+window.addEventListener("pageshow", actualizarBotonInstalacion);
+
+window.addEventListener("appinstalled", () => {
+  eventoInstalacion = null;
+  const boton = document.getElementById("botonInstalar");
+  if (boton) boton.hidden = true;
+  mostrarMensaje("Aplicación instalada", `${NOMBRE_NEGOCIO} ya está disponible en tu pantalla de inicio.`, "ok");
+});
+
+async function instalarAplicacion() {
+  if (!eventoInstalacion) {
+    const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    return mostrarMensaje("Instalar aplicación", esIOS ? "Abre esta página en Safari, toca Compartir y después Agregar a pantalla de inicio." : "Abre el menú del navegador y selecciona Instalar aplicación o Agregar a pantalla de inicio.", "ok");
+  }
+  eventoInstalacion.prompt();
+  const resultado = await eventoInstalacion.userChoice;
+  if (resultado.outcome === "accepted") eventoInstalacion = null;
+  actualizarBotonInstalacion();
 }
 
 function cargar(nombre) {
@@ -141,4231 +220,2589 @@ function cargar(nombre) {
 }
 
 function guardar() {
-  ordenarProductos();
-  localStorage.setItem(`${CLAVE}-usuarios`, JSON.stringify(usuarios));
-  localStorage.setItem(`${CLAVE}-productos`, JSON.stringify(productos));
-  localStorage.setItem(`${CLAVE}-movimientos`, JSON.stringify(movimientos));
-  localStorage.setItem(`${CLAVE}-mesesCerrados`, JSON.stringify(mesesCerrados));
-  localStorage.setItem(`${CLAVE}-configuracionEspirales`, JSON.stringify(configuracionEspirales));
-  localStorage.setItem(`${CLAVE}-fotosControles`, JSON.stringify(fotosControles));
-  localStorage.setItem(`${CLAVE}-ajustesSistema`, JSON.stringify(ajustesSistema));
+  guardarLocal();
+  if (remotoListo && puedeEditar()) guardarRemoto();
+}
+
+function guardarLocal() {
+  localStorage.setItem(`${CLAVE}-usuarios`, JSON.stringify(usuarios.map(({ usuario, nombre, rol }) => ({ usuario, nombre, rol }))));
+  localStorage.setItem(`${CLAVE}-servicios`, JSON.stringify(servicios));
+  localStorage.setItem(`${CLAVE}-citas`, JSON.stringify(citas));
+  localStorage.setItem(`${CLAVE}-bloqueos`, JSON.stringify(bloqueos));
+  localStorage.setItem(`${CLAVE}-personal`, JSON.stringify(personal));
+  localStorage.setItem(`${CLAVE}-clientas`, JSON.stringify(clientas));
+  localStorage.setItem(`${CLAVE}-modoOscuro`, JSON.stringify(modoOscuro));
+  localStorage.setItem(`${CLAVE}-sonidosActivos`, JSON.stringify(sonidosActivos));
+  localStorage.setItem(`${CLAVE}-configuracion`, JSON.stringify(configuracion));
+  if (datosMigrados) localStorage.setItem(`${CLAVE}-migracion-datos`, MIGRACION_DATOS_ACTUAL);
+}
+
+function estadoActual() {
+  return { servicios, citas, bloqueos, personal, clientas, modoOscuro, configuracion, actualizadoEn: new Date().toISOString() };
+}
+
+function aplicarEstado(datos) {
+  if (!datos) return;
+  servicios = Array.isArray(datos.servicios) ? datos.servicios : servicios;
+  citas = Array.isArray(datos.citas) ? datos.citas : citas;
+  bloqueos = Array.isArray(datos.bloqueos) ? datos.bloqueos : bloqueos;
+  personal = Array.isArray(datos.personal) ? datos.personal : personal;
+  clientas = Array.isArray(datos.clientas) ? datos.clientas : clientas;
+  modoOscuro = typeof datos.modoOscuro === "boolean" ? datos.modoOscuro : modoOscuro;
+  configuracion = datos.configuracion && typeof datos.configuracion === "object" ? datos.configuracion : configuracion;
+  normalizarDatos();
+  aplicarModoOscuro();
+  aplicarConfiguracion();
+  actualizarSelectorUsuarios();
+}
+
+async function supabaseRpc(nombre, parametros = {}) {
+  const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${nombre}`, {
+    method: "POST",
+    headers: { apikey: SUPABASE_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify(parametros)
+  });
+  const texto = await respuesta.text();
+  if (!respuesta.ok) {
+    const error = new Error(texto || respuesta.statusText);
+    error.status = respuesta.status;
+    throw error;
+  }
+  return texto ? JSON.parse(texto) : null;
+}
+
+async function llamarFuncionSupabase(nombre, datos = {}) {
+  const respuesta = await fetch(`${SUPABASE_URL}/functions/v1/${nombre}`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(datos)
+  });
+  const texto = await respuesta.text();
+  let cuerpo = null;
+  try { cuerpo = texto ? JSON.parse(texto) : null; } catch { cuerpo = { error: texto }; }
+  if (!respuesta.ok) {
+    const error = new Error(cuerpo?.error || texto || `Error ${respuesta.status}`);
+    error.status = respuesta.status;
+    throw error;
+  }
+  return cuerpo;
+}
+
+async function cargarUsuariosPublicos() {
+  try {
+    const lista = await supabaseRpc("agenda_listar_usuarios");
+    if (Array.isArray(lista) && lista.length) {
+      usuarios = lista.map(item => ({ usuario: item.usuario, nombre: item.nombre, rol: item.rol === "editora" ? "editora" : "soloVista" }));
+      guardarLocal();
+      actualizarSelectorUsuarios();
+    }
+    return true;
+  } catch (error) {
+    console.warn("No se pudo cargar la lista segura de usuarios:", error);
+    return false;
+  }
+}
+
+async function cargarRemoto(silencioso = false) {
+  if (!tokenSesion) return false;
+  try {
+    const resultado = await supabaseRpc("agenda_obtener_estado", { p_token: tokenSesion });
+    remotoListo = true;
+    versionRemota = resultado?.version || null;
+    if (resultado?.usuario) {
+      usuarioActual = { ...resultado.usuario };
+      const indice = usuarios.findIndex(item => item.usuario === usuarioActual.usuario);
+      if (indice >= 0) usuarios[indice] = { ...usuarioActual };
+    }
+    if (resultado?.datos) aplicarEstado(resultado.datos);
+    guardarLocal();
+    if (datosMigrados && puedeEditar()) setTimeout(() => guardarRemoto(), 250);
+    return true;
+  } catch (error) {
+    remotoListo = false;
+    console.warn("Supabase aún no está listo:", error);
+    if (error?.status === 401 || /SESION_INVALIDA|28000/i.test(error?.message || "")) {
+      tokenSesion = "";
+      localStorage.removeItem(`${CLAVE}-token`);
+      sessionStorage.removeItem(`${CLAVE}-token`);
+      if (!silencioso) mostrarMensaje("Sesión vencida", "Vuelve a iniciar sesión.", "alerta");
+    } else if (!silencioso) mostrarMensaje("Sin conexión a la agenda", "No se pudo leer Supabase. Revisa la conexión.", "alerta");
+    return false;
+  }
+}
+
+async function guardarRemoto() {
+  if (!remotoListo || !tokenSesion || !versionRemota) return false;
+  if (guardandoRemoto) {
+    guardadoRemotoPendiente = true;
+    return false;
+  }
+  guardandoRemoto = true;
+  let guardadoExitoso = false;
+  try {
+    const resultado = await supabaseRpc("agenda_guardar_estado", {
+      p_token: tokenSesion,
+      p_datos: estadoActual(),
+      p_version: versionRemota
+    });
+    if (resultado?.conflicto) {
+      versionRemota = resultado.version;
+      aplicarEstado(resultado.datos);
+      guardarLocal();
+      guardadoRemotoPendiente = false;
+      mostrarMensaje("La agenda cambió en otro dispositivo", "Se cargó la versión más reciente para evitar sobrescribir información. Repite tu último cambio.", "alerta");
+      return false;
+    }
+    if (!resultado?.ok || !resultado?.version) throw new Error("Supabase no confirmó el guardado.");
+    versionRemota = resultado.version;
+    guardadoExitoso = true;
+    clearTimeout(reintentoRemoto);
+    return true;
+  } catch (error) {
+    console.warn("No se pudo guardar en Supabase:", error);
+    if (error?.status === 401 || error?.status === 403 || /SESION_INVALIDA|SOLO_LECTURA|28000|42501/i.test(error?.message || "")) {
+      guardadoRemotoPendiente = false;
+      mostrarMensaje("No se pudo guardar", "La sesión venció o este perfil no tiene permiso para editar.", "alerta");
+      return false;
+    }
+    guardadoRemotoPendiente = true;
+    mostrarMensaje("No se guardó en internet", "Reintentaremos automáticamente en unos segundos.", "alerta");
+    clearTimeout(reintentoRemoto);
+    reintentoRemoto = setTimeout(() => {
+      if (remotoListo) guardarRemoto();
+    }, 5000);
+    return false;
+  } finally {
+    guardandoRemoto = false;
+    if (guardadoExitoso && guardadoRemotoPendiente && remotoListo) {
+      guardadoRemotoPendiente = false;
+      guardarRemoto();
+    }
+  }
 }
 
 function normalizarDatos() {
-  ajustesSistema.productosEliminados = Array.isArray(ajustesSistema.productosEliminados) ? ajustesSistema.productosEliminados : [];
-  usuarios = usuarios.map(u => ({ usuario: u.usuario, clave: u.clave, rol: u.rol || "dueno" }));
-  if (!usuarios.some(u => u.usuario === "admin")) usuarios.push({ usuario: "admin", clave: "1234", rol: "dueno" });
-  if (!usuarios.some(u => u.usuario === "admin1")) usuarios.push({ usuario: "admin1", clave: "4321", rol: "limitado" });
-
-  productos = productos.map(p => ({
-    nombre: p.nombre,
-    fechaEntrada: p.fechaEntrada || hoy(),
-    fechaBaja: p.fechaBaja || "",
-    observaciones: p.observaciones || "",
-    precio: Number(p.precio || 0),
-    stockInicial: Number(p.stockInicial || 0),
-    bajaMovimientoId: p.bajaMovimientoId || null
+  const usuariosGuardados = Array.isArray(usuarios) ? usuarios : [];
+  if (!usuariosGuardados.length) usuariosGuardados.push(...usuariosBase.map(base => ({ ...base })));
+  usuarios = usuariosGuardados
+    .filter((item, indice, lista) => item?.usuario && lista.findIndex(otro => otro.usuario === item.usuario) === indice)
+    .map(item => ({
+      usuario: String(item.usuario).trim().toLowerCase(),
+      rol: String(item.usuario).trim().toLowerCase() === "maria" || item.rol === "editora" ? "editora" : "soloVista",
+      nombre: String(item.nombre || item.usuario).trim()
+    }));
+  configuracion = {
+    ...configuracionBase,
+    ...(configuracion && typeof configuracion === "object" ? configuracion : {}),
+    tipoCambio: Number(configuracion?.tipoCambio || configuracionBase.tipoCambio)
+  };
+  const migracionPendiente = configuracion.migracionDatos !== MIGRACION_DATOS_ACTUAL;
+  const migracionLogoPendiente = configuracion.migracionLogo !== MIGRACION_LOGO_ACTUAL;
+  if (migracionLogoPendiente || !configuracion.logo || configuracion.logo.includes("logo-oh-ma-belle")) {
+    configuracion.logo = LOGO_PREDETERMINADO;
+    configuracion.migracionLogo = MIGRACION_LOGO_ACTUAL;
+    datosMigrados = true;
+  }
+  if (migracionPendiente) {
+    configuracion.migracionDatos = MIGRACION_DATOS_ACTUAL;
+    servicios = serviciosBase.map(servicio => clonarServicioBase(servicio));
+  }
+  servicios = servicios.map((servicio, indice) => ({
+    nombre: servicio.nombre === "Pestanas" ? "Pestañas" : (servicio.nombre || "Servicio"),
+    descripcion: servicio.descripcion || "",
+    confirmacion: servicio.confirmacion || "",
+    imagen: "",
+    duracion: Number(servicio.duracion || 30),
+    precio: Number(servicio.precio || 0),
+    capacidad: Number(servicio.capacidad || 1),
+    anticipo: Number(servicio.anticipo || 0),
+    pagoEfectivo: servicio.pagoEfectivo !== false,
+    pagoTransferencia: !!servicio.pagoTransferencia,
+    color: servicio.color || ["rosa", "dorado", "uva", "verde"][indice % 4],
+    personalAsignado: Array.isArray(servicio.personalAsignado) ? servicio.personalAsignado : [],
+    detalles: normalizarDetallesServicio(servicio),
+    horarios: normalizarHorarios(servicio.horarios)
   }));
-
-  for (const nombre of productosIniciales) {
-    const eliminado = ajustesSistema.productosEliminados.includes(nombreClaveProducto(nombre));
-    if (!eliminado && !productos.some(p => p.nombre.toLowerCase() === nombre.toLowerCase())) productos.push(productoNuevo(nombre));
-  }
-
-  aplicarReinicioCompleto20260922();
-  maquinasActivas().forEach(asegurarEspiralesMaquina);
-
-  movimientos = movimientos.map(m => ({
-    id: m.id || generarId(),
-    fecha: m.fecha || hoy(),
-    tipo: m.tipo,
-    producto: m.producto,
-    cantidad: Number(m.cantidad || 0),
-    maquina: m.maquina || "",
-    espiral: m.espiral || "",
-    categoria: m.categoria || "",
-    nota: m.nota || "",
-    lote: m.lote || "",
-    caducidad: m.caducidad || "",
-    lotes: Array.isArray(m.lotes) ? m.lotes : [],
-    controlId: m.controlId || null,
-    caMaq1: Number(m.caMaq1 || 0),
-    caMaq2: Number(m.caMaq2 || 0),
-    caMaq3: Number(m.caMaq3 || 0),
-    caInicio: m.caInicio || m.maquina || "MAQ 1",
-    caEtapa: m.caEtapa || m.maquina || "",
-    caCerrado: !!m.caCerrado
+  if (servicios.some(servicio => servicio.imagen)) datosMigrados = true;
+  if (servicios.some(servicio => nombreComparable(servicio.nombre) === "manicure" && JSON.stringify(servicio.detalles) !== JSON.stringify(detallesManicureBase))) datosMigrados = true;
+  personal = personal.filter(persona => !personalRetirado.includes(nombreComparable(persona?.nombre))).map(persona => ({
+    id: persona.id || idNuevo(),
+    nombre: persona.nombre || "Personal",
+    descripcion: persona.descripcion || "",
+    email: persona.email || "",
+    telefono: String(persona.telefono || "").replace(/\D/g, "").slice(0, 10),
+    foto: persona.foto || "",
+    fraccion: Number(persona.fraccion || 30),
+    activo: persona.activo !== false,
+    horarios: normalizarHorarios(persona.horarios)
   }));
-  ordenarProductos();
-  guardar();
-}
-
-function nombreClaveProducto(nombre) {
-  return String(nombre || "").trim().replace(/\s+/g, " ").toLowerCase();
-}
-
-function aplicarInventarioInicial20260824() {
-  if (ajustesSistema.inventarioInicial20260824) return;
-  const fechaAlta = hoy();
-
-  for (const [nombreOriginal, cantidad] of inventarioInicial20260824) {
-    const nombre = String(nombreOriginal || "").trim().replace(/\s+/g, " ");
-    if (!nombre) continue;
-    if ((ajustesSistema.productosEliminados || []).includes(nombreClaveProducto(nombre))) continue;
-
-    let producto = productos.find(item => nombreClaveProducto(item.nombre) === nombreClaveProducto(nombre));
-    if (!producto) {
-      producto = productoNuevo(nombre);
-      productos.push(producto);
-    }
-
-    producto.nombre = nombre;
-    producto.fechaEntrada = producto.fechaEntrada || fechaAlta;
-    producto.stockInicial = Number(cantidad || 0);
-    if (producto.stockInicial > 0 && producto.fechaBaja) producto.fechaBaja = "";
-  }
-
-  ajustesSistema.inventarioInicial20260824 = true;
-}
-
-function aplicarInventarioInicialLimpio20260828() {
-  if (ajustesSistema.inventarioInicialLimpio20260828v2) return;
-
-  const fechaAlta = "2026-08-28";
-  const cantidades = new Map(inventarioInicial20260827.map(([nombre, cantidad]) => [
-    normalizarNombreProducto(nombre),
-    Number(cantidad || 0)
-  ]));
-  const eliminados = new Set(ajustesSistema.productosEliminados || []);
-  let aplicados = 0;
-  let activosSinLista = 0;
-  const noEncontrados = [];
-
-  for (const producto of productos) {
-    const eliminado = eliminados.has(nombreClaveProducto(producto.nombre));
-    if (eliminado || producto.fechaBaja) continue;
-
-    const clave = normalizarNombreProducto(producto.nombre);
-    if (!cantidades.has(clave)) {
-      producto.stockInicial = 0;
-      activosSinLista++;
-      continue;
-    }
-
-    producto.fechaEntrada = fechaAlta;
-    producto.stockInicial = cantidades.get(clave);
-    aplicados++;
-  }
-
-  for (const [nombre] of inventarioInicial20260827) {
-    const clave = normalizarNombreProducto(nombre);
-    const existeActivo = productos.some(producto => {
-      const eliminado = eliminados.has(nombreClaveProducto(producto.nombre));
-      return !eliminado && !producto.fechaBaja && normalizarNombreProducto(producto.nombre) === clave;
+  if (migracionPendiente) {
+    [...servicios, ...personal].forEach(item => {
+      const domingo = item.horarios?.find(horario => horario.dia === "Domingo");
+      if (domingo) Object.assign(domingo, { activo: true, inicio: "09:00", fin: "18:00" });
     });
-    if (!existeActivo) noEncontrados.push(nombre);
   }
-
-  movimientos = [];
-  fotosControles = {};
-  productoEditando = null;
-  alertasSesionMostradas = false;
-  colaAlertasInventario = [];
-  alertaPendienteTrasAnalizar = false;
-  ajustesSistema.inventarioInicial20260824 = true;
-  ajustesSistema.inventarioInicial20260827 = true;
-  ajustesSistema.inventarioInicialLimpio20260828 = true;
-  ajustesSistema.inventarioInicialLimpio20260828v2 = true;
-  ajustesSistema.ultimoInventarioInicial = {
-    fecha: fechaAlta,
-    aplicados,
-    activosSinLista,
-    noEncontrados,
-    movimientosEliminados: true
-  };
-}
-
-function maquinasActivas() {
-  const base = Array.isArray(ajustesSistema.maquinas) && ajustesSistema.maquinas.length
-    ? ajustesSistema.maquinas
-    : (CONFIG.maquinas || ["MAQ 1", "MAQ 2", "MAQ 3", "MAQ 4"]);
-  return [...new Set(base.map(nombre => String(nombre || "").trim().toUpperCase()).filter(Boolean))];
-}
-
-function gruposEspiralesPredeterminados() {
-  return [
-    [1, 3, 5, 7, 9, 11, 12, 13, 14, 15, 17, 19, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-    [31, 32, 33, 34, 35, 36, 37, 38],
-    [39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53],
-    [54, 55, 56, 57, 58, 59, 60]
-  ];
-}
-
-function asegurarEspiralesMaquina(maquina) {
-  if (!espiralesPorMaquina[maquina]) espiralesPorMaquina[maquina] = gruposEspiralesPredeterminados();
-  configuracionEspirales[maquina] = configuracionEspirales[maquina] || {};
-}
-
-function aplicarReinicioCompleto20260922() {
-  if (ajustesSistema.reinicioCompleto20260922v2) return;
-
-  const fechaAlta = "2026-09-22";
-  productos = inventarioInicial20260827.map(([nombre, cantidad]) => ({
-    ...productoNuevo(nombre),
-    fechaEntrada: fechaAlta,
-    stockInicial: Number(cantidad)
+  clientas = (Array.isArray(clientas) ? clientas : []).map(clienta => ({
+    id: clienta.id || idNuevo(),
+    nombre: String(clienta.nombre || "Clienta").trim(),
+    telefono: String(clienta.telefono || "").replace(/\D/g, "").slice(0, 10),
+    notas: String(clienta.notas || ""),
+    creadaEn: clienta.creadaEn || new Date().toISOString()
+  })).filter((clienta, indice, lista) => clienta.telefono && lista.findIndex(item => item.telefono === clienta.telefono) === indice);
+  const clientasEliminadas = new Set(Array.isArray(configuracion.clientasEliminadas) ? configuracion.clientasEliminadas : []);
+  clientas = clientas.filter(clienta => !clientasEliminadas.has(clienta.telefono));
+  citas = citas.map(cita => ({
+    ...cita,
+    servicio: cita.servicio === "Pestanas" ? "Pestañas" : cita.servicio,
+    serviciosDetalle: Array.isArray(cita.serviciosDetalle) && cita.serviciosDetalle.length ? cita.serviciosDetalle : [{
+      nombre: cita.servicio === "Pestanas" ? "Pestañas" : (cita.servicio || "Servicio"),
+      detalle: cita.detalleServicio || "",
+      duracion: Number(servicioPorNombre(cita.servicio)?.duracion || cita.duracion || 30),
+      precio: Number(cita.precio || 0)
+    }],
+    personal: personalRetirado.includes(nombreComparable(cita.personal)) ? "" : cita.personal,
+    metodoPago: cita.metodoPago === "Tarjeta" ? "" : cita.metodoPago,
+    abonos: Array.isArray(cita.abonos) ? cita.abonos : [],
+    confirmacionToken: cita.confirmacionToken || tokenConfirmacionNuevo(),
+    confirmadaCliente: !!cita.confirmadaCliente,
+    confirmadaEn: cita.confirmadaEn || null,
+    liquidada: !!cita.liquidada || (Number(cita.anticipo || 0) >= Number(cita.precio || 0) && Number(cita.precio || 0) > 0)
   }));
-  movimientos = [];
-  mesesCerrados = [];
-  fotosControles = {};
-  productoEditando = null;
-  alertasSesionMostradas = false;
-  colaAlertasInventario = [];
-  alertaPendienteTrasAnalizar = false;
-
-  ajustesSistema = {
-    modoOscuro: !!ajustesSistema.modoOscuro,
-    animacionLogin: ajustesSistema.animacionLogin !== false,
-    fotosSalidaObligatorias: ajustesSistema.fotosSalidaObligatorias ?? (CONFIG.fotosSalidaObligatorias ?? true),
-    productosEliminados: [],
-    maquinas: ["MAQ 1", "MAQ 2", "MAQ 3", "MAQ 4"],
-    reinicioCompleto20260922v1: true,
-    reinicioCompleto20260922v2: true,
-    ultimoInventarioInicial: {
-      fecha: fechaAlta,
-      aplicados: productos.length,
-      movimientosEliminados: true,
-      reinicioCompleto: true
+  citas.forEach(cita => {
+    let clienta = clientas.find(item => item.telefono === cita.telefono);
+    if (!clienta && /^\d{10}$/.test(cita.telefono || "") && !clientasEliminadas.has(cita.telefono)) {
+      clienta = { id: idNuevo(), nombre: cita.cliente || "Clienta", telefono: cita.telefono, notas: "", creadaEn: new Date().toISOString() };
+      clientas.push(clienta);
     }
-  };
-
-  configuracionEspirales = {
-    "MAQ 1": {
-      1:"Nachos Cheddar Pop BP",3:"Palomitas mix bp",5:"Alegrias",7:"Sabrita A)doritos,rufles,ranc",9:"Marinela (principie/triqui/plati",11:"Brownies",12:"Chocolate zero",13:"Pelonetes",14:"m&m",15:"Cremax choco/vainilla",17:"Sabrita B)chetos,fritos,chur",19:"Kelloggs",21:"Palanqueta",22:"Palanqueta",23:"Marinela (principie/triqui/plati",24:"Doraditas",25:"Barrinolas",26:"Galletas artesanal",27:"Pelonetes",28:"Halls",29:"Paleta Payaso mini",30:"Tutsi pq",31:"Aguas s m",32:"Aguas s m",33:"Aguas s m",34:"Aguas s m",35:"Aguas s m",36:"Aguas s m",37:"Arizona",38:"Free life G",39:"Lipton 600ml",40:"Lipton 600ml",41:"Free life",42:"Jugo del valle 237 ml",43:"Agua de coco 330ml",44:"Café clásico 315 ml",45:"Café clásico 315 ml",46:"Lechita chocolate 200ml",47:"Lechita chocolate 200ml",48:"Danone",49:"Yakult rojo",50:"Free life",51:"Manzanita sol 400ml",52:"Squirt",53:"Electrolitos 625ml",54:"Electrolitos 625ml",55:"Coca cola 500ml",56:"Coca cola 500ml",57:"Coca cola 500ml",58:"Coca cola 500ml",59:"Coca cola 500ml",60:"Coca cola 500ml"
-    },
-    "MAQ 2": {
-      1:"Alegrias",3:"Nachos Cheddar Pop BP",5:"Chips papas BP",7:"Sabrita A)doritos,rufles,ranc",9:"Chips papas BP",11:"Paleta Payaso mini",12:"Barrinolas",13:"Doraditas",14:"snikers",15:"Cremax choco/vainilla",17:"Marinela (principie/triqui/plati",19:"Sabrita B)chetos,fritos,chur",21:"Palanqueta",22:"Palanqueta",23:"Marinela (principie/triqui/plati",24:"Pelon",25:"Galletas artesanal",26:"Barrinolas",27:"Chocolate zero",28:"Halls",29:"m&m",30:"Garbanzo / Chile BP",31:"Aguas s m",32:"Aguas s m",33:"Aguas s m",34:"Aguas s m",35:"Aguas s m",36:"Aguas s m",37:"Manzanita sol 400ml",38:"Squirt",39:"Arizona",40:"Arizona",41:"Free life",42:"Danone",43:"Agua de coco 330ml",44:"Jumex 200ml",45:"Manzana (fruta)",46:"Lechita chocolate 200ml",47:"Café clásico 315 ml",48:"Café clásico 315 ml",49:"Yakult rojo",50:"Jugo del valle 237 ml",51:"Te verde 500ml",52:"Coca cola 500ml",53:"Coca cola 500ml",54:"Coca cola 500ml",55:"Coca cola 500ml",56:"Coca cola 500ml",57:"Coca cola 500ml",58:"Coca cola 500ml",59:"Electrolitos 625ml",60:"Electrolitos 625ml"
-    },
-    "MAQ 3": {
-      1:"Chips papas BP",3:"Chips papas BP",5:"Sabrita A)doritos,rufles,ranc",7:"Cremax choco/vainilla",9:"Sabrita B)chetos,fritos,chur",11:"Pelonetes",12:"Welchs gomitas",13:"Doraditas",14:"m&m",15:"Marinela (principie/triqui/plati",17:"Marinela (principie/triqui/plati",19:"Kelloggs",21:"Palanqueta",22:"Palanqueta",23:"Barrinolas",24:"Marinela (principie/triqui/plati",25:"Galletas artesanal",26:"Paleta Payaso mini",27:"Chocolate zero",28:"haba BP",29:"Halls",30:"Tutsi pq",31:"Agua kirkland",32:"Agua kirkland",33:"Agua kirkland",34:"Agua kirkland",35:"Agua kirkland",36:"Agua kirkland",37:"Agua kirkland",38:"Arizona",39:"Arizona",40:"Arizona",41:"Café clásico 315 ml",42:"Café varios315ml",43:"Agua de coco 330ml",44:"Lechita chocolate 200ml",45:"Lechita chocolate 200ml",46:"Manzana (fruta)",47:"Jumex 200ml",48:"Jugo del valle 237 ml",49:"Free life",50:"Free life",51:"Manzanita sol 400ml",52:"Squirt",53:"Coca cola 500ml",54:"Coca cola 500ml",55:"Coca cola 500ml",56:"Coca cola 500ml",57:"Lipton 600ml",58:"Te verde 500ml",59:"Electrolitos 625ml",60:"Electrolitos 625ml"
-    },
-    "MAQ 4": {
-      1:"Sabrita B)chetos,fritos,chur",3:"Sabrita B)chetos,fritos,chur",5:"Cremax choco/vainilla",7:"Cremax choco/vainilla",9:"Sabrita A)doritos,rufles,ranc",11:"Brownies",12:"Welchs gomitas",13:"Doraditas",14:"snikers",15:"Marinela (principie/triqui/plati",17:"Marinela (principie/triqui/plati",19:"Kelloggs",21:"Palanqueta",22:"Palanqueta",23:"Barrinolas",24:"Marinela (principie/triqui/plati",25:"Galletas artesanal",26:"Pelonetes",27:"Chocolate zero",28:"Halls",29:"Tutsi pq",30:"Tutsi pq",31:"Aguas s m",32:"Aguas s m",33:"Aguas s m",34:"Aguas s m",35:"Aguas s m",36:"Aguas s m",37:"Aguas s m",38:"Aguas s m",39:"Free life G",40:"Free life G",41:"Free life",42:"Free life",43:"Agua de coco 330ml",44:"Manzana (fruta)",45:"Manzana (fruta)",46:"Squirt",47:"Danone",48:"Danone",49:"Yakult rojo",50:"Yakult rojo",51:"Manzanita sol 400ml",52:"Squirt",53:"Te verde 500ml",54:"Te verde 500ml",55:"Coca cola 400ml",56:"Coca cola 400ml",57:"Lipton 600ml",58:"Lipton 600ml",59:"Electrolitos 625ml",60:"Electrolitos 625ml"
-    }
-  };
-
-  maquinasActivas().forEach(asegurarEspiralesMaquina);
+    if (clienta) cita.clienteId = clienta.id;
+  });
+  guardarLocal();
 }
 
-function ordenarProductos() {
-  productos.sort((a, b) => a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
+function horariosBase() {
+  return ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map(dia => ({
+    dia,
+    activo: true,
+    inicio: "09:00",
+    fin: "18:00",
+    intervalos: [{ inicio: "09:00", fin: "18:00" }]
+  }));
+}
+
+function normalizarHorarios(horarios) {
+  const lista = Array.isArray(horarios) ? horarios : horariosBase();
+  const normalizados = lista.map(item => ({
+    ...item,
+    dia: item.dia === "Miercoles" ? "Miércoles" : item.dia === "Sabado" ? "Sábado" : item.dia,
+    intervalos: Array.isArray(item.intervalos) && item.intervalos.length
+      ? item.intervalos.map(intervalo => ({ inicio: intervalo.inicio || "09:00", fin: intervalo.fin || "18:00" }))
+      : [{ inicio: item.inicio || "09:00", fin: item.fin || "18:00" }]
+  }));
+  return horariosBase().map(base => {
+    const guardado = normalizados.find(item => item.dia === base.dia);
+    if (!guardado) return base;
+    const intervalos = guardado.intervalos?.length ? guardado.intervalos : base.intervalos;
+    return { ...base, ...guardado, inicio: intervalos[0].inicio, fin: intervalos[0].fin, intervalos };
+  });
 }
 
 function hoy() {
   const fecha = new Date();
-  const y = fecha.getFullYear();
-  const m = String(fecha.getMonth() + 1).padStart(2, "0");
-  const d = String(fecha.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}-${String(fecha.getDate()).padStart(2, "0")}`;
 }
 
-function mesActual() {
-  return hoy().slice(0, 7);
+function horaActual() {
+  const fecha = new Date();
+  return `${String(fecha.getHours()).padStart(2, "0")}:${String(fecha.getMinutes()).padStart(2, "0")}`;
 }
 
-function generarId() {
+function idNuevo() {
   return Date.now() + Math.floor(Math.random() * 1000);
 }
 
-function mostrarMensaje(titulo = "Guardado con éxito", texto = "", tipo = "ok") {
-  const modal = document.getElementById("mensajeGuardado");
-  document.getElementById("tituloMensaje").textContent = titulo;
-  document.getElementById("textoMensaje").textContent = texto;
-  modal.classList.remove("modal-error", "modal-alerta");
-  if (tipo === "error") modal.classList.add("modal-error");
-  if (tipo === "alerta") modal.classList.add("modal-alerta");
-  modal.style.display = "flex";
-  setTimeout(() => modal.style.display = "none", 1900);
+function tokenConfirmacionNuevo() {
+  const bytes = new Uint8Array(24);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function mostrarMensajeGuardado() {
-  mostrarMensaje("Guardado con éxito", "La información quedó registrada.");
+function actualizarSelectorUsuarios() {
+  const selector = document.getElementById("usuario");
+  if (!selector) return;
+  const seleccionado = selector.value;
+  selector.innerHTML = `<option value="">Selecciona un usuario</option>${usuarios.map(item => `<option value="${item.usuario}">${item.nombre}</option>`).join("")}`;
+  if (usuarios.some(item => item.usuario === seleccionado)) selector.value = seleccionado;
 }
 
-function mostrarBarraGuardado(texto = "Guardando control...") {
-  let barra = document.getElementById("barraGuardado");
-  if (!barra) {
-    barra = document.createElement("div");
-    barra.id = "barraGuardado";
-    barra.className = "barra-guardado";
-    barra.innerHTML = `<span></span><div><i></i></div>`;
-    document.body.appendChild(barra);
-  }
-  barra.querySelector("span").textContent = texto;
-  barra.classList.remove("activo", "completo");
-  void barra.offsetWidth;
-  barra.classList.add("activo");
-  setTimeout(() => barra.classList.add("completo"), 80);
-  setTimeout(() => barra.classList.remove("activo", "completo"), 1800);
+function aplicarConfiguracion() {
+  const logo = configuracion.logo || LOGO_PREDETERMINADO;
+  document.querySelectorAll(".login-logo, .brand img").forEach(imagen => imagen.src = logo);
 }
 
-function mostrarPanelReportesAnalisis() {
-  if (esLimitado()) return mostrarReportes();
-  return mostrarAnalisis();
-}
-
-function confirmarAccion(titulo, texto, textoAceptar, alAceptar) {
-  let modal = document.getElementById("modalConfirmacionGeneral");
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = "modalConfirmacionGeneral";
-    modal.className = "modal";
-    modal.innerHTML = `
-      <div class="modal-contenido">
-        <h2 id="tituloConfirmacionGeneral"></h2>
-        <p id="textoConfirmacionGeneral"></p>
-        <div class="acciones-modal">
-          <button type="button" id="btnAceptarConfirmacion"></button>
-          <button class="boton-secundario" type="button" id="btnCancelarConfirmacion">Cancelar</button>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-  }
-
-  document.getElementById("tituloConfirmacionGeneral").textContent = titulo;
-  document.getElementById("textoConfirmacionGeneral").textContent = texto;
-  document.getElementById("btnAceptarConfirmacion").textContent = textoAceptar;
-  document.getElementById("btnAceptarConfirmacion").onclick = () => {
-    modal.style.display = "none";
-    alAceptar();
-  };
-  document.getElementById("btnCancelarConfirmacion").onclick = () => {
-    modal.style.display = "none";
-  };
-  modal.style.display = "flex";
-}
-
-function pedirCodigoDueno(titulo, texto, alAceptar) {
-  let modal = document.getElementById("modalCodigoDueno");
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = "modalCodigoDueno";
-    modal.className = "modal";
-    modal.innerHTML = `
-      <div class="modal-contenido">
-        <h2 id="tituloCodigoDueno"></h2>
-        <p id="textoCodigoDueno"></p>
-        <input type="password" id="inputCodigoDueno" placeholder="Código del dueño">
-        <div class="acciones-modal">
-          <button type="button" id="btnAceptarCodigoDueno">Editar</button>
-          <button class="boton-secundario" type="button" id="btnCancelarCodigoDueno">Cancelar</button>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-  }
-
-  document.getElementById("tituloCodigoDueno").textContent = titulo;
-  document.getElementById("textoCodigoDueno").textContent = texto;
-  document.getElementById("inputCodigoDueno").value = "";
-  document.getElementById("btnAceptarCodigoDueno").onclick = () => {
-    const codigo = document.getElementById("inputCodigoDueno").value;
-    if (codigo !== CODIGO_CIERRE) return mostrarMensaje("Código incorrecto", "No se puede editar sin permiso del dueño.", "error");
-    modal.style.display = "none";
-    alAceptar();
-  };
-  document.getElementById("btnCancelarCodigoDueno").onclick = () => {
-    modal.style.display = "none";
-  };
-  modal.style.display = "flex";
-  setTimeout(() => document.getElementById("inputCodigoDueno").focus(), 50);
-}
-
-function mesCerrado(fecha) {
-  return !!fecha && mesesCerrados.includes(fecha.slice(0, 7));
-}
-
-function puedeUsarFecha(fecha) {
-  if (!fecha) {
-    mostrarMensaje("Falta la fecha", "Selecciona una fecha antes de guardar.", "alerta");
-    return false;
-  }
-  if (mesCerrado(fecha)) {
-    mostrarMensaje("Mes cerrado", "No puedes capturar movimientos en un mes cerrado.", "error");
-    return false;
-  }
-  return true;
-}
-
-function mostrarLogin() {
-  document.getElementById("formLogin").style.display = "block";
-  document.getElementById("formCuenta").style.display = "none";
-  document.getElementById("tabLogin").classList.add("activo");
-  document.getElementById("tabCuenta").classList.remove("activo");
-  ocultarAyudas();
-}
-
-function mostrarCrearCuenta() {
-  document.getElementById("formLogin").style.display = "none";
-  document.getElementById("formCuenta").style.display = "block";
-  document.getElementById("tabLogin").classList.remove("activo");
-  document.getElementById("tabCuenta").classList.add("activo");
-  ocultarAyudas();
-}
-
-function ocultarAyudas() {
-  document.getElementById("ayudaUsuario").classList.remove("activo");
-  document.getElementById("ayudaClave").classList.remove("activo");
-  document.getElementById("ayudaCodigo").classList.remove("activo");
-}
-
-function mostrarAyuda(tipo) {
-  ocultarAyudas();
-  if (tipo === "usuario") document.getElementById("ayudaUsuario").classList.add("activo");
-  if (tipo === "clave") document.getElementById("ayudaClave").classList.add("activo");
-  if (tipo === "codigo") document.getElementById("ayudaCodigo").classList.add("activo");
-}
-
-function crearCuenta() {
-  const usuario = document.getElementById("nuevoUsuario").value.trim();
-  const clave = document.getElementById("nuevaClave").value.trim();
-  const codigo = document.getElementById("codigoEmpresa").value.trim();
-  const mensaje = document.getElementById("mensajeCuenta");
-
-  if (!usuario || !clave || !codigo) return mensaje.textContent = "Completa todos los campos";
-  if (codigo !== CODIGO_EMPRESA) return mensaje.textContent = "Código incorrecto";
-  if (usuarios.some(item => item.usuario.toLowerCase() === usuario.toLowerCase())) return mensaje.textContent = "Ese usuario ya existe";
-
-  usuarios.push({ usuario, clave, rol: "dueno" });
-  guardar();
-  document.getElementById("nuevoUsuario").value = "";
-  document.getElementById("nuevaClave").value = "";
-  document.getElementById("codigoEmpresa").value = "";
+function usuarioSeleccionado() {
+  const usuario = document.getElementById("usuario").value;
+  const campoClave = document.getElementById("campoClave");
+  const clave = document.getElementById("clave");
+  const mensaje = document.getElementById("mensaje");
+  campoClave.style.display = usuario ? "block" : "none";
+  clave.value = "";
   mensaje.textContent = "";
-  mostrarMensaje("Cuenta creada", "Ya puedes iniciar sesión con tu usuario.");
-  mostrarLogin();
-}
-
-function iniciarSesion() {
-  const usuario = document.getElementById("usuario").value.trim();
-  const clave = document.getElementById("clave").value.trim();
-  const existe = usuarios.find(item => item.usuario === usuario && item.clave === clave);
-  if (!existe) {
-    document.getElementById("mensaje").textContent = "Usuario o contraseña incorrectos";
-    return;
-  }
-  usuarioActual = existe;
-  document.getElementById("pantallaLogin").style.display = "none";
-  document.getElementById("sistema").style.display = "block";
-  aplicarPermisosMenu();
-  if (esLimitado()) mostrarReportes();
-  else mostrarInicio();
-}
-
-function cerrarSesion() {
-  usuarioActual = null;
-  alertasSesionMostradas = false;
-  colaAlertasInventario = [];
-  document.querySelector(".alerta-flotante")?.remove();
-  document.getElementById("pantallaLogin").style.display = "block";
-  document.getElementById("sistema").style.display = "none";
-  document.getElementById("usuario").value = "";
-  document.getElementById("clave").value = "";
-  document.getElementById("mensaje").textContent = "";
-}
-
-function esLimitado() {
-  return usuarioActual?.rol === "limitado";
-}
-
-function aplicarPermisosMenu() {
-  document.querySelectorAll(".sidebar button").forEach(boton => boton.style.display = "");
-  if (!esLimitado()) return;
-  document.querySelectorAll(".sidebar button").forEach(boton => {
-    const menu = boton.dataset.menu || boton.textContent.trim().toLowerCase();
-    if (!["movimientos", "reportes", "salir", "cerrar sesión", "cerrar sesion"].includes(menu)) boton.style.display = "none";
-  });
-}
-
-function bloquearSiLimitado(seccion) {
-  if (!esLimitado()) return false;
-  const permitido = seccion === "reportes" || seccion === "ajustes";
-  if (!permitido) {
-    mostrarMensaje("Acceso limitado", "Este usuario solo puede ver salidas a maquina y editar ajustes de reportes.", "alerta");
-    return true;
-  }
-  return false;
-}
-
-function buscarProducto(nombre) {
-  return productos.find(p => p.nombre.toLowerCase() === String(nombre).trim().toLowerCase());
-}
-
-function normalizarNombreProducto(nombre) {
-  return String(nombre)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]/g, "");
-}
-
-function productoSimilar(nombre, indiceIgnorado = null) {
-  const normalizado = normalizarNombreProducto(nombre);
-  return productos.find((item, indice) => {
-    return indice !== indiceIgnorado && normalizarNombreProducto(item.nombre) === normalizado;
-  });
-}
-
-function mostrarConfirmacionProductoSimilar(nombreParecido) {
-  let modal = document.getElementById("modalConfirmacionProducto");
-  if (!modal) {
-    modal = document.createElement("div");
-    modal.id = "modalConfirmacionProducto";
-    modal.className = "modal";
-    modal.innerHTML = `
-      <div class="modal-contenido">
-        <h2 id="tituloConfirmacionProducto"></h2>
-        <p id="textoConfirmacionProducto"></p>
-        <div style="display:flex; gap:10px; margin-top:18px;">
-          <button type="button" id="btnSeguirProducto">Seguir</button>
-          <button class="boton-secundario" type="button" id="btnVolverProducto">Volver atrás</button>
-        </div>
-      </div>`;
-    document.body.appendChild(modal);
-  }
-
-  document.getElementById("tituloConfirmacionProducto").textContent = "Nombre similar";
-  document.getElementById("textoConfirmacionProducto").textContent = `El nombre se parece a "${nombreParecido}". ¿Quieres seguir de todos modos?`;
-  document.getElementById("btnSeguirProducto").onclick = () => {
-    modal.style.display = "none";
-    permitirProductoSimilar = true;
-    guardarProducto();
-  };
-  document.getElementById("btnVolverProducto").onclick = () => {
-    modal.style.display = "none";
-    permitirProductoSimilar = false;
-  };
-  modal.style.display = "flex";
-}
-
-function productoDeBaja(producto, fecha = hoy()) {
-  return !!producto.fechaBaja && producto.fechaBaja <= fecha;
-}
-
-function productoDisponibleEnFecha(producto, fecha = hoy()) {
-  return !producto.fechaBaja || producto.fechaBaja > fecha;
-}
-
-function productosDisponibles(fecha = hoy()) {
-  return productos.filter(p => productoDisponibleEnFecha(p, fecha));
-}
-
-function productoVisibleEnPeriodo(producto, tipoPeriodo, valor) {
-  if (tipoPeriodo === "mes") return productoDisponibleEnFecha(producto, `${valor}-01`) || producto.fechaBaja?.slice(0, 7) === valor;
-  return productoDisponibleEnFecha(producto, valor);
-}
-
-function opcionesProductos(id = "listaProductos", fecha = hoy()) {
-  return `<datalist id="${id}">${productosDisponibles(fecha).map(p => `<option value="${p.nombre}"></option>`).join("")}</datalist>`;
-}
-
-function movimientoBase(tipo, producto, cantidad, fecha, nota) {
-  return { id: generarId(), fecha, tipo, producto, cantidad: Number(cantidad || 0), maquina: "", espiral: "", categoria: "", nota: nota || "", lote: "", caducidad: "", lotes: [], controlId: null };
-}
-
-function movimientoRestaInventario(mov) {
-  if (["salida", "merma", "cortesia", "ventaExterna", "salidaBG"].includes(mov.tipo)) return true;
-  if (mov.tipo === "ajuste" && mov.categoria === "Sobrante (colocado)") return true;
-  return false;
-}
-
-function movimientoSumaInventario(mov) {
-  if (mov.tipo === "entrada") return true;
-  if (mov.tipo === "ajuste" && mov.categoria !== "Sobrante (colocado)") return true;
-  return false;
-}
-
-function lotesProducto(nombre) {
-  const lotes = {};
-  const producto = buscarProducto(nombre);
-  if (producto && Number(producto.stockInicial || 0) > 0) {
-    lotes["Stock inicial"] = {
-      lote: "Stock inicial",
-      caducidad: "",
-      entrada: Number(producto.stockInicial || 0),
-      salida: 0,
-      fechaEntrada: producto.fechaEntrada || ""
-    };
-  }
-
-  for (const mov of movimientos) {
-    if (mov.producto !== nombre) continue;
-
-    if (mov.tipo === "entrada") {
-      const key = mov.lote || "Sin lote";
-      lotes[key] = lotes[key] || { lote: key, caducidad: mov.caducidad || "", entrada: 0, salida: 0, fechaEntrada: mov.fecha };
-      lotes[key].entrada += Number(mov.cantidad || 0);
-      if (mov.caducidad && (!lotes[key].caducidad || mov.caducidad < lotes[key].caducidad)) lotes[key].caducidad = mov.caducidad;
-    }
-
-    if (mov.tipo === "ajuste" && mov.categoria !== "Sobrante (colocado)") {
-      if (Array.isArray(mov.lotes) && mov.lotes.length) {
-        for (const lote of mov.lotes) {
-          const key = lote.lote || "Sin lote";
-          lotes[key] = lotes[key] || { lote: key, caducidad: lote.caducidad || "", entrada: 0, salida: 0, fechaEntrada: mov.fecha };
-          lotes[key].entrada += Number(lote.cantidad || 0);
-        }
-      } else if (mov.lote) {
-        const key = mov.lote;
-        lotes[key] = lotes[key] || { lote: key, caducidad: mov.caducidad || "", entrada: 0, salida: 0, fechaEntrada: mov.fecha };
-        lotes[key].entrada += Number(mov.cantidad || 0);
-      }
-    }
-
-    if (movimientoRestaInventario(mov) && Array.isArray(mov.lotes)) {
-      for (const lote of mov.lotes) {
-        const key = lote.lote || "Sin lote";
-        lotes[key] = lotes[key] || { lote: key, caducidad: lote.caducidad || "", entrada: 0, salida: 0, fechaEntrada: mov.fecha };
-        lotes[key].salida += Number(lote.cantidad || 0);
-      }
-    }
-  }
-
-  return Object.values(lotes).map(lote => ({
-    ...lote,
-    disponible: lote.entrada - lote.salida
-  })).sort((a, b) => (a.caducidad || "9999-99-99").localeCompare(b.caducidad || "9999-99-99"));
-}
-
-function siguienteLoteProducto(nombre) {
-  const usados = new Set();
-  for (const lote of lotesProducto(nombre)) {
-    const numero = Number(String(lote.lote || "").match(/^L?(\d+)$/i)?.[1] || 0);
-    if (numero > 0) usados.add(numero);
-  }
-
-  let siguiente = 1;
-  while (usados.has(siguiente)) siguiente++;
-  return `L${String(siguiente).padStart(4, "0")}`;
-}
-
-function sugerirLoteEntrada() {
-  const inputProducto = document.getElementById("entradaProducto");
-  const inputLote = document.getElementById("entradaLote");
-  if (!inputProducto || !inputLote) return;
-  const producto = inputProducto.value.trim();
-  if (!buscarProducto(producto)) return;
-  inputLote.value = siguienteLoteProducto(producto);
-}
-
-function asignarLotesFIFO(producto, cantidad) {
-  let restante = Number(cantidad || 0);
-  const asignados = [];
-  for (const lote of lotesProducto(producto).filter(l => l.disponible > 0)) {
-    if (restante <= 0) break;
-    const usado = Math.min(restante, lote.disponible);
-    asignados.push({ lote: lote.lote, caducidad: lote.caducidad, cantidad: usado });
-    restante -= usado;
-  }
-  return restante > 0 ? null : asignados;
-}
-
-function tomarLotesDeAsignacion(asignados, cantidad) {
-  let restante = Number(cantidad || 0);
-  const devueltos = [];
-  for (const lote of asignados) {
-    if (restante <= 0) break;
-    const usado = Math.min(restante, Number(lote.cantidad || 0));
-    devueltos.push({ lote: lote.lote, caducidad: lote.caducidad, cantidad: usado });
-    restante -= usado;
-  }
-  return devueltos;
-}
-
-function impactoAjuste(categoria, cantidad) {
-  return categoria === "Sobrante (colocado)" ? -Number(cantidad || 0) : Number(cantidad || 0);
-}
-
-function calcularProducto(nombre) {
-  const producto = buscarProducto(nombre);
-  const base = { stockInicial: Number(producto?.stockInicial || 0), compras: 0, salidaMaq1: 0, salidaMaq2: 0, salidaMaq3: 0, salidaMaq4: 0, salidaBG: 0, mermas: 0, ajustes: 0, cortesia: 0, ventaExterna: 0 };
-
-  for (const mov of movimientos) {
-    if (mov.producto !== nombre) continue;
-    const cantidad = Number(mov.cantidad || 0);
-    if (mov.tipo === "entrada") base.compras += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 1") base.salidaMaq1 += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 2") base.salidaMaq2 += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 3") base.salidaMaq3 += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 4") base.salidaMaq4 += cantidad;
-    if (mov.tipo === "merma") base.mermas += cantidad;
-    if (mov.tipo === "cortesia") base.cortesia += cantidad;
-    if (mov.tipo === "ventaExterna") base.ventaExterna += cantidad;
-    if (mov.tipo === "salidaBG") base.salidaBG += cantidad;
-    if (mov.tipo === "ajuste") base.ajustes += impactoAjuste(mov.categoria, cantidad);
-  }
-
-  base.totalSalida = base.salidaMaq1 + base.salidaMaq2 + base.salidaMaq3 + base.salidaMaq4 + base.salidaBG + base.mermas + base.cortesia + base.ventaExterna;
-  base.inventarioFinal = base.stockInicial + base.compras + base.ajustes - base.totalSalida;
-  base.ventas = (base.salidaMaq1 + base.salidaMaq2 + base.salidaMaq3 + base.salidaMaq4 + base.ventaExterna) * Number(producto?.precio || 0);
-  return base;
-}
-
-function calcularProductoHastaFecha(nombre, fechaLimite) {
-  const producto = buscarProducto(nombre);
-  const stockValido = producto?.fechaEntrada && producto.fechaEntrada <= fechaLimite;
-  const base = { stockInicial: stockValido ? Number(producto?.stockInicial || 0) : 0, compras: 0, salidaMaq1: 0, salidaMaq2: 0, salidaMaq3: 0, salidaMaq4: 0, salidaBG: 0, mermas: 0, ajustes: 0, cortesia: 0, ventaExterna: 0 };
-
-  for (const mov of movimientos) {
-    if (mov.producto !== nombre) continue;
-    if (!mov.fecha || mov.fecha > fechaLimite) continue;
-    const cantidad = Number(mov.cantidad || 0);
-    if (mov.tipo === "entrada") base.compras += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 1") base.salidaMaq1 += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 2") base.salidaMaq2 += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 3") base.salidaMaq3 += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 4") base.salidaMaq4 += cantidad;
-    if (mov.tipo === "merma") base.mermas += cantidad;
-    if (mov.tipo === "cortesia") base.cortesia += cantidad;
-    if (mov.tipo === "ventaExterna") base.ventaExterna += cantidad;
-    if (mov.tipo === "salidaBG") base.salidaBG += cantidad;
-    if (mov.tipo === "ajuste") base.ajustes += impactoAjuste(mov.categoria, cantidad);
-  }
-
-  base.totalSalida = base.salidaMaq1 + base.salidaMaq2 + base.salidaMaq3 + base.salidaMaq4 + base.salidaBG + base.mermas + base.cortesia + base.ventaExterna;
-  base.inventarioFinal = base.stockInicial + base.compras + base.ajustes - base.totalSalida;
-  return base;
-}
-
-function fechaAnterior(fecha) {
-  const base = new Date(`${fecha}T00:00:00`);
-  base.setDate(base.getDate() - 1);
-  const y = base.getFullYear();
-  const m = String(base.getMonth() + 1).padStart(2, "0");
-  const d = String(base.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
-}
-
-function inventarioInicialProducto(nombre, tipoPeriodo, valor) {
-  const producto = buscarProducto(nombre);
-  const fechaBase = tipoPeriodo === "mes" ? fechaAnterior(`${valor}-01`) : fechaAnterior(valor);
-  const inicial = calcularProductoHastaFecha(nombre, fechaBase);
-  if (tipoPeriodo === "dia" && producto?.fechaEntrada === valor) {
-    inicial.inventarioFinal += Number(producto.stockInicial || 0);
-  }
-  return inicial;
-}
-
-function movimientosPorPeriodo(tipoPeriodo, valor) {
-  return movimientos.filter(mov => tipoPeriodo === "dia" ? mov.fecha === valor : (mov.fecha || "").slice(0, 7) === valor);
-}
-
-function calcularProductoPeriodo(nombre, lista) {
-  const producto = buscarProducto(nombre);
-  const base = { compras: 0, salidaMaq1: 0, salidaMaq2: 0, salidaMaq3: 0, salidaMaq4: 0, salidaBG: 0, mermas: 0, ajustes: 0, entradasReporte: 0, salidasReporte: 0, cortesia: 0, ventaExterna: 0 };
-  for (const mov of lista) {
-    if (mov.producto !== nombre) continue;
-    const cantidad = Number(mov.cantidad || 0);
-    if (mov.tipo === "entrada") base.compras += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 1") base.salidaMaq1 += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 2") base.salidaMaq2 += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 3") base.salidaMaq3 += cantidad;
-    if (mov.tipo === "salida" && mov.maquina === "MAQ 4") base.salidaMaq4 += cantidad;
-    if (mov.tipo === "merma") base.mermas += cantidad;
-    if (mov.tipo === "cortesia") base.cortesia += cantidad;
-    if (mov.tipo === "ventaExterna") base.ventaExterna += cantidad;
-    if (mov.tipo === "salidaBG") base.salidaBG += cantidad;
-    if (mov.tipo === "ajuste") {
-      const impacto = impactoAjuste(mov.categoria, cantidad);
-      base.ajustes += impacto;
-      if (impacto >= 0) base.entradasReporte += impacto;
-      else base.salidasReporte += Math.abs(impacto);
-    }
-  }
-  base.totalSalida = base.salidaMaq1 + base.salidaMaq2 + base.salidaMaq3 + base.salidaMaq4 + base.salidaBG + base.mermas + base.cortesia + base.ventaExterna;
-  base.balance = base.compras + base.entradasReporte - base.salidasReporte - base.totalSalida;
-  base.ventas = (base.salidaMaq1 + base.salidaMaq2 + base.salidaMaq3 + base.salidaMaq4 + base.ventaExterna) * Number(producto?.precio || 0);
-  return base;
-}
-
-function resumenGeneral() {
-  let ventas = 0;
-  let bajoStock = 0;
-  for (const producto of productosDisponibles(hoy())) {
-    const calc = calcularProducto(producto.nombre);
-    ventas += calc.ventas;
-    if (calc.inventarioFinal <= 15) bajoStock++;
-  }
-  return { productos: productosDisponibles(hoy()).length, ventas, bajoStock };
-}
-
-function diasEntreFechas(inicio, fin) {
-  const uno = new Date(`${inicio}T00:00:00`);
-  const dos = new Date(`${fin}T00:00:00`);
-  return Math.ceil((dos - uno) / 86400000);
-}
-
-function productosPorCaducar(dias = 30) {
-  return productosDisponibles(hoy()).flatMap(producto => {
-    return lotesProducto(producto.nombre)
-      .filter(lote => lote.caducidad && lote.disponible > 0)
-      .map(lote => ({
-        producto: producto.nombre,
-        lote: lote.lote,
-        caducidad: lote.caducidad,
-        disponible: lote.disponible,
-        dias: diasEntreFechas(hoy(), lote.caducidad)
-      }));
-  }).filter(item => item.dias >= 0 && item.dias <= dias)
-    .sort((a, b) => a.dias - b.dias || a.producto.localeCompare(b.producto, "es", { sensitivity: "base" }));
-}
-
-function productosBajoStockActuales(limite = 15) {
-  return productosDisponibles(hoy())
-    .map(producto => {
-      const calc = calcularProducto(producto.nombre);
-      const existencia = Number(calc.inventarioFinal || 0);
-      return {
-        nombre: producto.nombre,
-        existencia,
-        sugerido: Math.max(1, 20 - existencia),
-        prioridad: existencia <= 0 ? "Urgente" : "Reponer"
-      };
-    })
-    .filter(item => item.existencia <= limite)
-    .sort((a, b) => a.existencia - b.existencia || a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" }));
-}
-
-function mostrarInicio() {
-  if (bloquearSiLimitado("inicio")) return;
-  const resumen = resumenGeneral();
-  const movimientosHoy = movimientos.filter(mov => mov.fecha === hoy()).length;
-  const caducidad = productosPorCaducar(30).slice(0, 8).map(item => `<tr><td>${item.producto}</td><td>${item.lote}</td><td>${item.caducidad}</td><td class="numero">${item.disponible}</td><td class="numero">${item.dias}</td></tr>`).join("");
-  const bajos = productosBajoStockActuales().map(item => `<li>${item.nombre}: <strong>${item.existencia}</strong> piezas</li>`).join("");
-
-  document.getElementById("contenido").innerHTML = `
-    <h2>Resumen general</h2>
-    <div class="grid-resumen">
-      <div class="tarjeta-kpi"><span>Productos activos</span><strong>${resumen.productos}</strong></div>
-      <div class="tarjeta-kpi"><span>Bajo stock</span><strong>${resumen.bajoStock}</strong></div>
-      <div class="tarjeta-kpi"><span>Movimientos hoy</span><strong>${movimientosHoy}</strong></div>
-      <div class="tarjeta-kpi"><span>Ventas estimadas</span><strong>$${resumen.ventas.toFixed(2)}</strong></div>
-    </div>
-    <div class="layout-doble">
-      <div class="panel"><h3>Atención de inventario</h3><p>Productos con lote disponible que caducan en los próximos 30 días.</p><table class="tabla"><tr><th>Producto</th><th>Lote</th><th>Caducidad</th><th>Disponible</th><th>Días</th></tr>${caducidad || `<tr><td colspan="5">No hay productos próximos a caducar.</td></tr>`}</table></div>
-      <div class="panel">
-        <h3>Bajo stock</h3>
-        <p>Productos activos con 15 piezas o menos.</p>
-        <ul>${bajos || "<li>No hay productos con bajo stock.</li>"}</ul>
-        <div class="panel-acciones-linea">
-          <button class="boton-pequeno" type="button" onclick="mostrarMovimientos('entrada')">Capturar entrada</button>
-          <button class="boton-pequeno boton-secundario" type="button" onclick="abrirSelectorBajoStock()">Imprimir lista de compras</button>
-        </div>
-      </div>
-    </div>`;
-}
-
-function abrirSelectorBajoStock() {
-  const lista = productosBajoStockActuales();
-  if (!lista.length) {
-    mostrarMensaje("Sin bajo stock", "No hay productos con 15 piezas o menos para imprimir.");
-    return;
-  }
-
-  const opciones = lista.map((item, indice) => `
-    <label class="selector-producto-compra">
-      <input type="checkbox" class="checkBajoStock" value="${indice}" checked>
-      <span>
-        <strong>${item.nombre}</strong>
-        <small>Existencia actual: ${item.existencia} | ${item.prioridad}</small>
-      </span>
-    </label>`).join("");
-
-  document.getElementById("detalleProducto").innerHTML = `
-    <div class="selector-compras">
-      <h2>Productos necesarios para comprar</h2>
-      <p class="texto-suave">Marca solo los productos que quieres mandar a imprimir.</p>
-      <div class="selector-compras-acciones">
-        <button class="boton-mini boton-secundario" type="button" onclick="marcarBajoStock(true)">Marcar todos</button>
-        <button class="boton-mini boton-secundario" type="button" onclick="marcarBajoStock(false)">Quitar todos</button>
-      </div>
-      <div class="selector-compras-lista">${opciones}</div>
-      <div class="acciones-modal">
-        <button type="button" onclick="imprimirBajoStockSeleccionados()">Imprimir seleccionados</button>
-        <button class="boton-secundario" type="button" onclick="cerrarDetalleProducto()">Cancelar</button>
-      </div>
-    </div>`;
-  document.getElementById("modalProducto").style.display = "flex";
-}
-
-function marcarBajoStock(marcado) {
-  document.querySelectorAll(".checkBajoStock").forEach(check => check.checked = marcado);
-}
-
-function imprimirBajoStockSeleccionados() {
-  const listaCompleta = productosBajoStockActuales();
-  const seleccionados = Array.from(document.querySelectorAll(".checkBajoStock:checked"))
-    .map(check => listaCompleta[Number(check.value)])
-    .filter(Boolean);
-
-  if (!seleccionados.length) {
-    mostrarMensaje("Sin productos", "Marca al menos un producto para imprimir.", "alerta");
-    return;
-  }
-
-  cerrarDetalleProducto();
-  imprimirBajoStock(seleccionados);
-}
-
-function imprimirBajoStock(listaPersonalizada = null) {
-  const fecha = hoy();
-  const lista = listaPersonalizada || productosBajoStockActuales();
-  const filas = lista.map((item, indice) => `<tr>
-    <td>${indice + 1}</td>
-    <td>${item.nombre}</td>
-    <td>${item.existencia}</td>
-    <td class="cantidad-pedir"></td>
-    <td><span class="${item.prioridad === "Urgente" ? "urgente" : "normal"}">${item.prioridad}</span></td>
-    <td class="check"></td>
-  </tr>`).join("");
-
-  const ventana = window.open("", "_blank", "width=900,height=760");
-  if (!ventana) {
-    mostrarMensaje("No se pudo imprimir", "Permite ventanas emergentes para generar la lista de bajo stock.");
-    return;
-  }
-
-  ventana.document.write(`<!DOCTYPE html>
-  <html lang="es">
-  <head>
-    <meta charset="UTF-8">
-    <title>Productos necesarios para comprar</title>
-    <style>
-      body { font-family: Arial, Helvetica, sans-serif; margin: 28px; color: #102018; background: #ffffff; }
-      .encabezado { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; border-bottom: 4px solid #166534; padding-bottom: 16px; margin-bottom: 18px; }
-      .marca { display: flex; gap: 12px; align-items: center; }
-      .logo { width: 44px; height: 44px; border-radius: 14px; background: linear-gradient(135deg, #14532d, #22c55e); color: white; display: grid; place-items: center; font-weight: 900; font-size: 22px; }
-      h1 { margin: 0; color: #14532d; font-size: 28px; }
-      p { margin: 5px 0 0; color: #64748b; }
-      .fecha { background: #dcfce7; color: #14532d; border: 1px solid #86efac; padding: 10px 14px; border-radius: 12px; font-weight: 800; white-space: nowrap; }
-      .resumen { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0; }
-      .dato { border: 1px solid #dbe5dd; border-radius: 14px; padding: 13px; background: #f8fbf8; }
-      .dato span { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
-      .dato strong { display: block; color: #14532d; font-size: 24px; margin-top: 4px; }
-      table { width: 100%; border-collapse: collapse; font-size: 13px; overflow: hidden; border-radius: 14px; }
-      th { background: #14532d; color: white; text-align: left; padding: 11px; }
-      td { border-bottom: 1px solid #dbe5dd; padding: 10px 11px; }
-      tr:nth-child(even) td { background: #f3f7f4; }
-      td:first-child, td:nth-child(3), td:nth-child(4), th:first-child, th:nth-child(3), th:nth-child(4) { text-align: center; }
-      .urgente, .normal { display: inline-block; min-width: 72px; text-align: center; border-radius: 999px; padding: 5px 9px; font-weight: 800; font-size: 12px; }
-      .urgente { background: #fee2e2; color: #991b1b; }
-      .normal { background: #dcfce7; color: #166534; }
-      .cantidad-pedir::after { content: ""; display: block; width: 82px; max-width: 100%; height: 1px; background: #94a3b8; margin: 14px auto 4px; }
-      .check::after { content: ""; display: inline-block; width: 18px; height: 18px; border: 2px solid #94a3b8; border-radius: 5px; }
-      .nota { margin-top: 18px; padding: 12px 14px; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; color: #475569; }
-      .pie { margin-top: 18px; color: #64748b; font-size: 11px; }
-      @media print { body { margin: 13mm; } }
-    </style>
-  </head>
-  <body>
-    <div class="encabezado">
-      <div class="marca">
-        <div class="logo">N</div>
-        <div>
-          <h1>Productos necesarios para comprar</h1>
-          <p>Nuez de Avellana | Lista generada por bajo stock</p>
-        </div>
-      </div>
-      <div class="fecha">${fecha}</div>
-    </div>
-    <div class="resumen">
-      <div class="dato"><span>Productos seleccionados</span><strong>${lista.length}</strong></div>
-      <div class="dato"><span>Stock mínimo</span><strong>15</strong></div>
-      <div class="dato"><span>Fecha</span><strong>${fecha}</strong></div>
-    </div>
-    <table>
-      <thead>
-        <tr><th>#</th><th>Producto</th><th>Existencia actual</th><th>Cantidad a pedir</th><th>Prioridad</th><th>Comprado</th></tr>
-      </thead>
-      <tbody>${filas || `<tr><td colspan="6">No hay productos con bajo stock por comprar.</td></tr>`}</tbody>
-    </table>
-    <div class="nota">Lista preparada con productos que tienen 15 piezas o menos. Escribe la cantidad real a pedir segun espacio, caducidad y venta esperada.</div>
-    <p class="pie">Generado desde el sistema de inventario de Nuez de Avellana.</p>
-    <script>window.onload = () => { window.print(); };</script>
-  </body>
-  </html>`);
-  ventana.document.close();
-}
-
-function mostrarInventario(tipoPeriodo = "dia", valor = hoy()) {
-  if (bloquearSiLimitado("inventario")) return;
-  const lista = movimientosPorPeriodo(tipoPeriodo, valor);
-  const filas = productos.filter(p => productoVisibleEnPeriodo(p, tipoPeriodo, valor)).map(producto => {
-    const calc = calcularProductoPeriodo(producto.nombre, lista);
-    const fechaFinal = tipoPeriodo === "mes" ? `${valor}-31` : valor;
-    const inicial = inventarioInicialProducto(producto.nombre, tipoPeriodo, valor);
-    const global = calcularProductoHastaFecha(producto.nombre, fechaFinal);
-    const estado = productoDeBaja(producto, hoy()) ? "De baja" : "Activo";
-    const claseEstado = estado === "De baja" ? "pill pill-baja" : "pill";
-    return `<tr data-producto="${producto.nombre.toLowerCase()}">
-      <td>${producto.nombre}</td>
-      <td><span class="${claseEstado}">${estado}</span></td>
-      <td class="numero">${inicial.inventarioFinal}</td>
-      <td class="numero">${calc.compras}</td>
-      <td class="numero">${calc.entradasReporte}</td>
-      <td class="numero">${calc.salidasReporte}</td>
-      <td class="numero">${calc.salidaBG}</td>
-      <td class="numero">${calc.salidaMaq1}</td>
-      <td class="numero">${calc.salidaMaq2}</td>
-      <td class="numero">${calc.salidaMaq3}</td>
-      <td class="numero">${calc.salidaMaq4}</td>
-      <td class="numero">${calc.mermas}</td>
-      <td class="numero">${calc.cortesia}</td>
-      <td class="numero">${calc.ventaExterna}</td>
-      <td class="numero"><strong>${global.inventarioFinal}</strong></td>
-    </tr>`;
-  }).join("");
-  const tarjetasMovil = productos.filter(p => productoVisibleEnPeriodo(p, tipoPeriodo, valor)).map(producto => {
-    const calc = calcularProductoPeriodo(producto.nombre, lista);
-    const fechaFinal = tipoPeriodo === "mes" ? `${valor}-31` : valor;
-    const inicial = inventarioInicialProducto(producto.nombre, tipoPeriodo, valor);
-    const global = calcularProductoHastaFecha(producto.nombre, fechaFinal);
-    const estado = productoDeBaja(producto, hoy()) ? "De baja" : "Activo";
-    const claseEstado = estado === "De baja" ? "pill pill-baja" : "pill";
-    return `<article class="inventario-card" data-producto="${producto.nombre.toLowerCase()}">
-      <div class="inventario-card-head"><h3>${producto.nombre}</h3><span class="${claseEstado}">${estado}</span></div>
-      <div class="inventario-card-grid">
-        <span>Invt inicial<strong>${inicial.inventarioFinal}</strong></span>
-        <span>Entrada/Compras<strong>${calc.compras}</strong></span>
-        <span>Entradas reportes<strong>${calc.entradasReporte}</strong></span>
-        <span>Salidas reportes<strong>${calc.salidasReporte}</strong></span>
-        <span>Salida BG<strong>${calc.salidaBG}</strong></span>
-        <span>MAQ 1<strong>${calc.salidaMaq1}</strong></span>
-        <span>MAQ 2<strong>${calc.salidaMaq2}</strong></span>
-        <span>MAQ 3<strong>${calc.salidaMaq3}</strong></span>
-        <span>MAQ 4<strong>${calc.salidaMaq4}</strong></span>
-        <span>Merma<strong>${calc.mermas}</strong></span>
-        <span>Cortesía<strong>${calc.cortesia}</strong></span>
-        <span>Venta externa<strong>${calc.ventaExterna}</strong></span>
-        <span class="final">Invt final<strong>${global.inventarioFinal}</strong></span>
-      </div>
-    </article>`;
-  }).join("");
-
-  document.getElementById("contenido").innerHTML = `
-    <div class="titulo-con-estado">
-      <div>
-        <h2>Inventario por ${tipoPeriodo === "dia" ? "día" : "mes"}</h2>
-        <p class="texto-suave">En mes completo también aparecen los productos dados de baja durante ese mes.</p>
-      </div>
-      <button class="boton-mini" type="button" onclick="imprimirInventarioDia()">Imprimir inventario del día</button>
-    </div>
-    <div class="form-grid">
-      <div><label>Ver por</label><select id="invTipo" onchange="cambiarFiltroInventario()"><option value="dia" ${tipoPeriodo === "dia" ? "selected" : ""}>Día</option><option value="mes" ${tipoPeriodo === "mes" ? "selected" : ""}>Mes completo</option></select></div>
-      <div><label>Fecha</label><input id="invFecha" type="${tipoPeriodo === "dia" ? "date" : "month"}" value="${valor}" onchange="cambiarFiltroInventario()"></div>
-      <div><label>Buscar producto</label><input id="buscarInventario" placeholder="Escribe para filtrar" oninput="filtrarInventarioTabla(this.value)"></div>
-    </div>
-    <div class="inventario-mobile-list" id="inventarioMobile">${tarjetasMovil || `<p>No hay informacion para este periodo.</p>`}</div>
-    <table class="tabla tabla-inventario" id="tablaInventario">
-      <tr><th>Producto</th><th>Estado</th><th>Invt inicial</th><th>Entrada/Compras</th><th>Entradas reportes</th><th>Salidas reportes</th><th>Salida BG</th><th>MAQ 1</th><th>MAQ 2</th><th>MAQ 3</th><th>MAQ 4</th><th>Merma</th><th>Cortesía</th><th>Venta externa</th><th>Invt final</th></tr>
-      ${filas || `<tr><td colspan="15">No hay informacion para este periodo.</td></tr>`}
-    </table>`;
-}
-
-function cambiarFiltroInventario() {
-  const tipo = document.getElementById("invTipo").value;
-  const valor = document.getElementById("invFecha").value || (tipo === "dia" ? hoy() : mesActual());
-  mostrarInventario(tipo, valor);
-}
-
-function filtrarInventarioTabla(texto) {
-  const filtro = texto.toLowerCase();
-  document.querySelectorAll("#tablaInventario tr").forEach((fila, indice) => {
-    if (indice === 0) return;
-    const producto = fila.dataset.producto || fila.innerText.toLowerCase();
-    fila.style.display = producto.includes(filtro) ? "" : "none";
-  });
-  document.querySelectorAll("#inventarioMobile .inventario-card").forEach(card => {
-    const producto = card.dataset.producto || card.innerText.toLowerCase();
-    card.style.display = producto.includes(filtro) ? "" : "none";
-  });
-}
-
-function imprimirInventarioDia() {
-  const tipo = document.getElementById("invTipo")?.value || "dia";
-  const fecha = tipo === "dia"
-    ? (document.getElementById("invFecha")?.value || hoy())
-    : hoy();
-  const lista = movimientosPorPeriodo("dia", fecha);
-  const filas = productos
-    .filter(p => productoVisibleEnPeriodo(p, "dia", fecha))
-    .map(producto => {
-      const calc = calcularProductoPeriodo(producto.nombre, lista);
-      const inicial = inventarioInicialProducto(producto.nombre, "dia", fecha);
-      const global = calcularProductoHastaFecha(producto.nombre, fecha);
-      const estado = productoDeBaja(producto, fecha) ? "De baja" : "Activo";
-      return `<tr>
-        <td>${producto.nombre}</td>
-        <td>${estado}</td>
-        <td>${inicial.inventarioFinal}</td>
-        <td>${calc.compras}</td>
-        <td>${calc.entradasReporte}</td>
-        <td>${calc.salidasReporte}</td>
-        <td>${calc.salidaBG}</td>
-        <td>${calc.salidaMaq1 + calc.salidaMaq2 + calc.salidaMaq3}</td>
-        <td>${calc.mermas}</td>
-        <td>${calc.cortesia}</td>
-        <td>${calc.ventaExterna}</td>
-        <td><strong>${global.inventarioFinal}</strong></td>
-      </tr>`;
-    }).join("");
-
-  const ventana = window.open("", "_blank", "width=1100,height=800");
-  if (!ventana) {
-    mostrarMensaje("No se pudo imprimir", "Permite ventanas emergentes para generar el inventario.");
-    return;
-  }
-
-  ventana.document.write(`<!DOCTYPE html>
-  <html lang="es">
-  <head>
-    <meta charset="UTF-8">
-    <title>Inventario ${fecha}</title>
-    <style>
-      body { font-family: Arial, Helvetica, sans-serif; margin: 28px; color: #102018; }
-      .encabezado { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; border-bottom: 3px solid #166534; padding-bottom: 14px; margin-bottom: 18px; }
-      h1 { margin: 0; color: #14532d; font-size: 26px; }
-      p { margin: 5px 0 0; color: #64748b; }
-      .fecha { background: #dcfce7; color: #14532d; border: 1px solid #86efac; padding: 10px 14px; border-radius: 12px; font-weight: 800; white-space: nowrap; }
-      table { width: 100%; border-collapse: collapse; font-size: 12px; }
-      th { background: #14532d; color: white; text-align: left; padding: 9px; }
-      td { border-bottom: 1px solid #dbe5dd; padding: 8px; }
-      tr:nth-child(even) td { background: #f3f7f4; }
-      td:not(:first-child), th:not(:first-child) { text-align: center; }
-      .pie { margin-top: 18px; color: #64748b; font-size: 11px; }
-      @media print { body { margin: 14mm; } button { display: none; } }
-    </style>
-  </head>
-  <body>
-    <div class="encabezado">
-      <div>
-        <h1>Nuez de Avellana</h1>
-        <p>Inventario del día</p>
-      </div>
-      <div class="fecha">${fecha}</div>
-    </div>
-    <table>
-      <thead>
-        <tr><th>Producto</th><th>Estado</th><th>Invt inicial</th><th>Entrada/Compras</th><th>Entradas reportes</th><th>Salidas reportes</th><th>Salida BG</th><th>Salidas maq</th><th>Merma</th><th>Cortesía</th><th>Venta externa</th><th>Invt final</th></tr>
-      </thead>
-      <tbody>${filas || `<tr><td colspan="12">No hay informacion para este dia.</td></tr>`}</tbody>
-    </table>
-    <p class="pie">Generado desde el sistema de inventario de Nuez de Avellana.</p>
-    <script>window.onload = () => { window.print(); };</script>
-  </body>
-  </html>`);
-  ventana.document.close();
-}
-
-function alertasInventarioActuales() {
-  const bajoStock = productosDisponibles(hoy())
-    .map(producto => ({ producto, calc: calcularProducto(producto.nombre) }))
-    .filter(item => item.calc.inventarioFinal <= 15)
-    .sort((a, b) => a.calc.inventarioFinal - b.calc.inventarioFinal)
-    .map(item => ({
-      tipo: "stock",
-      titulo: `Bajo stock de ${item.producto.nombre}`,
-      texto: `Quedan ${item.calc.inventarioFinal} piezas disponibles. Conviene capturar una entrada o compra.`,
-      producto: item.producto.nombre,
-      accion: () => mostrarMovimientos("entrada", item.producto.nombre)
-    }));
-
-  const caducidad = productosPorCaducar(30).map(item => ({
-    tipo: "caducidad",
-    titulo: `${item.producto} por caducar`,
-    texto: `Lote ${item.lote || "-"} vence el ${item.caducidad}. Disponible: ${item.disponible}. Faltan ${item.dias} dias.`,
-    accion: () => mostrarInventario("dia", hoy())
-  }));
-
-  return [...bajoStock, ...caducidad];
-}
-
-function mostrarBienvenidaSesion() {
-  const nombre = usuarioActual?.usuario || "usuario";
-  const limitado = esLimitado();
-  const bienvenida = document.createElement("div");
-  bienvenida.className = "bienvenida-sesion";
-  bienvenida.innerHTML = `<strong>Bienvenido ${nombre}</strong><span>${limitado ? "Modo reportes y ajustes activo." : "Preparando alertas del inventario..."}</span>`;
-  document.body.appendChild(bienvenida);
-
-  setTimeout(() => bienvenida.classList.add("salir"), 1000);
-  setTimeout(() => {
-    bienvenida.remove();
-    if (!limitado) prepararAlertasInventario();
-  }, 1500);
-}
-
-function prepararAlertasInventario() {
-  if (esLimitado()) return;
-  if (alertasSesionMostradas) return;
-  alertasSesionMostradas = true;
-  colaAlertasInventario = alertasInventarioActuales();
-  mostrarSiguienteAlertaInventario();
-}
-
-function mostrarSiguienteAlertaInventario() {
-  if (esLimitado()) {
-    colaAlertasInventario = [];
-    document.querySelector(".alerta-flotante")?.remove();
-    return;
-  }
-  const existente = document.querySelector(".alerta-flotante");
-  if (existente) existente.remove();
-
-  const alerta = colaAlertasInventario.shift();
-  if (!alerta) return;
-
-  const tarjeta = document.createElement("div");
-  tarjeta.className = `alerta-flotante alerta-${alerta.tipo}`;
-  tarjeta.innerHTML = `
-    <div>
-      <span>${alerta.tipo === "stock" ? "Atencion de stock" : "Atencion de caducidad"}</span>
-      <h3>${alerta.titulo}</h3>
-      <p>${alerta.texto}</p>
-    </div>
-    <div class="alerta-acciones">
-      <button type="button" class="boton-secundario" onclick="posponerAlertaInventario()">Siguiente alerta</button>
-      <button type="button" onclick="analizarAlertaInventario()">Analizar ahora</button>
-    </div>`;
-  document.body.appendChild(tarjeta);
-  tarjeta._accionAlerta = alerta.accion;
-}
-
-function posponerAlertaInventario() {
-  mostrarSiguienteAlertaInventario();
-}
-
-function pausarAlertasInventario() {
-  localStorage.setItem(`${CLAVE}-alertasPausadasHasta`, String(Date.now() + 60 * 60 * 1000));
-  colaAlertasInventario = [];
-  document.querySelector(".alerta-flotante")?.remove();
-  mostrarBarraGuardado("Alertas pausadas por 1 hora");
-}
-
-function analizarAlertaInventario() {
-  const tarjeta = document.querySelector(".alerta-flotante");
-  const accion = tarjeta?._accionAlerta;
-  if (tarjeta) tarjeta.remove();
-  alertaPendienteTrasAnalizar = true;
-  if (typeof accion === "function") accion();
-}
-
-function mostrarProductos() {
-  if (bloquearSiLimitado("productos")) return;
-  ordenarProductos();
-  const producto = productoEditando !== null ? productos[productoEditando] : {};
-  const tarjetas = productos.map((item, indice) => {
-    const calc = calcularProducto(item.nombre);
-    const estado = productoDeBaja(item, hoy()) ? "De baja" : "Activo";
-    const claseEstado = estado === "De baja" ? "pill pill-baja" : "pill";
-    return `<article class="producto-card" data-producto="${item.nombre.toLowerCase()}">
-      <div class="producto-card-head">
-        <span class="${claseEstado}">${estado}</span>
-        <strong>${calc.inventarioFinal} pzas</strong>
-      </div>
-      <h3>${item.nombre}</h3>
-      <div class="producto-datos">
-        <span>Entrada<strong>${item.fechaEntrada || "-"}</strong></span>
-        <span>Baja<strong>${item.fechaBaja || "-"}</strong></span>
-        <span>Stock inicial<strong>${item.stockInicial || 0}</strong></span>
-        <span>Precio<strong>$${Number(item.precio || 0).toFixed(2)}</strong></span>
-      </div>
-      <p>${item.observaciones || "Sin observaciones."}</p>
-      <div class="producto-acciones">
-        <button type="button" onclick="verProducto(${indice})">Ver</button>
-        <button type="button" onclick="editarProducto(${indice})">Editar</button>
-        <button class="boton-peligro" type="button" onclick="eliminarProducto(${indice})">Eliminar</button>
-      </div>
-    </article>`;
-  }).join("");
-
-  document.getElementById("contenido").innerHTML = `
-    <h2>Mercancías y productos</h2>
-    <div class="form-grid">
-      <div><label>Producto</label><input id="productoNombre" placeholder="Nombre del producto" value="${producto.nombre || ""}"></div>
-      <div><label>Fecha entrada</label><input type="date" id="productoFechaEntrada" value="${producto.fechaEntrada || hoy()}" onchange="mensajeFechaProducto(this.value)"></div>
-      <div><label>Stock inicial</label><input type="number" id="productoStock" min="0" placeholder="0" value="${producto.stockInicial || 0}"></div>
-      <div><label>Precio venta</label><input type="number" id="productoPrecio" min="0" step="0.01" placeholder="0" value="${producto.precio || 0}"></div>
-      <div><label>Fecha baja</label><input type="date" id="productoFechaBaja" value="${producto.fechaBaja || ""}"></div>
-      <div><label>Observaciones</label><input id="productoObservaciones" placeholder="Notas" value="${producto.observaciones || ""}"></div>
-      <button class="boton-pequeno" type="button" onclick="guardarProducto()">${productoEditando !== null ? "Guardar cambios" : "Agregar producto"}</button>
-      <button class="boton-pequeno boton-secundario" type="button" onclick="cancelarEdicionProducto()">Cancelar</button>
-    </div>
-    <p class="texto-suave" id="mensajeFechaProducto"></p>
-    <div class="form-grid"><div><label>Buscar producto</label><input id="buscarProducto" placeholder="Escribe para filtrar" oninput="filtrarProductosTabla(this.value)"></div></div>
-    <div class="productos-grid" id="tablaProductos">${tarjetas}</div>`;
-}
-
-function mensajeFechaProducto(valor) {
-  const mensaje = document.getElementById("mensajeFechaProducto");
-  if (!valor) mensaje.textContent = "";
-  else if (valor < hoy()) mensaje.textContent = "Elegiste una fecha pasada.";
-  else if (valor > hoy()) mensaje.textContent = "Elegiste una fecha futura.";
-  else mensaje.textContent = "Fecha actual.";
-}
-
-function filtrarProductosTabla(texto) {
-  const filtro = texto.toLowerCase();
-  document.querySelectorAll(".producto-card").forEach(card => {
-    card.style.display = card.dataset.producto.includes(filtro) ? "" : "none";
-  });
-}
-
-function editarProducto(indice) {
-  productoEditando = indice;
-  mostrarProductos();
-  mostrarMensaje("Editando producto", "Haz los cambios y presiona guardar.");
-}
-
-function cancelarEdicionProducto() {
-  productoEditando = null;
-  mostrarProductos();
-}
-
-function guardarProducto() {
-  const nombre = document.getElementById("productoNombre").value.trim();
-  if (!nombre) return mostrarMensaje("Falta producto", "Escribe el nombre del producto.", "alerta");
-
-  const repetido = productos.some((item, indice) => item.nombre.toLowerCase() === nombre.toLowerCase() && indice !== productoEditando);
-  if (repetido) return mostrarMensaje("Producto repetido", "Ese producto ya existe.", "alerta");
-
-  const similar = productoSimilar(nombre, productoEditando);
-  if (similar && !permitirProductoSimilar) {
-    mostrarConfirmacionProductoSimilar(similar.nombre);
-    return;
-  }
-  permitirProductoSimilar = false;
-
-  const datos = {
-    nombre,
-    fechaEntrada: document.getElementById("productoFechaEntrada").value || hoy(),
-    fechaBaja: document.getElementById("productoFechaBaja").value,
-    observaciones: document.getElementById("productoObservaciones").value.trim(),
-    precio: Number(document.getElementById("productoPrecio").value || 0),
-    stockInicial: Number(document.getElementById("productoStock").value || 0),
-    bajaMovimientoId: null
-  };
-
-  if (datos.fechaEntrada && mesCerrado(datos.fechaEntrada)) return mostrarMensaje("Mes cerrado", "No puedes registrar productos en un mes cerrado.", "error");
-  if (datos.fechaBaja && mesCerrado(datos.fechaBaja)) return mostrarMensaje("Mes cerrado", "No puedes dar de baja productos en un mes cerrado.", "error");
-
-  if (productoEditando !== null) {
-    const anterior = productos[productoEditando];
-    datos.bajaMovimientoId = anterior.bajaMovimientoId || null;
-    movimientos.forEach(mov => { if (mov.producto === anterior.nombre) mov.producto = nombre; });
-    productos[productoEditando] = datos;
-  } else {
-    productos.push(datos);
-    productoEditando = productos.findIndex(p => p.nombre === nombre);
-  }
-
-  ajustesSistema.productosEliminados = (ajustesSistema.productosEliminados || []).filter(item => item !== nombreClaveProducto(nombre));
-  registrarBajaAutomatica(productoEditando);
-  productoEditando = null;
-  guardar();
-  mostrarMensajeGuardado();
-  mostrarProductos();
-}
-
-function registrarBajaAutomatica(indice) {
-  const producto = productos[indice];
-  if (!producto) return;
-  if (producto.bajaMovimientoId) {
-    movimientos = movimientos.filter(mov => mov.id !== producto.bajaMovimientoId);
-    producto.bajaMovimientoId = null;
-  }
-  if (!producto.fechaBaja) return;
-
-  const existencia = Math.max(0, calcularProducto(producto.nombre).inventarioFinal);
-  if (existencia <= 0) return;
-  const lotes = asignarLotesFIFO(producto.nombre, existencia) || [];
-  const mov = movimientoBase("merma", producto.nombre, existencia, producto.fechaBaja, "Baja automática del producto");
-  mov.categoria = "Baja de producto";
-  mov.lotes = lotes;
-  producto.bajaMovimientoId = mov.id;
-  movimientos.push(mov);
-}
-
-function eliminarProducto(indice) {
-  const producto = productos[indice];
-  ajustesSistema.productosEliminados = Array.isArray(ajustesSistema.productosEliminados) ? ajustesSistema.productosEliminados : [];
-  ajustesSistema.productosEliminados.push(nombreClaveProducto(producto.nombre));
-  ajustesSistema.productosEliminados = [...new Set(ajustesSistema.productosEliminados)];
-  productos.splice(indice, 1);
-  movimientos = movimientos.filter(mov => mov.producto !== producto.nombre);
-  guardar();
-  cerrarDetalleProducto();
-  mostrarMensaje("Producto eliminado", "El producto y sus movimientos fueron retirados.");
-  mostrarProductos();
-}
-
-function verProducto(indice) {
-  const producto = productos[indice];
-  const lotes = lotesProducto(producto.nombre).map(l => `<tr><td>${l.lote}</td><td>${l.fechaEntrada || "-"}</td><td>${l.caducidad || "-"}</td><td class="numero">${l.entrada}</td><td class="numero">${l.salida}</td><td class="numero">${l.disponible}</td></tr>`).join("");
-  document.getElementById("detalleProducto").innerHTML = `
-    <h2>${producto.nombre}</h2>
-    <p><strong>Fecha de alta:</strong> ${producto.fechaEntrada || "-"}</p>
-    <p><strong>Fecha de baja:</strong> ${producto.fechaBaja || "-"}</p>
-    <p><strong>Estado:</strong> ${productoDeBaja(producto, hoy()) ? "De baja" : "Activo"}</p>
-    <p><strong>Observaciones:</strong> ${producto.observaciones || "-"}</p>
-    <h3>Lotes</h3>
-    <table class="tabla"><tr><th>Lote</th><th>Fecha entrada</th><th>Caducidad</th><th>Entrada</th><th>Salida</th><th>Disponible</th></tr>${lotes || `<tr><td colspan="6">Este producto todavia no tiene lotes de compra.</td></tr>`}</table>`;
-  document.getElementById("modalProducto").style.display = "flex";
-}
-
-function cerrarDetalleProducto() {
-  const modal = document.getElementById("modalProducto");
-  if (modal) modal.style.display = "none";
-}
-
-function menuMovimientos(activo) {
-  if (esLimitado()) {
-    return `<div class="subnav">
-      <button class="activo" type="button" onclick="mostrarMovimientos('ajustes')">Ajustes de reportes</button>
-    </div>`;
-  }
-  return `<div class="subnav">
-    <button class="${activo === "entrada" ? "activo" : ""}" type="button" onclick="mostrarMovimientos('entrada')">Compra / entrada</button>
-    <button class="${activo === "salida" ? "activo" : ""}" type="button" onclick="mostrarMovimientos('salida')">Salida a máquina</button>
-    <button class="${activo === "diversas" ? "activo" : ""}" type="button" onclick="mostrarMovimientos('diversas')">Salidas diversas</button>
-    <button class="${activo === "ajustes" ? "activo" : ""}" type="button" onclick="mostrarMovimientos('ajustes')">Ajustes de reportes</button>
-  </div>`;
-}
-
-function mostrarMovimientos(seccion = "entrada", productoSugerido = "") {
-  if (esLimitado() && seccion !== "ajustes") seccion = "ajustes";
-  productoEntradaSugerido = seccion === "entrada" ? productoSugerido : "";
-  document.getElementById("contenido").innerHTML = `<h2>Movimientos</h2><p class="texto-suave">Elige una parte del movimiento para capturar sin llenar formularios innecesarios.</p>${menuMovimientos(seccion)}<div id="areaMovimiento"></div>`;
-  if (seccion === "entrada") pintarEntrada();
-  if (seccion === "salida") pintarSalidaMaquina();
-  if (seccion === "diversas") pintarSalidasDiversas();
-  if (seccion === "ajustes") pintarAjustes();
-}
-
-function pintarEntrada() {
-  const sugerido = productoEntradaSugerido || "";
-  document.getElementById("areaMovimiento").innerHTML = `<section class="seccion-movimiento">
-    <h3>Compra / entrada</h3>
-    <div class="form-grid">
-      <div><label>Fecha</label><input type="date" id="entradaFecha" value="${hoy()}"></div>
-      <div><label>Producto</label><input list="listaProductos" id="entradaProducto" placeholder="Escribe producto" value="${sugerido}" oninput="sugerirLoteEntrada()" onchange="sugerirLoteEntrada()">${opcionesProductos()}</div>
-      <div><label>Cantidad</label><input type="number" id="entradaCantidad" min="1" placeholder="0"></div>
-      <div><label>Lote</label><input id="entradaLote" placeholder="Automático"></div>
-      <div><label>Fecha caducidad</label><input type="date" id="entradaCaducidad"></div>
-      <div><label>Nota</label><input id="entradaNota" placeholder="Observación"></div>
-      <button class="boton-pequeno" type="button" onclick="guardarEntradaRapida()">Guardar entrada</button>
-    </div>${tablaHistorialPorFecha(movimientos.filter(mov => mov.tipo === "entrada"))}</section>`;
-  sugerirLoteEntrada();
-}
-
-function guardarEntradaRapida() {
-  const fecha = document.getElementById("entradaFecha").value;
-  const producto = document.getElementById("entradaProducto").value.trim();
-  const cantidad = Number(document.getElementById("entradaCantidad").value || 0);
-  let lote = document.getElementById("entradaLote").value.trim();
-  const caducidad = document.getElementById("entradaCaducidad").value;
-  if (!puedeUsarFecha(fecha)) return;
-  if (!buscarProducto(producto) || cantidad <= 0) return mostrarMensaje("Datos incompletos", "Elige un producto válido y una cantidad mayor a cero.", "alerta");
-  if (!lote) lote = siguienteLoteProducto(producto);
-  if (!caducidad) return mostrarMensaje("Falta caducidad", "En compras debes capturar fecha de caducidad. El lote se llena automático.", "alerta");
-
-  const mov = movimientoBase("entrada", producto, cantidad, fecha, document.getElementById("entradaNota").value.trim());
-  mov.lote = lote;
-  mov.caducidad = caducidad;
-  movimientos.push(mov);
-  guardar();
-  alertaPendienteTrasAnalizar = false;
-  mostrarMensajeGuardado();
-  setTimeout(() => {
-    colaAlertasInventario = alertasInventarioActuales();
-    mostrarSiguienteAlertaInventario();
-  }, 800);
-  mostrarMovimientos("entrada");
-}
-
-function pintarSalidaMaquina() {
-  document.getElementById("areaMovimiento").innerHTML = `<section class="seccion-movimiento">
-    <h3>Salida a máquina</h3>
-    <p class="texto-suave">Captura varias espirales de una sola vez. El sistema descuenta primero los lotes más próximos a caducar.</p>
-    <div class="form-grid">
-      <div><label>Fecha</label><input type="date" id="salidaFecha" value="${hoy()}" onchange="pintarCapturaSalida()"></div>
-      <div><label>Máquina</label><select id="salidaMaquina" onchange="pintarCapturaSalida()">${maquinasActivas().map(maquina => `<option>${maquina}</option>`).join("")}</select></div>
-      <div class="campo-fotos"><label>Fotos del contenedor</label><input type="file" id="fotosSalida" accept="image/*" capture="environment" multiple onchange="previsualizarFotosSalida()"><small>Obligatorio: toma o sube al menos una foto antes de guardar.</small></div>
-      <button class="boton-pequeno" type="button" onclick="guardarSalidasMaquina()">Guardar salidas</button>
-    </div><div id="previewFotosSalida" class="preview-fotos"></div><div id="capturaSalidaMaquina"></div>${tablaControlesSalida(movimientos, true)}</section>`;
-  pintarCapturaSalida();
-}
-
-function pintarCapturaSalida() {
-  const contenedor = document.getElementById("capturaSalidaMaquina");
-  if (!contenedor) return;
-  const maquina = document.getElementById("salidaMaquina").value;
-  const fecha = document.getElementById("salidaFecha").value || hoy();
-  configuracionEspirales[maquina] = configuracionEspirales[maquina] || {};
-  const bloques = espiralesPorMaquina[maquina].map((grupo, indice) => {
-    const filas = grupo.map(espiral => {
-      const guardado = configuracionEspirales[maquina][espiral] || "";
-      const activo = guardado && buscarProducto(guardado) && productoDisponibleEnFecha(buscarProducto(guardado), fecha) ? guardado : "";
-      return `<tr><td>${espiral}</td><td><input list="listaProductosSalida" class="salidaProducto" data-espiral="${espiral}" value="${activo}" placeholder="Producto"></td><td><input type="number" class="salidaCantidad" min="0" placeholder="0"></td></tr>`;
-    }).join("");
-    return `<div class="panel"><h3>Contenedor ${indice + 1}</h3><table class="tabla tabla-rapida"><tr><th>Espiral</th><th>Producto</th><th>Salida</th></tr>${filas}</table></div>`;
-  }).join("");
-  contenedor.innerHTML = `${opcionesProductos("listaProductosSalida", fecha)}<div class="contenedores-grid">${bloques}</div>${pintarContenedorAdicional()}`;
-  calcularRestantesCA();
-}
-
-function pintarContenedorAdicional() {
-  const filas = Array.from({ length: 8 }, () => `<tr>
-    <td><input list="listaProductosSalida" class="caProducto" placeholder="Producto"></td>
-    <td><input type="number" class="caSurtido" min="0" placeholder="Cantidad"></td>
-  </tr>`).join("");
-
-  return `<div class="seccion-movimiento">
-    <h3>Contenedor adicional</h3>
-    <p class="texto-suave">Aquí solo captura los adicionales que salieron. La repartición por máquina se cierra después en Ajustes de reportes.</p>
-    <table class="tabla tabla-rapida">
-      <tr><th>Producto</th><th>Cantidad</th></tr>
-      ${filas}
-    </table>
-  </div>`;
-}
-
-function calcularRestantesCA() {
-  return;
-}
-
-function previsualizarFotosSalida() {
-  const input = document.getElementById("fotosSalida");
-  const preview = document.getElementById("previewFotosSalida");
-  if (!input || !preview) return;
-  const archivos = [...input.files || []];
-  preview.innerHTML = archivos.length
-    ? archivos.map(archivo => `<div class="foto-chip"><span>${archivo.name}</span></div>`).join("")
-    : "";
-}
-
-function leerFotosSalida() {
-  const input = document.getElementById("fotosSalida");
-  const archivos = [...(input?.files || [])];
-  if (!archivos.length) return Promise.resolve([]);
-  return Promise.all(archivos.map(archivo => new Promise((resolve, reject) => {
-    const lector = new FileReader();
-    lector.onload = () => resolve({ nombre: archivo.name, tipo: archivo.type, datos: lector.result });
-    lector.onerror = reject;
-    lector.readAsDataURL(archivo);
-  })));
-}
-
-function hayCapturaSalidaPendiente() {
-  return [...document.querySelectorAll(".salidaCantidad")].some(input => Number(input.value || 0) > 0);
-}
-
-function prepararMovimientoSalida(tipo, producto, cantidad, fecha, nota) {
-  const prod = buscarProducto(producto);
-  if (!prod || !productoDisponibleEnFecha(prod, fecha)) return null;
-  const lotes = asignarLotesFIFO(producto, cantidad);
-  if (!lotes) return "sin-stock";
-  const mov = movimientoBase(tipo, producto, cantidad, fecha, nota);
-  mov.lotes = lotes;
-  return mov;
-}
-
-function guardarSalidasMaquina() {
-  const fotos = document.getElementById("fotosSalida");
-  if ((CONFIG.fotosSalidaObligatorias ?? true) && (!fotos || fotos.files.length === 0)) {
-    return mostrarMensaje("Falta foto", "Toma o sube al menos una foto del contenedor antes de guardar.", "alerta");
-  }
-  confirmarAccion(
-    "¿Guardar control de salida?",
-    "Una vez guardado no puedes editar a menos del permiso del dueño.",
-    "Guardar",
-    () => guardarSalidasMaquinaConfirmada()
-  );
-}
-
-async function guardarSalidasMaquinaConfirmada() {
-  const fecha = document.getElementById("salidaFecha").value;
-  const maquina = document.getElementById("salidaMaquina").value;
-  if (!puedeUsarFecha(fecha)) return;
-  const fotos = await leerFotosSalida();
-  if (fotos.error) return mostrarMensaje("Faltan fotos", fotos.error, "alerta");
-  if (fotosSalidaObligatorias() && fotos.length === 0) {
-    return mostrarMensaje("Falta foto", "Toma o sube al menos una foto del contenedor antes de guardar.", "alerta");
-  }
-
-  configuracionEspirales[maquina] = configuracionEspirales[maquina] || {};
-  const controlId = generarId();
-  let guardados = 0;
-  const productosSalida = [...document.querySelectorAll(".salidaProducto")];
-  const cantidadesSalida = [...document.querySelectorAll(".salidaCantidad")];
-  for (let i = 0; i < productosSalida.length; i++) {
-    const producto = productosSalida[i].value.trim();
-    const cantidad = Number(cantidadesSalida[i].value || 0);
-    const espiral = productosSalida[i].dataset.espiral;
-    if (producto) configuracionEspirales[maquina][espiral] = producto;
-    if (!producto || cantidad <= 0) continue;
-
-    const mov = prepararMovimientoSalida("salida", producto, cantidad, fecha, "");
-    if (mov === "sin-stock") return mostrarMensaje("Sin lote suficiente", `No hay existencia suficiente por lote para ${producto}.`, "alerta");
-    if (!mov) return mostrarMensaje("Producto no disponible", `${producto} está de baja o no existe.`, "alerta");
-    mov.maquina = maquina;
-    mov.espiral = espiral;
-    mov.categoria = "Salida";
-    mov.controlId = controlId;
-    movimientos.push(mov);
-    guardados++;
-  }
-
-  const productosCA = [...document.querySelectorAll(".caProducto")];
-  const surtidos = [...document.querySelectorAll(".caSurtido")];
-
-  for (let i = 0; i < productosCA.length; i++) {
-    const producto = productosCA[i].value.trim();
-    const surtido = Number(surtidos[i]?.value || 0);
-    if (!producto || surtido <= 0) continue;
-    if (!buscarProducto(producto)) return mostrarMensaje("Producto no encontrado", `${producto} no está registrado.`, "alerta");
-
-    const salidaCA = prepararMovimientoSalida("salida", producto, surtido, fecha, "Contenedor adicional");
-    if (salidaCA === "sin-stock") return mostrarMensaje("Sin lote suficiente", `No hay existencia suficiente por lote para ${producto}.`, "alerta");
-    if (!salidaCA) return mostrarMensaje("Producto no disponible", `${producto} está de baja o no existe.`, "alerta");
-    salidaCA.maquina = maquina;
-    salidaCA.espiral = `CA ${i + 1}`;
-    salidaCA.categoria = "Contenedor adicional";
-    salidaCA.controlId = controlId;
-    salidaCA.caMaq1 = 0;
-    salidaCA.caMaq2 = 0;
-    salidaCA.caMaq3 = 0;
-    salidaCA.caInicio = maquina;
-    salidaCA.caEtapa = maquina;
-    salidaCA.caCerrado = false;
-    movimientos.push(salidaCA);
-    guardados++;
-  }
-
-  if (guardados === 0) return mostrarMensaje("Sin salidas", "Captura al menos una salida con producto válido.", "alerta");
-  fotosControles[controlId] = fotos;
-  guardar();
-  mostrarBarraGuardado("Control guardado correctamente");
-  mostrarMensaje("Salidas guardadas", `Se guardaron ${guardados} registros de ${maquina}.`);
-  mostrarMovimientos("salida");
-}
-
-function pintarSalidasDiversas() {
-  document.getElementById("areaMovimiento").innerHTML = `<section class="seccion-movimiento">
-    <h3>Salidas diversas</h3><p class="texto-suave">Aquí van cortesías, mermas, ventas externas y salida BG.</p>
-    <div class="form-grid">
-      <div><label>Fecha</label><input type="date" id="diversaFecha" value="${hoy()}"></div>
-      <div><label>Tipo</label><select id="diversaTipo"><option value="cortesia">Cortesía</option><option value="merma">Merma</option><option value="ventaExterna">Venta externa</option><option value="salidaBG">Salida BG</option></select></div>
-      <div><label>Producto</label><input list="listaProductosDiversa" id="diversaProducto" placeholder="Producto">${opcionesProductos("listaProductosDiversa")}</div>
-      <div><label>Cantidad</label><input type="number" id="diversaCantidad" min="1" placeholder="0"></div>
-      <div><label>Nota</label><input id="diversaNota" placeholder="Observación"></div>
-      <button class="boton-pequeno" type="button" onclick="guardarSalidaDiversa()">Guardar salida</button>
-    </div>${tablaHistorialPorFecha(movimientos.filter(mov => ["cortesia", "merma", "ventaExterna", "salidaBG"].includes(mov.tipo)))}</section>`;
-}
-
-function guardarSalidaDiversa() {
-  const fecha = document.getElementById("diversaFecha").value;
-  const tipo = document.getElementById("diversaTipo").value;
-  const producto = document.getElementById("diversaProducto").value.trim();
-  const cantidad = Number(document.getElementById("diversaCantidad").value || 0);
-  if (!puedeUsarFecha(fecha)) return;
-  if (!buscarProducto(producto) || cantidad <= 0) return mostrarMensaje("Datos incompletos", "Elige un producto válido y una cantidad mayor a cero.", "alerta");
-  const mov = prepararMovimientoSalida(tipo, producto, cantidad, fecha, document.getElementById("diversaNota").value.trim());
-  if (mov === "sin-stock") return mostrarMensaje("Sin lote suficiente", `No hay existencia suficiente por lote para ${producto}.`, "alerta");
-  if (!mov) return mostrarMensaje("Producto no disponible", `${producto} está de baja o no existe.`, "alerta");
-  movimientos.push(mov);
-  guardar();
-  mostrarMensajeGuardado();
-  mostrarMovimientos("diversas");
-}
-
-function agregarAdicionalesAControlPrueba(controlId) {
-  const salidas = movimientos.filter(mov => String(mov.controlId || mov.id) === String(controlId) && mov.tipo === "salida");
-  if (!salidas.length) return 0;
-  if (salidas.some(mov => mov.categoria === "Contenedor adicional")) return 0;
-
-  const maquina = salidas[0].maquina || "MAQ 1";
-  const fecha = salidas[0].fecha || hoy();
-  let creados = 0;
-
-  for (let i = 0; i < 4; i++) {
-    const elegido = elegirProductoPrueba(fecha);
-    if (!elegido) break;
-
-    const cantidad = Math.max(1, Math.min(elegido.stock, Math.floor(Math.random() * 3) + 1));
-    const mov = prepararMovimientoSalida("salida", elegido.producto.nombre, cantidad, fecha, "Prueba de contenedor adicional reparada");
-    if (!mov || mov === "sin-stock") continue;
-
-    mov.maquina = maquina;
-    mov.espiral = `CA ${i + 1}`;
-    mov.categoria = "Contenedor adicional";
-    mov.controlId = controlId;
-    mov.caMaq1 = 0;
-    mov.caMaq2 = 0;
-    mov.caMaq3 = 0;
-    mov.caInicio = maquina;
-    mov.caEtapa = maquina;
-    mov.caCerrado = false;
-    movimientos.push(mov);
-    creados++;
-  }
-
-  return creados;
-}
-
-function repararPruebasSinAdicionales() {
-  const idsPrueba = [...new Set(movimientos
-    .filter(mov => String(mov.controlId || "").startsWith("PRUEBA-"))
-    .map(mov => mov.controlId))];
-  if (!idsPrueba.length) return 0;
-
-  let creados = 0;
-  for (const id of idsPrueba) {
-    creados += agregarAdicionalesAControlPrueba(id);
-  }
-
-  if (creados > 0) {
-    guardar();
-    mostrarBarraGuardado("Pendientes de prueba agregados a Ajustes");
-  }
-  return creados;
-}
-
-function pintarAjustes() {
-  repararPruebasSinAdicionales();
-  document.getElementById("areaMovimiento").innerHTML = `<section class="seccion-movimiento">
-    <h3>Ajustes de reportes</h3><p class="texto-suave">Cantidad en positivo. Faltante y devoluciones suman; sobrante resta automáticamente.</p>
-    ${tablaPendientesCA()}
-    <div class="form-grid">
-      <div><label>Fecha</label><input type="date" id="ajusteFecha" value="${hoy()}"></div>
-      <div><label>Máquina</label><select id="ajusteMaquina" onchange="actualizarEspiralesAjuste()">${maquinasActivas().map(maquina => `<option>${maquina}</option>`).join("")}</select></div>
-      <div><label>Espiral</label><select id="ajusteEspiral"></select></div>
-      <div><label>Categoría</label><select id="ajusteCategoria"><option>Devolución del contenedor</option><option>Devolución de máquina</option><option>Faltante</option><option>Sobrante (colocado)</option></select></div>
-      <div><label>Producto</label><input list="listaProductosAjuste" id="ajusteProducto" placeholder="Producto">${opcionesProductos("listaProductosAjuste")}</div>
-      <div><label>Cantidad</label><input type="number" id="ajusteCantidad" min="1" placeholder="0"></div>
-      <div><label>Lote</label><input id="ajusteLote" placeholder="Lote si suma inventario"></div>
-      <div><label>Fecha caducidad</label><input type="date" id="ajusteCaducidad"></div>
-      <div><label>Nota</label><input id="ajusteNota" placeholder="Observación"></div>
-      <button class="boton-pequeno" type="button" onclick="guardarAjusteReporte()">Guardar ajuste</button>
-    </div>${tablaHistorialPorFecha(movimientos.filter(mov => mov.tipo === "ajuste"), true)}</section>`;
-  actualizarEspiralesAjuste();
-}
-
-function actualizarEspiralesAjuste() {
-  const select = document.getElementById("ajusteEspiral");
-  if (!select) return;
-  const maquina = document.getElementById("ajusteMaquina").value;
-  select.innerHTML = espiralesPorMaquina[maquina].flat().map(espiral => `<option>${espiral}</option>`).join("");
-}
-
-function guardarAjusteReporte() {
-  const fecha = document.getElementById("ajusteFecha").value;
-  const producto = document.getElementById("ajusteProducto").value.trim();
-  const cantidad = Number(document.getElementById("ajusteCantidad").value || 0);
-  if (!puedeUsarFecha(fecha)) return;
-  if (!buscarProducto(producto) || cantidad <= 0) return mostrarMensaje("Datos incompletos", "Elige un producto válido y una cantidad mayor a cero.", "alerta");
-
-  const mov = movimientoBase("ajuste", producto, cantidad, fecha, document.getElementById("ajusteNota").value.trim());
-  mov.maquina = document.getElementById("ajusteMaquina").value;
-  mov.espiral = document.getElementById("ajusteEspiral").value;
-  mov.categoria = document.getElementById("ajusteCategoria").value;
-  if (mov.categoria === "Sobrante (colocado)") {
-    const lotes = asignarLotesFIFO(producto, cantidad);
-    if (!lotes) return mostrarMensaje("Sin lote suficiente", `No hay existencia suficiente por lote para ${producto}.`, "alerta");
-    mov.lotes = lotes;
-  } else {
-    const lote = document.getElementById("ajusteLote").value.trim();
-    const caducidad = document.getElementById("ajusteCaducidad").value;
-    if (!lote || !caducidad) return mostrarMensaje("Falta lote", "Cuando el ajuste suma inventario debes poner lote y caducidad.", "alerta");
-    mov.lote = lote;
-    mov.caducidad = caducidad;
-  }
-  movimientos.push(mov);
-  guardar();
-  mostrarMensajeGuardado();
-  mostrarMovimientos("ajustes");
-}
-
-function controlesConCA() {
-  const grupos = {};
-  for (const mov of movimientos.filter(mov => mov.tipo === "salida")) {
-    const id = mov.controlId || mov.id;
-    grupos[id] = grupos[id] || {
-      id,
-      fecha: mov.fecha,
-      maquina: mov.maquina || "-",
-      total: 0,
-      cerrado: !!(!Array.isArray(fotosControles[id]) && fotosControles[id]?.cerrado),
-      tieneCA: false,
-      totalSalida: 0
-    };
-
-    grupos[id].totalSalida += Number(mov.cantidad || 0);
-
-    if (mov.categoria === "Contenedor adicional") {
-      const etapa = etapaActualCA(mov);
-      const pendiente = cantidadPendienteCA(mov);
-      grupos[id].maquina = etapa;
-      grupos[id].tieneCA = true;
-      grupos[id].total += mov.caCerrado ? Number(mov.cantidad || 0) : pendiente;
-      if (!mov.caCerrado) grupos[id].cerrado = false;
-    }
-  }
-
-  for (const grupo of Object.values(grupos)) {
-    if (!grupo.tieneCA) {
-      grupo.total = grupo.totalSalida;
-    }
-  }
-  return Object.values(grupos).sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
-}
-
-function etapaActualCA(mov) {
-  if (mov.caEtapa && mov.caEtapa !== "CERRADO") return mov.caEtapa;
-  return mov.caInicio || mov.maquina || "MAQ 1";
-}
-
-function ordenMaquinasCA(inicio = "MAQ 1") {
-  const maquinas = maquinasActivas();
-  const indice = maquinas.indexOf(inicio);
-  if (indice < 0) return maquinas;
-  return [...maquinas.slice(indice), ...maquinas.slice(0, indice)];
-}
-
-function maquinaSiguienteCA(maquina, inicio = "MAQ 1") {
-  if (inicio === "MAQ 3" && maquina === "MAQ 3") return "";
-  const orden = ordenMaquinasCA(inicio);
-  const indice = orden.indexOf(maquina);
-  if (indice < 0 || indice >= orden.length - 1) return "";
-  return orden[indice + 1];
-}
-
-function cantidadPendienteCA(mov) {
-  const colocado = Number(mov.caMaq1 || 0) + Number(mov.caMaq2 || 0) + Number(mov.caMaq3 || 0);
-  return Math.max(0, Number(mov.cantidad || 0) - colocado);
-}
-
-function tablaPendientesCA() {
-  const grupos = controlesConCA();
-  const filas = grupos.map(grupo => `<tr>
-    <td>${grupo.fecha}</td>
-    <td>${grupo.maquina || "-"}</td>
-    <td class="numero">${grupo.total}</td>
-    <td>${grupo.cerrado ? '<span class="pill">Cerrado</span>' : (grupo.tieneCA ? '<span class="pill pill-baja">Pendiente</span>' : '<span class="pill pill-baja">Por cerrar</span>')}</td>
-    <td><button type="button" onclick="abrirAjusteCA('${grupo.id}')">${grupo.cerrado ? "Ver" : "Abrir día"}</button></td>
-  </tr>`).join("");
-  return `<div class="panel">
-    <h3>Surtidos pendientes</h3>
-    <p class="texto-suave">Abre cualquier control para revisar espirales, cambios de producto y surtidos pendientes. Si no hubo adicionales, la sección de adicionales queda vacía.</p>
-    <table class="tabla"><tr><th>Fecha</th><th>Máquina origen</th><th>Surtido</th><th>Estado</th><th>Acción</th></tr>${filas || `<tr><td colspan="5">No hay controles guardados.</td></tr>`}</table>
-    <div id="detalleAjusteCA"></div>
-  </div>`;
-}
-
-function abrirAjusteCA(controlId) {
-  const salidasDelDia = movimientos.filter(mov => String(mov.controlId || mov.id) === String(controlId) && mov.tipo === "salida");
-  const adicionales = salidasDelDia.filter(mov => mov.categoria === "Contenedor adicional");
-  const etapa = etapaActualCA(adicionales.find(mov => !mov.caCerrado) || adicionales[0] || salidasDelDia[0] || {});
-  const fechaControl = adicionales[0]?.fecha || salidasDelDia[0]?.fecha || "";
-  const salidasNormales = salidasDelDia.filter(mov => mov.categoria !== "Contenedor adicional");
-  const maquinaOrigen = salidasNormales[0]?.maquina || salidasDelDia[0]?.maquina || etapa;
-  const gruposOrigen = espiralesPorMaquina[maquinaOrigen] || [];
-  const tablaContenedorPendiente = movimientosGrupo => {
-    const filas = movimientosGrupo
-      .slice()
-      .sort((a, b) => Number.parseInt(a.espiral, 10) - Number.parseInt(b.espiral, 10))
-      .map(mov => `<tr>
-        <td class="espiral-grande">${mov.espiral || "-"}</td>
-        <td>${mov.producto}</td>
-        <td class="numero cantidad-grande">${mov.cantidad}</td>
-      </tr>`).join("");
-    return `<table class="tabla tabla-surtido-pendiente tabla-contenedor-pendiente"><tr><th>Espiral</th><th>Producto</th><th>Cantidad</th></tr>${filas || `<tr><td colspan="3">Sin productos surtidos.</td></tr>`}</table>`;
-  };
-  const contenedoresNormales = gruposOrigen.map((espirales, indice) => {
-    const conjunto = new Set(espirales.map(String));
-    const movimientosGrupo = salidasNormales.filter(mov => conjunto.has(String(mov.espiral)));
-    return `<section class="surtido-contenedor-card">
-      <div class="surtido-contenedor-card-titulo"><span>${indice + 1}</span><h4>Contenedor ${indice + 1}</h4><strong>${movimientosGrupo.length} productos</strong></div>
-      <div class="tabla-scroll">${tablaContenedorPendiente(movimientosGrupo)}</div>
-    </section>`;
-  }).join("");
-
-  const registroFotos = fotosControles[controlId] || {};
-  const cambios = Array.isArray(registroFotos) ? [] : (registroFotos.cambiosPrecio || []);
-  const filasCambios = cambios.map(item => `<tr>
-    <td>${item.espiral || "-"}</td>
-    <td>${item.anterior || "-"}</td>
-    <td>${item.nuevo || "-"}</td>
-  </tr>`).join("");
-
-  const filasAdicionales = adicionales.map(mov => {
-    const colocado = Number(mov.caMaq1 || 0) + Number(mov.caMaq2 || 0) + Number(mov.caMaq3 || 0);
-    const restante = Math.max(0, Number(mov.cantidad || 0) - colocado);
-    const bloqueadoMaq1 = mov.caCerrado || etapa !== "MAQ 1" ? "disabled" : "";
-    const bloqueadoMaq2 = mov.caCerrado || etapa !== "MAQ 2" ? "disabled" : "";
-    const bloqueadoMaq3 = mov.caCerrado || etapa !== "MAQ 3" ? "disabled" : "";
-    return `<tr data-id="${mov.id}">
-      <td>${mov.espiral || "CA"}</td>
-      <td>${mov.producto}</td>
-      <td class="numero">${mov.cantidad}</td>
-      <td><input ${bloqueadoMaq1} type="number" class="caAjusteMaq1" min="0" value="${mov.caMaq1 || 0}" oninput="calcularAjusteRestanteCA()"></td>
-      <td><input ${bloqueadoMaq2} type="number" class="caAjusteMaq2" min="0" value="${mov.caMaq2 || 0}" oninput="calcularAjusteRestanteCA()"></td>
-      <td><input ${bloqueadoMaq3} type="number" class="caAjusteMaq3" min="0" value="${mov.caMaq3 || 0}" oninput="calcularAjusteRestanteCA()"></td>
-      <td class="numero caAjusteRestante">${restante}</td>
-    </tr>`;
-  }).join("");
-
-  const infoControl = Array.isArray(registroFotos) ? {} : registroFotos;
-  const cerradoSinAdicionales = adicionales.length === 0 && !!infoControl.cerrado;
-  const cerrado = adicionales.length > 0 ? adicionales.every(mov => mov.caCerrado) : cerradoSinAdicionales;
-  document.getElementById("detalleAjusteCA").innerHTML = `<div class="seccion-movimiento surtido-pendiente-detalle">
-    <div class="surtido-pendiente-encabezado"><span>Control pendiente</span><h2>${etapa}</h2><strong>${fechaControl}</strong></div>
-    <section class="surtido-bloque surtido-bloque-salida"><h3>Salida guardada ${etapa}</h3>
-    <p class="texto-suave">Estos espirales solo se pueden ver. Para corregirlos usa Editar en Salida a máquina.</p>
-    <div class="surtido-contenedores-grid">${contenedoresNormales || `<p class="texto-suave">No hay salidas de espirales normales en este control.</p>`}</div></section>
-
-    <section class="surtido-bloque surtido-bloque-cambios"><h3>Cambios contra el surtido anterior</h3>
-    <p class="texto-suave">Si cambió el producto de una espiral, aquí aparece para revisar el precio en la máquina.</p>
-    <div class="tabla-scroll"><table class="tabla tabla-surtido-pendiente"><tr><th>Espiral</th><th>Antes</th><th>Ahora</th></tr>${filasCambios || `<tr><td colspan="3">No hubo cambios de producto contra el surtido anterior.</td></tr>`}</table></div></section>
-
-    <section class="surtido-bloque surtido-bloque-adicional"><h3>Surtidos pendientes ${cerrado ? "" : `- ${etapa}`}</h3>
-    <p class="texto-suave">Solo se edita la máquina pendiente. Si queda restante pasa a la siguiente máquina del recorrido; al cerrar la última se devuelve al inventario.</p>
-    <div class="tabla-scroll"><table class="tabla tabla-surtido-pendiente tabla-surtido-adicional"><tr><th>Espiral</th><th>Producto</th><th>Surtido</th><th>MAQ 1</th><th>MAQ 2</th><th>MAQ 3</th><th>Restante devolver</th></tr>${filasAdicionales || `<tr><td colspan="7">No hay productos adicionales en este control.</td></tr>`}</table></div>
-    ${adicionales.length
-      ? (cerrado ? `<button class="boton-pequeno" type="button" onclick="editarAjusteCA('${controlId}')">Editar adicionales</button>` : `<button class="boton-pequeno" type="button" onclick="cerrarAjusteCA('${controlId}')">Cerrar ${etapa}</button>`)
-      : (cerradoSinAdicionales ? `<span class="pill">Control cerrado</span>` : `<button class="boton-pequeno" type="button" onclick="cerrarControlSinAdicionales('${controlId}')">Cerrar ${etapa}</button>`)}
-    </section>
-  </div>`;
-}
-
-async function cerrarControlSinAdicionales(controlId) {
-  const salidas = movimientos.filter(mov => String(mov.controlId || mov.id) === String(controlId) && mov.tipo === "salida");
-  if (!salidas.length) return mostrarMensaje("Control no encontrado", "No se encontró el surtido que intentas cerrar.", "error");
-
-  const maquina = salidas[0].maquina || "Máquina";
-  const anterior = fotosControles[controlId];
-  const info = Array.isArray(anterior) ? { fotos: anterior } : { ...(anterior || {}) };
-  info.cerrado = true;
-  info.cerradoEn = new Date().toISOString();
-  info.maquina = info.maquina || maquina;
-  info.fecha = info.fecha || salidas[0].fecha || hoy();
-  fotosControles[controlId] = info;
-
-  guardar();
-  clearTimeout(timerSyncSupabase);
-  const guardadoNube = await guardarEstadoSupabase();
-  mostrarMovimientos("ajustes");
-  mostrarRevisionMaquinaCerrada(controlId, maquina);
-  if (guardadoNube) {
-    mostrarBarraGuardado(`${maquina} cerrada en este equipo y en la nube`);
-  } else {
-    mostrarMensaje("Máquina cerrada en este equipo", "El cierre está protegido localmente y queda pendiente de sincronizar con la nube.", "alerta");
-  }
-}
-
-function calcularAjusteRestanteCA() {
-  document.querySelectorAll("#detalleAjusteCA tr[data-id]").forEach(fila => {
-    const id = Number(fila.dataset.id);
-    const mov = movimientos.find(item => item.id === id);
-    const colocado = Number(fila.querySelector(".caAjusteMaq1").value || 0) + Number(fila.querySelector(".caAjusteMaq2").value || 0) + Number(fila.querySelector(".caAjusteMaq3").value || 0);
-    fila.querySelector(".caAjusteRestante").textContent = Math.max(0, Number(mov?.cantidad || 0) - colocado);
-  });
-}
-
-function cerrarAjusteCA(controlId) {
-  const filas = [...document.querySelectorAll("#detalleAjusteCA tr[data-id]")];
-  if (!filas.length) return;
-  let siguientePendiente = "";
-  let maquinaCerrada = "";
-  movimientos = movimientos.filter(mov => !(String(mov.controlId) === String(controlId) && mov.tipo === "ajuste" && ["Devolucion CA", "Devolución CA"].includes(mov.categoria)));
-  for (const fila of filas) {
-    const mov = movimientos.find(item => item.id === Number(fila.dataset.id));
-    if (!mov) continue;
-    const etapa = etapaActualCA(mov);
-    maquinaCerrada = etapa;
-    const inicio = mov.caInicio || mov.maquina || "MAQ 1";
-    const siguiente = maquinaSiguienteCA(etapa, inicio);
-    const maq1 = Number(fila.querySelector(".caAjusteMaq1").value || 0);
-    const maq2 = Number(fila.querySelector(".caAjusteMaq2").value || 0);
-    const maq3 = Number(fila.querySelector(".caAjusteMaq3").value || 0);
-    const colocado = maq1 + maq2 + maq3;
-    if (colocado > Number(mov.cantidad || 0)) return mostrarMensaje("Revisa cantidades", `En ${mov.producto} colocaste más de lo surtido.`, "alerta");
-    mov.caMaq1 = maq1;
-    mov.caMaq2 = maq2;
-    mov.caMaq3 = maq3;
-    const restante = Number(mov.cantidad || 0) - colocado;
-
-    if (siguiente) {
-      mov.caEtapa = siguiente;
-      mov.caCerrado = false;
-      siguientePendiente = siguiente;
-      continue;
-    }
-
-    mov.caEtapa = "CERRADO";
-    mov.caCerrado = true;
-
-    if (restante > 0 && !siguiente) {
-      const devolucion = movimientoBase("ajuste", mov.producto, restante, mov.fecha, "Devolucion contenedor adicional");
-      devolucion.maquina = mov.maquina;
-      devolucion.espiral = mov.espiral;
-      devolucion.categoria = "Devolucion CA";
-      devolucion.controlId = mov.controlId;
-      devolucion.lotes = tomarLotesDeAsignacion(mov.lotes, restante);
-      movimientos.push(devolucion);
-    }
-  }
-  guardar();
-  mostrarMensaje("Máquina cerrada", "Si quedó restante, pasó a la siguiente máquina del recorrido. Si era la última, se devolvió al inventario.");
-  mostrarMovimientos("ajustes");
-  if (siguientePendiente) {
-    abrirAjusteCA(controlId);
-    mostrarMensaje(`Abriendo ${siguientePendiente}`, "Continúa con los surtidos pendientes de la siguiente máquina.");
-  }
-  mostrarRevisionMaquinaCerrada(controlId, maquinaCerrada);
-}
-
-function editarAjusteCA(controlId) {
-  movimientos = movimientos.filter(mov => !(String(mov.controlId) === String(controlId) && mov.tipo === "ajuste" && ["Devolucion CA", "Devolución CA"].includes(mov.categoria)));
-  movimientos.forEach(mov => {
-    if (String(mov.controlId || mov.id) === String(controlId) && mov.tipo === "salida" && mov.categoria === "Contenedor adicional") {
-      mov.caEtapa = mov.caInicio || mov.maquina || "MAQ 1";
-      mov.caCerrado = false;
-    }
-  });
-  guardar();
-  pintarAjustes();
-  abrirAjusteCA(controlId);
-  mostrarMensaje("Editando adicionales", "Haz los cambios y vuelve a cerrar la máquina.");
-}
-
-function botonesHistorial(id) {
-  return `<button type="button" onclick="editarMovimiento(${id})">Editar</button><button class="boton-peligro" type="button" onclick="eliminarMovimiento(${id})">Eliminar</button>`;
-}
-
-function detalleLotes(mov) {
-  if (mov.tipo === "entrada") return mov.lote ? `${mov.lote} / ${mov.caducidad || "-"}` : "-";
-  if (!mov.lotes?.length) return "-";
-  return mov.lotes.map(l => `${l.lote}: ${l.cantidad}`).join(", ");
-}
-
-function tablaHistorial(lista, columnasExtra = false) {
-  const filas = lista.slice().reverse().map(mov => `<tr><td>${mov.fecha || "-"}</td><td>${nombreTipo(mov.tipo)}</td><td>${mov.producto}</td><td class="numero">${mov.cantidad}</td><td>${detalleLotes(mov)}</td>${columnasExtra ? `<td>${mov.maquina || "-"}</td><td>${mov.espiral || "-"}</td><td>${mov.categoria || "-"}</td>` : ""}<td>${mov.nota || "-"}</td><td>${botonesHistorial(mov.id)}</td></tr>`).join("");
-  return `<table class="tabla"><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cantidad</th><th>Lote</th>${columnasExtra ? "<th>Máquina</th><th>Espiral</th><th>Categoría</th>" : ""}<th>Nota</th><th>Acción</th></tr>${filas || `<tr><td colspan="${columnasExtra ? 10 : 7}">Sin registros.</td></tr>`}</table>`;
-}
-
-function tablaHistorialReporte(lista, columnasExtra = false) {
-  const filas = lista.slice().reverse().map(mov => `<tr><td>${mov.fecha || "-"}</td><td>${nombreTipo(mov.tipo)}</td><td>${mov.producto}</td><td class="numero">${mov.cantidad}</td><td>${detalleLotes(mov)}</td>${columnasExtra ? `<td>${mov.maquina || "-"}</td><td>${mov.espiral || "-"}</td><td>${mov.categoria || "-"}</td>` : ""}<td>${mov.nota || "-"}</td></tr>`).join("");
-  return `<table class="tabla"><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cantidad</th><th>Lote</th>${columnasExtra ? "<th>Máquina</th><th>Espiral</th><th>Categoría</th>" : ""}<th>Nota</th></tr>${filas || `<tr><td colspan="${columnasExtra ? 9 : 6}">Sin registros.</td></tr>`}</table>`;
-}
-
-function controlesSalida(lista) {
-  const salidas = lista.filter(mov => mov.tipo === "salida");
-  const grupos = {};
-  for (const mov of salidas) {
-    const id = mov.controlId || mov.id;
-    grupos[id] = grupos[id] || { id, fecha: mov.fecha, total: 0, maquinas: new Set(), registros: 0, ca: 0 };
-    grupos[id].total += Number(mov.cantidad || 0);
-    grupos[id].registros += 1;
-    if (mov.maquina) grupos[id].maquinas.add(mov.maquina);
-    if (mov.espiral === "CA" || mov.categoria === "Contenedor adicional") grupos[id].ca += Number(mov.cantidad || 0);
-  }
-  const controles = Object.values(grupos).sort((a, b) => {
-    const porFecha = String(a.fecha).localeCompare(String(b.fecha));
-    return porFecha || Number(a.id) - Number(b.id);
-  });
-  const consecutivos = {};
-  for (const control of controles) {
-    const maquina = [...control.maquinas].join(", ") || "Sin máquina";
-    const clave = `${control.fecha}|${maquina}`;
-    consecutivos[clave] = (consecutivos[clave] || 0) + 1;
-    control.numeroDia = consecutivos[clave];
-    control.etiqueta = `Salida ${control.numeroDia}`;
-  }
-  return controles.reverse();
-}
-
-function tablaControlesSalida(lista = movimientos, editable = true) {
-  const filas = controlesSalida(lista).map(control => `<tr>
-    <td>${control.fecha || "-"}</td>
-    <td>${[...control.maquinas].join(", ") || "-"}<br><small>${control.etiqueta}</small></td>
-    <td class="numero">${control.total}</td>
-    <td class="numero">${control.ca}</td>
-    <td class="numero">${control.registros}</td>
-    <td><button type="button" onclick="verControlSalida('${control.id}')">Ver</button>${editable ? `<button type="button" onclick="editarControlSalida('${control.id}')">Editar</button><button class="boton-peligro" type="button" onclick="eliminarControlSalida('${control.id}')">Eliminar</button>` : ""}</td>
-  </tr>`).join("");
-  return `<table class="tabla"><tr><th>Fecha</th><th>Máquina</th><th>Total salida</th><th>Contenedor adicional</th><th>Registros</th><th>Acción</th></tr>${filas || `<tr><td colspan="6">Sin controles guardados.</td></tr>`}</table>`;
-}
-
-function verControlSalida(controlId) {
-  const lista = movimientos.filter(mov => String(mov.controlId || mov.id) === String(controlId));
-  const salidas = lista.filter(mov => mov.tipo === "salida");
-  const filas = salidas.map(mov => `<tr><td>${mov.espiral || "-"}</td><td>${mov.producto}</td><td class="numero">${mov.cantidad}</td></tr>`).join("");
-  const fotos = fotosControles[controlId] || [];
-  const galeria = fotos.map(foto => `<img src="${foto.datos}" alt="${foto.nombre || "Foto del contenedor"}">`).join("");
-  document.getElementById("detalleProducto").innerHTML = `
-    <h2>Control de salida</h2>
-    <p class="texto-suave">${salidas[0]?.fecha || ""} ${salidas[0]?.maquina || ""}</p>
-    <div class="galeria-fotos">${galeria || "<p class='texto-suave'>Este control no tiene fotos guardadas.</p>"}</div>
-    <table class="tabla"><tr><th>Espiral</th><th>Producto</th><th>Cantidad</th></tr>${filas || `<tr><td colspan="3">Sin salidas.</td></tr>`}</table>`;
-  document.getElementById("modalProducto").style.display = "flex";
-}
-
-function catalogoCodigosBarras() {
-  ajustesSistema.catalogoCodigos = Array.isArray(ajustesSistema.catalogoCodigos) ? ajustesSistema.catalogoCodigos : [];
-  return ajustesSistema.catalogoCodigos;
-}
-
-function buscarCodigoBarras(codigo) {
-  const limpio = String(codigo || "").replace(/\s+/g, "");
-  return catalogoCodigosBarras().find(item => item.activo !== false && String(item.codigo) === limpio);
-}
-
-function opcionesSelectProductos(fecha = hoy()) {
-  return productosDisponibles(fecha).map(producto => `<option value="${producto.nombre}">${producto.nombre}</option>`).join("");
-}
-
-function mostrarEscanerCompras() {
-  if (bloquearSiLimitado("escanear")) return;
-  detenerCamaraEscaner();
-  vistaActual = { nombre: "escanear", args: [] };
-  document.getElementById("contenido").innerHTML = `
-    <section class="escaner-compras-pagina">
-      <header class="escaner-cabecera">
-        <div><span>Entrada rápida</span><h2>Escanear compra</h2><p>Escanea una pieza, paquete o caja. Podrás revisar todo antes de afectar el inventario.</p></div>
-        <button class="boton-escanear-principal" type="button" onclick="iniciarCamaraEscaner()">Escanear código</button>
-      </header>
-
-      <div class="lector-codigo" id="lectorCodigo" hidden>
-        <video id="videoEscaner" playsinline muted></video>
-        <div class="marco-escaner"><span></span></div>
-        <p id="estadoEscaner">Apunta la cámara al código de barras.</p>
-        <button class="boton-secundario" type="button" onclick="detenerCamaraEscaner()">Cerrar cámara</button>
-      </div>
-
-      <div class="codigo-manual">
-        <label for="codigoManualEscaner">También puedes escribir el código</label>
-        <div><input id="codigoManualEscaner" inputmode="numeric" autocomplete="off" placeholder="Número debajo del código"><button type="button" onclick="procesarCodigoManual()">Buscar</button></div>
-      </div>
-
-      <div id="resultadoCodigoEscaner"></div>
-
-      <section class="lista-compra-provisional">
-        <div class="lista-provisional-titulo"><div><span>Antes de guardar</span><h3>Lista provisional</h3></div><strong id="totalPiezasEscaneadas">0 piezas</strong></div>
-        <div id="filasCompraEscaneada"></div>
-        <button class="guardar-compra-completa" type="button" onclick="guardarCompraEscaneadaCompleta()">Guardar compra completa</button>
-      </section>
-    </section>`;
-  pintarCompraEscaneadaProvisional();
-}
-
-async function iniciarCamaraEscaner() {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    return mostrarMensaje("Cámara no disponible", "Usa el campo para escribir el código manualmente.", "alerta");
-  }
-  if (!("BarcodeDetector" in window)) {
-    return mostrarMensaje("Lector no compatible", "Este navegador permite escribir el código manualmente. Prueba también Chrome actualizado en Android.", "alerta");
-  }
-  try {
-    detenerCamaraEscaner();
-    const lector = document.getElementById("lectorCodigo");
-    lector.hidden = false;
-    camaraEscanerStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } }, audio: false });
-    const video = document.getElementById("videoEscaner");
-    video.srcObject = camaraEscanerStream;
-    await video.play();
-    detectorCodigoBarras = detectorCodigoBarras || new BarcodeDetector({ formats: ["ean_13", "ean_8", "upc_a", "upc_e", "code_128"] });
-    escanerCodigoActivo = true;
-    detectarCodigoEnVideo();
-  } catch (error) {
-    detenerCamaraEscaner();
-    mostrarMensaje("No se pudo abrir la cámara", "Concede permiso a la cámara o escribe el código manualmente.", "alerta");
-  }
-}
-
-async function detectarCodigoEnVideo() {
-  if (!escanerCodigoActivo || !detectorCodigoBarras) return;
-  const video = document.getElementById("videoEscaner");
-  if (!video) return detenerCamaraEscaner();
-  try {
-    const codigos = await detectorCodigoBarras.detect(video);
-    const codigo = codigos[0]?.rawValue;
-    if (codigo) {
-      const ahora = Date.now();
-      if (ultimoCodigoEscaneado.codigo !== codigo || ahora - ultimoCodigoEscaneado.momento > 1800) {
-        ultimoCodigoEscaneado = { codigo, momento: ahora };
-        detenerCamaraEscaner();
-        procesarCodigoBarras(codigo);
-        return;
-      }
-    }
-  } catch (error) {
-    const estado = document.getElementById("estadoEscaner");
-    if (estado) estado.textContent = "Buscando código...";
-  }
-  if (escanerCodigoActivo) requestAnimationFrame(detectarCodigoEnVideo);
-}
-
-function detenerCamaraEscaner() {
-  escanerCodigoActivo = false;
-  if (camaraEscanerStream) camaraEscanerStream.getTracks().forEach(track => track.stop());
-  camaraEscanerStream = null;
-  const video = document.getElementById("videoEscaner");
-  if (video) video.srcObject = null;
-  const lector = document.getElementById("lectorCodigo");
-  if (lector) lector.hidden = true;
-}
-
-function procesarCodigoManual() {
-  const campo = document.getElementById("codigoManualEscaner");
-  const codigo = String(campo?.value || "").replace(/\s+/g, "");
-  if (!codigo) return mostrarMensaje("Falta el código", "Escribe el número que aparece debajo del código de barras.", "alerta");
-  procesarCodigoBarras(codigo);
-  campo.value = "";
-}
-
-function procesarCodigoBarras(codigo) {
-  const registro = buscarCodigoBarras(codigo);
-  if (!registro) return mostrarAltaCodigoBarras(codigo);
-  agregarCodigoACompra(registro);
-  document.getElementById("resultadoCodigoEscaner").innerHTML = `<div class="codigo-reconocido"><span>Código reconocido</span><strong>${registro.producto}</strong><p>${registro.presentacion} · ${registro.piezas} pieza${Number(registro.piezas) === 1 ? "" : "s"} por escaneo</p></div>`;
-}
-
-function mostrarAltaCodigoBarras(codigo) {
-  document.getElementById("resultadoCodigoEscaner").innerHTML = `<section class="alta-codigo-card">
-    <span class="estado-codigo-nuevo">Código nuevo</span><h3>${codigo}</h3>
-    <p>Regístralo una sola vez. Los próximos escaneos lo reconocerán automáticamente.</p>
-    <div class="form-grid">
-      <div><label>Producto</label><select id="catalogoProducto"><option value="">Selecciona</option>${opcionesSelectProductos()}</select></div>
-      <div><label>Presentación</label><select id="catalogoPresentacion"><option>Pieza</option><option>Paquete</option><option>Caja</option></select></div>
-      <div><label>Piezas que contiene</label><input id="catalogoPiezas" type="number" min="1" value="1"></div>
-      <button class="boton-pequeno" type="button" onclick="guardarCodigoCatalogo('${codigo}')">Registrar y agregar</button>
-    </div>
-  </section>`;
-}
-
-function guardarCodigoCatalogo(codigo) {
-  const producto = document.getElementById("catalogoProducto")?.value || "";
-  const presentacion = document.getElementById("catalogoPresentacion")?.value || "Pieza";
-  const piezas = Number(document.getElementById("catalogoPiezas")?.value || 0);
-  if (!buscarProducto(producto) || piezas <= 0) return mostrarMensaje("Datos incompletos", "Selecciona un producto y una cantidad de piezas válida.", "alerta");
-  const registro = { codigo: String(codigo), producto, presentacion, piezas, activo: true };
-  catalogoCodigosBarras().push(registro);
-  guardar();
-  agregarCodigoACompra(registro);
-  document.getElementById("resultadoCodigoEscaner").innerHTML = `<div class="codigo-reconocido"><span>Código registrado</span><strong>${producto}</strong><p>${presentacion} · ${piezas} piezas</p></div>`;
-}
-
-function agregarCodigoACompra(registro) {
-  const existente = compraEscaneadaProvisional.find(item => item.codigo === registro.codigo && item.producto === registro.producto && !item.caducidad);
-  if (existente) {
-    existente.presentaciones += 1;
-    existente.cantidad += Number(registro.piezas || 1);
-  } else {
-    compraEscaneadaProvisional.push({
-      id: generarId(), codigo: registro.codigo, producto: registro.producto,
-      presentacion: registro.presentacion, piezasPresentacion: Number(registro.piezas || 1),
-      presentaciones: 1, cantidad: Number(registro.piezas || 1), lote: siguienteLoteProducto(registro.producto), caducidad: ""
-    });
-  }
-  pintarCompraEscaneadaProvisional();
-  mostrarBarraGuardado(`${registro.producto} agregado a la lista`);
-}
-
-function pintarCompraEscaneadaProvisional() {
-  const contenedor = document.getElementById("filasCompraEscaneada");
-  if (!contenedor) return;
-  const filas = compraEscaneadaProvisional.map((item, indice) => `<article class="compra-escaneada-item">
-    <div class="compra-escaneada-producto"><span>${item.presentacion} · ${item.presentaciones} escaneo${item.presentaciones === 1 ? "" : "s"}</span><h4>${item.producto}</h4><small>${item.codigo}</small></div>
-    <label>Lote<input value="${item.lote}" onchange="actualizarCompraEscaneada(${indice}, 'lote', this.value)"></label>
-    <label>Caducidad<input type="date" value="${item.caducidad}" onchange="actualizarCompraEscaneada(${indice}, 'caducidad', this.value)"></label>
-    <label>Cuántas piezas<input type="number" min="1" value="${item.cantidad}" onchange="actualizarCompraEscaneada(${indice}, 'cantidad', this.value)"></label>
-    <div class="compra-item-acciones"><button type="button" title="Sumar otra presentación" onclick="sumarPresentacionEscaneada(${indice})">+</button><button type="button" title="Restar una presentación" onclick="restarPresentacionEscaneada(${indice})">−</button><button class="boton-peligro" type="button" onclick="eliminarCompraEscaneada(${indice})">Eliminar</button></div>
-  </article>`).join("");
-  contenedor.innerHTML = filas || `<div class="lista-provisional-vacia"><strong>Aún no hay productos</strong><p>Escanea un código para comenzar.</p></div>`;
-  const total = compraEscaneadaProvisional.reduce((suma, item) => suma + Number(item.cantidad || 0), 0);
-  const indicador = document.getElementById("totalPiezasEscaneadas");
-  if (indicador) indicador.textContent = `${total} pieza${total === 1 ? "" : "s"}`;
-}
-
-function actualizarCompraEscaneada(indice, campo, valor) {
-  const item = compraEscaneadaProvisional[indice];
-  if (!item) return;
-  item[campo] = campo === "cantidad" ? Math.max(1, Number(valor || 1)) : valor;
-  if (campo === "cantidad") pintarCompraEscaneadaProvisional();
-}
-
-function sumarPresentacionEscaneada(indice) {
-  const item = compraEscaneadaProvisional[indice];
-  if (!item) return;
-  item.presentaciones += 1;
-  item.cantidad += item.piezasPresentacion;
-  pintarCompraEscaneadaProvisional();
-}
-
-function restarPresentacionEscaneada(indice) {
-  const item = compraEscaneadaProvisional[indice];
-  if (!item) return;
-  if (item.presentaciones <= 1) return eliminarCompraEscaneada(indice);
-  item.presentaciones -= 1;
-  item.cantidad = Math.max(1, item.cantidad - item.piezasPresentacion);
-  pintarCompraEscaneadaProvisional();
-}
-
-function eliminarCompraEscaneada(indice) {
-  compraEscaneadaProvisional.splice(indice, 1);
-  pintarCompraEscaneadaProvisional();
-}
-
-async function guardarCompraEscaneadaCompleta() {
-  if (!compraEscaneadaProvisional.length) return mostrarMensaje("Lista vacía", "Escanea al menos un producto.", "alerta");
-  const invalido = compraEscaneadaProvisional.find(item => !buscarProducto(item.producto) || !item.lote || !item.caducidad || Number(item.cantidad) <= 0);
-  if (invalido) return mostrarMensaje("Faltan datos", `Revisa lote, caducidad y cantidad de ${invalido.producto}. No se guardó ninguna entrada.`, "alerta");
-  if (!puedeUsarFecha(hoy())) return;
-  const nuevos = compraEscaneadaProvisional.map(item => {
-    const mov = movimientoBase("entrada", item.producto, item.cantidad, hoy(), `Escáner: ${item.presentaciones} ${item.presentacion.toLowerCase()}${item.presentaciones === 1 ? "" : "s"}`);
-    mov.lote = item.lote;
-    mov.caducidad = item.caducidad;
-    return mov;
-  });
-  movimientos.push(...nuevos);
-  guardar();
-  clearTimeout(timerSyncSupabase);
-  const guardadoNube = await guardarEstadoSupabase();
-  compraEscaneadaProvisional = [];
-  pintarCompraEscaneadaProvisional();
-  if (guardadoNube) mostrarMensaje("Compra guardada", "Todas las entradas quedaron registradas en este equipo y en la nube.");
-  else mostrarMensaje("Compra protegida en este equipo", "Las entradas se guardaron localmente y quedan pendientes de sincronizar.", "alerta");
-}
-
-function editarControlSalida(controlId) {
-  pedirCodigoDueno(
-    "Permiso para editar",
-    "Escribe el código del dueño para modificar este control de salida.",
-    () => editarControlSalidaAutorizado(controlId)
-  );
-}
-
-function editarControlSalidaAutorizado(controlId) {
-  if (hayCapturaSalidaPendiente()) return mostrarMensaje("Cambios sin guardar", "Guarda o limpia la salida antes de editar otro control.", "alerta");
-  const lista = movimientos.filter(mov => String(mov.controlId || mov.id) === String(controlId));
-  const salidas = lista.filter(mov => mov.tipo === "salida");
-  if (!salidas.length) return;
-  const fecha = salidas[0].fecha || hoy();
-  const maquina = salidas[0].maquina || "MAQ 1";
-  const infoAnterior = fotosControles[controlId] || {};
-  controlSalidaEditando = { controlId: String(controlId), info: infoAnterior };
-  mostrarMovimientos("salida");
-  document.getElementById("salidaFecha").value = fecha;
-  document.getElementById("salidaMaquina").value = maquina;
-  pintarCapturaSalida();
-  const normales = salidas.filter(mov => mov.categoria !== "Contenedor adicional");
-  normales.forEach(mov => {
-    const input = [...document.querySelectorAll(".salidaProducto")].find(item => item.dataset.espiral === String(mov.espiral));
-    if (!input) return;
-    input.value = mov.producto;
-    input.closest("tr").querySelector(".salidaCantidad").value = mov.cantidad;
-  });
-  const adicionales = salidas.filter(mov => mov.categoria === "Contenedor adicional");
-  adicionales.forEach((mov, i) => {
-    const producto = document.querySelectorAll(".caProducto")[i];
-    const surtido = document.querySelectorAll(".caSurtido")[i];
-    if (producto) producto.value = mov.producto;
-    if (surtido) surtido.value = mov.cantidad;
-  });
-  const observaciones = Array.isArray(infoAnterior) ? "" : (infoAnterior.observaciones || "");
-  if (observaciones) {
-    const panel = document.getElementById("observacionesSalidaPanel");
-    const campo = document.getElementById("salidaObservaciones");
-    if (panel) panel.hidden = false;
-    if (campo) campo.value = observaciones;
-  }
-  mostrarMensaje("Editando control", "El control original está protegido. Haz los cambios y vuelve a guardar.");
-}
-
-function eliminarControlSalida(controlId) {
-  movimientos = movimientos.filter(mov => String(mov.controlId || mov.id) !== String(controlId));
-  delete fotosControles[controlId];
-  guardar();
-  mostrarMensaje("Control eliminado", "Se retiró el control de salida completo.");
-  mostrarMovimientos("salida");
-}
-
-function tablaHistorialPorFecha(lista, columnasExtra = false) {
-  const dias = [...new Set(lista.map(mov => mov.fecha || "Sin fecha"))].sort().reverse();
-  if (dias.length === 0) return tablaHistorial([], columnasExtra);
-  return dias.map(dia => `<h3>${dia}</h3>${tablaHistorial(lista.filter(mov => (mov.fecha || "Sin fecha") === dia), columnasExtra)}`).join("");
-}
-
-function editarMovimiento(id) {
-  if (hayCapturaSalidaPendiente()) return mostrarMensaje("Cambios sin guardar", "Guarda o limpia la salida antes de editar otro registro.", "alerta");
-  const mov = movimientos.find(item => item.id === id);
-  if (!mov) return;
-  movimientos = movimientos.filter(item => item.id !== id);
-  guardar();
-
-  if (mov.tipo === "entrada") {
-    mostrarMovimientos("entrada");
-    document.getElementById("entradaFecha").value = mov.fecha || "";
-    document.getElementById("entradaProducto").value = mov.producto;
-    document.getElementById("entradaCantidad").value = mov.cantidad;
-    document.getElementById("entradaLote").value = mov.lote || "";
-    document.getElementById("entradaCaducidad").value = mov.caducidad || "";
-    document.getElementById("entradaNota").value = mov.nota || "";
-  }
-  if (mov.tipo === "salida") {
-    mostrarMovimientos("salida");
-    document.getElementById("salidaFecha").value = mov.fecha || "";
-    document.getElementById("salidaMaquina").value = mov.maquina || "MAQ 1";
-    pintarCapturaSalida();
-    const fila = [...document.querySelectorAll(".salidaProducto")].find(input => input.dataset.espiral === String(mov.espiral));
-    if (fila) {
-      fila.value = mov.producto;
-      fila.closest("tr").querySelector(".salidaCantidad").value = mov.cantidad;
-    }
-  }
-  if (["cortesia", "merma", "ventaExterna", "salidaBG"].includes(mov.tipo)) {
-    mostrarMovimientos("diversas");
-    document.getElementById("diversaFecha").value = mov.fecha || "";
-    document.getElementById("diversaTipo").value = mov.tipo;
-    document.getElementById("diversaProducto").value = mov.producto;
-    document.getElementById("diversaCantidad").value = mov.cantidad;
-    document.getElementById("diversaNota").value = mov.nota || "";
-  }
-  if (mov.tipo === "ajuste") {
-    mostrarMovimientos("ajustes");
-    document.getElementById("ajusteFecha").value = mov.fecha || "";
-    document.getElementById("ajusteMaquina").value = mov.maquina || "MAQ 1";
-    actualizarEspiralesAjuste();
-    document.getElementById("ajusteEspiral").value = mov.espiral || "";
-    document.getElementById("ajusteCategoria").value = mov.categoria || "Faltante";
-    document.getElementById("ajusteProducto").value = mov.producto;
-    document.getElementById("ajusteCantidad").value = mov.cantidad;
-    document.getElementById("ajusteLote").value = mov.lote || "";
-    document.getElementById("ajusteCaducidad").value = mov.caducidad || "";
-    document.getElementById("ajusteNota").value = mov.nota || "";
-  }
-  mostrarMensaje("Editando registro", "Haz los cambios y presiona guardar.");
-}
-
-function eliminarMovimiento(id) {
-  movimientos = movimientos.filter(mov => mov.id !== id);
-  guardar();
-  mostrarMensaje("Movimiento eliminado", "El registro fue retirado.");
-  mostrarMovimientos("entrada");
-}
-
-function nombreTipo(tipo) {
-  const nombres = { entrada: "Compra / entrada", salida: "Salida máquina", merma: "Merma", cortesia: "Cortesía", ventaExterna: "Venta externa", salidaBG: "Salida BG", ajuste: "Ajuste reporte" };
-  return nombres[tipo] || tipo;
-}
-
-function tablaEspiralesReporte(lista) {
-  const grupos = {};
-  lista.filter(mov => mov.tipo === "salida" && mov.categoria !== "Contenedor adicional").forEach(mov => {
-    const llave = `${mov.maquina || "-"}|${mov.espiral || "-"}|${mov.producto}`;
-    grupos[llave] = grupos[llave] || { maquina: mov.maquina || "-", espiral: mov.espiral || "-", producto: mov.producto, cantidad: 0 };
-    grupos[llave].cantidad += Number(mov.cantidad || 0);
-  });
-
-  const filas = Object.values(grupos)
-    .sort((a, b) => String(a.maquina).localeCompare(String(b.maquina)) || Number(a.espiral) - Number(b.espiral) || a.producto.localeCompare(b.producto, "es", { sensitivity: "base" }))
-    .map(item => `<tr><td>${item.maquina}</td><td>${item.espiral}</td><td>${item.producto}</td><td class="numero">${item.cantidad}</td></tr>`)
-    .join("");
-
-  return `<table class="tabla"><tr><th>Máquina</th><th>Espiral</th><th>Producto</th><th>Surtido</th></tr>${filas || `<tr><td colspan="4">Sin salidas por espiral en este periodo.</td></tr>`}</table>`;
-}
-
-function mostrarReportes(tipoPeriodo = "dia", valor = hoy()) {
-  const lista = movimientosPorPeriodo(tipoPeriodo, valor);
-  const porMaquina = maquinasActivas().map(maquina => {
-    const total = lista.filter(mov => mov.tipo === "salida" && mov.maquina === maquina).reduce((suma, mov) => suma + Number(mov.cantidad || 0), 0);
-    return `<tr><td>${maquina}</td><td class="numero">${total}</td></tr>`;
-  }).join("");
-  const seccionesCompletas = esLimitado() ? "" : `
-    <section class="seccion-movimiento"><h3>Entradas</h3>${tablaHistorialReporte(lista.filter(mov => mov.tipo === "entrada"))}</section>
-    <section class="seccion-movimiento"><h3>Salidas diversas</h3>${tablaHistorialReporte(lista.filter(mov => ["cortesia", "merma", "ventaExterna", "salidaBG"].includes(mov.tipo)))}</section>
-    <section class="seccion-movimiento"><h3>Ajustes</h3>${tablaHistorialReporte(lista.filter(mov => mov.tipo === "ajuste"), true)}</section>`;
-  const resumenVisible = esLimitado() ? "" : `<div class="panel"><h3>Resumen del periodo</h3>${reporteResumenPeriodo(lista)}</div>`;
-
-  document.getElementById("contenido").innerHTML = `
-    <h2>Reportes</h2>
-    <p class="texto-suave">Elige si quieres revisar un día específico o todo un mes.</p>
-    <div class="form-grid">
-      <div><label>Ver por</label><select id="repTipo" onchange="cambiarFiltroReporte()"><option value="dia" ${tipoPeriodo === "dia" ? "selected" : ""}>Día</option><option value="mes" ${tipoPeriodo === "mes" ? "selected" : ""}>Mes completo</option></select></div>
-      <div><label>Fecha</label><input id="repFecha" type="${tipoPeriodo === "dia" ? "date" : "month"}" value="${valor}" onchange="cambiarFiltroReporte()"></div>
-    </div>
-    ${resumenVisible}
-    <div class="panel"><h3>Espiral de productos por máquina</h3>${tablaEspiralesReporte(lista)}</div>
-    <section class="seccion-movimiento"><h3>Salidas a máquina</h3>${tablaControlesSalida(lista, false)}</section>
-    ${seccionesCompletas}`;
-}
-
-function cambiarFiltroReporte() {
-  const tipo = document.getElementById("repTipo").value;
-  const valor = document.getElementById("repFecha").value || (tipo === "dia" ? hoy() : mesActual());
-  mostrarReportes(tipo, valor);
-}
-
-function reporteResumenPeriodo(lista) {
-  const entradas = lista.filter(mov => mov.tipo === "entrada").reduce((suma, mov) => suma + Number(mov.cantidad || 0), 0);
-  const salidas = lista.filter(mov => ["salida", "merma", "cortesia", "ventaExterna", "salidaBG"].includes(mov.tipo)).reduce((suma, mov) => suma + Number(mov.cantidad || 0), 0);
-  const ajustes = lista.filter(mov => mov.tipo === "ajuste").reduce((suma, mov) => suma + impactoAjuste(mov.categoria, mov.cantidad), 0);
-  return `<div class="grid-resumen"><div class="tarjeta-kpi"><span>Entradas</span><strong>${entradas}</strong></div><div class="tarjeta-kpi"><span>Salidas</span><strong>${salidas}</strong></div><div class="tarjeta-kpi"><span>Ajustes</span><strong>${ajustes}</strong></div><div class="tarjeta-kpi"><span>Movimientos</span><strong>${lista.length}</strong></div></div>`;
-}
-
-function mostrarAnalisis(tipoPeriodo = "mes", valor = mesActual(), inicio = "", fin = "") {
-  if (bloquearSiLimitado("analisis")) return;
-  const lista = movimientosAnalisisPorPeriodo(tipoPeriodo, valor, inicio, fin);
-  const productosPeriodo = productos.filter(producto => fechaEnAnalisis(producto.fechaEntrada, tipoPeriodo, valor, inicio, fin));
-  const bajasPeriodo = productos.filter(producto => producto.fechaBaja && fechaEnAnalisis(producto.fechaBaja, tipoPeriodo, valor, inicio, fin));
-  const compras = lista.filter(mov => mov.tipo === "entrada");
-  const salidasMaquina = lista.filter(mov => mov.tipo === "salida");
-  const mermas = lista.filter(mov => mov.tipo === "merma");
-  const cortesias = lista.filter(mov => mov.tipo === "cortesia");
-  const ventasExternas = lista.filter(mov => mov.tipo === "ventaExterna");
-  const salidasBG = lista.filter(mov => mov.tipo === "salidaBG");
-  const diversas = cortesias.concat(ventasExternas, salidasBG);
-  const ajustes = lista.filter(mov => mov.tipo === "ajuste");
-  const ventasEstimadas = salidasMaquina.concat(ventasExternas).reduce((suma, mov) => suma + valorMovimiento(mov), 0);
-  const perdidaMerma = mermas.reduce((suma, mov) => suma + valorMovimiento(mov), 0);
-  const perdidaCortesia = cortesias.reduce((suma, mov) => suma + valorMovimiento(mov), 0);
-  const unidadesEntrada = compras.reduce((suma, mov) => suma + Number(mov.cantidad || 0), 0);
-  const unidadesSalida = salidasMaquina.reduce((suma, mov) => suma + Number(mov.cantidad || 0), 0);
-  const unidadesMerma = mermas.reduce((suma, mov) => suma + Number(mov.cantidad || 0), 0);
-  const unidadesCortesia = cortesias.reduce((suma, mov) => suma + Number(mov.cantidad || 0), 0);
-  const unidadesSalidaBG = salidasBG.reduce((suma, mov) => suma + Number(mov.cantidad || 0), 0);
-  const valorFecha = tipoPeriodo === "periodo" ? "" : valor;
-
-  document.getElementById("contenido").innerHTML = `
-    <h2>Análisis</h2>
-    <p class="texto-suave">Por defecto muestra el mes actual. Puedes cambiarlo a un día o a un periodo de fechas.</p>
-    <div class="form-grid">
-      <div><label>Ver por</label><select id="anaTipo" onchange="cambiarFiltroAnalisis()"><option value="mes" ${tipoPeriodo === "mes" ? "selected" : ""}>Mes completo</option><option value="dia" ${tipoPeriodo === "dia" ? "selected" : ""}>Día</option><option value="periodo" ${tipoPeriodo === "periodo" ? "selected" : ""}>Periodo</option></select></div>
-      <div class="${tipoPeriodo === "periodo" ? "oculto" : ""}"><label>Fecha</label><input id="anaFecha" type="${tipoPeriodo === "dia" ? "date" : "month"}" value="${valorFecha}" onchange="cambiarFiltroAnalisis()"></div>
-      <div class="${tipoPeriodo === "periodo" ? "" : "oculto"}"><label>Desde</label><input id="anaInicio" type="date" value="${inicio || hoy()}" onchange="cambiarFiltroAnalisis()"></div>
-      <div class="${tipoPeriodo === "periodo" ? "" : "oculto"}"><label>Hasta</label><input id="anaFin" type="date" value="${fin || hoy()}" onchange="cambiarFiltroAnalisis()"></div>
-      <button class="boton-pequeno boton-secundario" type="button" onclick="mostrarSelectorAnalisis()">Elegir productos</button>
-    </div>
-    <div id="selectorAnalisis" class="selector-analisis oculto">
-      <label>Productos a revisar</label>
-      <input id="filtroProductoAnalisis" list="listaProductosAnalisis" placeholder="Escribe un producto">${opcionesProductos("listaProductosAnalisis")}
-      <button class="boton-pequeno" type="button" onclick="filtrarProductoAnalisis()">Ver producto</button>
-    </div>
-
-    <div class="grid-resumen">
-      <div class="tarjeta-kpi"><span>Productos agregados</span><strong>${productosPeriodo.length}</strong></div>
-      <div class="tarjeta-kpi"><span>Productos de baja</span><strong>${bajasPeriodo.length}</strong></div>
-      <div class="tarjeta-kpi"><span>Entradas</span><strong>${unidadesEntrada}</strong></div>
-      <div class="tarjeta-kpi"><span>Salidas</span><strong>${unidadesSalida}</strong></div>
-      <div class="tarjeta-kpi"><span>Salida BG</span><strong>${unidadesSalidaBG}</strong></div>
-      <div class="tarjeta-kpi"><span>Ventas estimadas</span><strong>$${ventasEstimadas.toFixed(2)}</strong></div>
-      <div class="tarjeta-kpi"><span>Mermas</span><strong>${unidadesMerma} / $${perdidaMerma.toFixed(2)}</strong></div>
-      <div class="tarjeta-kpi"><span>Cortesías</span><strong>${unidadesCortesia} / $${perdidaCortesia.toFixed(2)}</strong></div>
-    </div>
-
-    <div class="analisis-grid">
-      <section class="analisis-panel grande">
-        <div class="analisis-head">
-          <div><h3>Resumen del periodo</h3><p>Cantidad por área principal</p></div>
-        </div>
-        ${graficaPastel([
-          { etiqueta: "Agregados", valor: productosPeriodo.length },
-          { etiqueta: "Bajas", valor: bajasPeriodo.length },
-          { etiqueta: "Entradas", valor: unidadesEntrada },
-          { etiqueta: "Salidas", valor: unidadesSalida },
-          { etiqueta: "Salida BG", valor: unidadesSalidaBG },
-          { etiqueta: "Merma", valor: unidadesMerma },
-          { etiqueta: "Cortesía", valor: unidadesCortesia },
-          { etiqueta: "Ajustes", valor: ajustes.reduce((suma, mov) => suma + Math.abs(impactoAjuste(mov.categoria, mov.cantidad)), 0) }
-        ])}
-      </section>
-
-      <section class="analisis-panel">
-        <div class="analisis-head"><div><h3>Top surtidos</h3><p>5 productos con más salida a máquina</p></div></div>
-        ${graficaPastel(puntosCantidadPorProducto(salidasMaquina, 5))}
-      </section>
-
-      <section class="analisis-panel">
-        <div class="analisis-head"><div><h3>Top ventas estimadas</h3><p>5 productos con mayor valor</p></div></div>
-        ${graficaPastel(puntosValorPorProducto(salidasMaquina.concat(ventasExternas), 5), "$")}
-      </section>
-
-      <section class="analisis-panel">
-        <div class="analisis-head"><div><h3>Top pérdida merma</h3><p>5 productos con mayor pérdida</p></div></div>
-        ${graficaPastel(puntosValorPorProducto(mermas, 5), "$")}
-      </section>
-
-      <section class="analisis-panel">
-        <div class="analisis-head"><div><h3>Top cortesías</h3><p>5 productos con mayor cortesía</p></div></div>
-        ${graficaPastel(puntosValorPorProducto(cortesias, 5), "$")}
-      </section>
-    </div>
-
-    <section class="seccion-movimiento"><h3>Productos agregados</h3>${tablaProductosAnalisis(productosPeriodo)}</section>
-    <section class="seccion-movimiento"><h3>Productos dados de baja</h3>${tablaProductosAnalisis(bajasPeriodo, true)}</section>
-    <section class="seccion-movimiento"><h3>Compras / entradas</h3>${tablaAnalisisMovimientos(compras, true)}</section>
-    <section class="seccion-movimiento"><h3>Salidas a máquina</h3>${tablaAnalisisMovimientos(salidasMaquina, true, true)}</section>
-    <section class="seccion-movimiento"><h3>Salidas diversas</h3>${tablaAnalisisMovimientos(diversas, false)}</section>
-    <section class="seccion-movimiento"><h3>Salida BG</h3>${tablaAnalisisMovimientos(salidasBG, false)}</section>
-    <section class="seccion-movimiento"><h3>Merma</h3>${tablaAnalisisMovimientos(mermas, false)}</section>
-    <section class="seccion-movimiento"><h3>Ajustes de reportes</h3>${tablaAnalisisMovimientos(ajustes, true, true)}</section>
-    <section class="seccion-movimiento"><h3>Resumen por producto</h3>${tablaResumenAnalisisPorProducto(lista, productosPeriodo, bajasPeriodo)}</section>`;
-}
-
-function cambiarFiltroAnalisis() {
-  const tipo = document.getElementById("anaTipo").value;
-  if (tipo === "periodo") {
-    mostrarAnalisis("periodo", "", document.getElementById("anaInicio")?.value || hoy(), document.getElementById("anaFin")?.value || hoy());
-    return;
-  }
-  const valor = document.getElementById("anaFecha")?.value || (tipo === "dia" ? hoy() : mesActual());
-  mostrarAnalisis(tipo, valor);
-}
-
-function movimientosAnalisisPorPeriodo(tipoPeriodo, valor, inicio, fin) {
-  if (tipoPeriodo === "periodo") return movimientos.filter(mov => mov.fecha >= inicio && mov.fecha <= fin);
-  return movimientosPorPeriodo(tipoPeriodo, valor);
-}
-
-function fechaEnAnalisis(fecha, tipoPeriodo, valor, inicio, fin) {
-  if (!fecha) return false;
-  if (tipoPeriodo === "periodo") return fecha >= inicio && fecha <= fin;
-  return productoEnPeriodo(fecha, tipoPeriodo, valor);
-}
-
-function productoEnPeriodo(fecha, tipoPeriodo, valor) {
-  if (!fecha) return false;
-  return tipoPeriodo === "dia" ? fecha === valor : fecha.slice(0, 7) === valor;
-}
-
-function valorMovimiento(mov) {
-  const producto = buscarProducto(mov.producto);
-  return Number(mov.cantidad || 0) * Number(producto?.precio || 0);
-}
-
-function puntosCantidadPorProducto(lista, limite = 8) {
-  const totales = {};
-  for (const mov of lista) totales[mov.producto] = (totales[mov.producto] || 0) + Number(mov.cantidad || 0);
-  return Object.entries(totales)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limite)
-    .map(([etiqueta, valor]) => ({ etiqueta, valor }));
-}
-
-function puntosValorPorProducto(lista, limite = 8) {
-  const totales = {};
-  for (const mov of lista) totales[mov.producto] = (totales[mov.producto] || 0) + valorMovimiento(mov);
-  return Object.entries(totales)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limite)
-    .map(([etiqueta, valor]) => ({ etiqueta, valor }));
-}
-
-function graficaBarras(puntos, prefijo = "") {
-  const datos = puntos.length ? puntos : [{ etiqueta: "Sin datos", valor: 0 }];
-  const maximo = Math.max(...datos.map(punto => Number(punto.valor || 0)), 1);
-  const filas = datos.map(punto => {
-    const valor = Number(punto.valor || 0);
-    const porcentaje = Math.max(4, (valor / maximo) * 100);
-    const textoValor = `${prefijo}${valor.toFixed(valor % 1 ? 2 : 0)}`;
-    return `<div class="barra-analisis">
-      <span>${punto.etiqueta}</span>
-      <div><i style="width:${porcentaje}%"></i></div>
-      <strong>${textoValor}</strong>
-    </div>`;
-  }).join("");
-  return `<div class="grafica-barras">${filas}</div>`;
-}
-
-function graficaPastel(puntos, prefijo = "") {
-  const colores = ["#16a34a", "#0f766e", "#22c55e", "#84cc16", "#f59e0b", "#2563eb", "#dc2626"];
-  const datos = puntos.filter(punto => Number(punto.valor || 0) > 0);
-  if (!datos.length) {
-    return `<div class="grafica-pastel"><div class="pastel-vacio">Sin datos</div><div class="pastel-leyenda"><span>No hay información para mostrar.</span></div></div>`;
-  }
-
-  const total = datos.reduce((suma, punto) => suma + Number(punto.valor || 0), 0);
-  let avance = 0;
-  const segmentos = datos.map((punto, indice) => {
-    const inicio = avance;
-    const porcentaje = (Number(punto.valor || 0) / total) * 100;
-    avance += porcentaje;
-    return `${colores[indice % colores.length]} ${inicio}% ${avance}%`;
-  }).join(", ");
-
-  const leyenda = datos.map((punto, indice) => {
-    const valor = Number(punto.valor || 0);
-    const porcentaje = total ? ((valor / total) * 100).toFixed(1) : "0.0";
-    const textoValor = `${prefijo}${valor.toFixed(valor % 1 ? 2 : 0)}`;
-    return `<div class="pastel-item">
-      <i style="background:${colores[indice % colores.length]}"></i>
-      <span>${punto.etiqueta}</span>
-      <strong>${textoValor} <small>${porcentaje}%</small></strong>
-    </div>`;
-  }).join("");
-
-  return `<div class="grafica-pastel">
-    <div class="pastel-circulo" style="background: conic-gradient(${segmentos});"><span>${prefijo}${total.toFixed(total % 1 ? 2 : 0)}</span></div>
-    <div class="pastel-leyenda">${leyenda}</div>
-  </div>`;
-}
-
-function mostrarSelectorAnalisis() {
-  document.getElementById("selectorAnalisis")?.classList.toggle("oculto");
-}
-
-function filtrarProductoAnalisis() {
-  const nombre = document.getElementById("filtroProductoAnalisis")?.value.trim().toLowerCase();
-  document.querySelectorAll("#contenido table tr").forEach((fila, indice) => {
-    if (indice === 0 || !nombre) {
-      fila.style.display = "";
-      return;
-    }
-    fila.style.display = fila.innerText.toLowerCase().includes(nombre) ? "" : "none";
-  });
-}
-
-/*
-function crearMovimientosPruebaHoy() {
-  confirmarAccion(
-    "¿Crear movimientos de prueba?",
-    "Se agregarán entradas, salidas, merma, cortesía y venta externa con fecha de hoy para revisar el análisis.",
-    "Crear prueba",
-    crearMovimientosPruebaHoyConfirmado
-  );
-}
-
-function crearMovimientosPruebaHoyConfirmado() {
-  const fecha = hoy();
-  const candidatos = productosDisponibles(fecha).slice(0, 5);
-  if (candidatos.length < 3) return mostrarMensaje("Faltan productos", "Necesitas al menos 3 productos activos para crear la prueba.", "alerta");
-
-  candidatos.forEach((producto, indice) => {
-    const entrada = movimientoBase("entrada", producto.nombre, 20 + indice * 3, fecha, "Prueba análisis");
-    entrada.lote = siguienteLoteProducto(producto.nombre);
-    entrada.caducidad = `${fecha.slice(0, 4)}-12-31`;
-    movimientos.push(entrada);
-  });
-
-  const controlId = generarId();
-  candidatos.slice(0, 3).forEach((producto, indice) => {
-    const salida = prepararMovimientoSalida("salida", producto.nombre, 3 + indice, fecha, "Prueba análisis");
-    if (!salida || salida === "sin-stock") return;
-    salida.maquina = `MAQ ${indice + 1}`;
-    salida.espiral = String(indice + 1);
-    salida.categoria = "Salida";
-    salida.controlId = controlId;
-    movimientos.push(salida);
-  });
-
-  const merma = prepararMovimientoSalida("merma", candidatos[0].nombre, 1, fecha, "Prueba merma");
-  if (merma && merma !== "sin-stock") movimientos.push(merma);
-
-  const cortesia = prepararMovimientoSalida("cortesia", candidatos[1].nombre, 1, fecha, "Prueba cortesía");
-  if (cortesia && cortesia !== "sin-stock") movimientos.push(cortesia);
-
-  const venta = prepararMovimientoSalida("ventaExterna", candidatos[2].nombre, 2, fecha, "Prueba venta externa");
-  if (venta && venta !== "sin-stock") movimientos.push(venta);
-
-  guardar();
-  mostrarMensaje("Prueba creada", "Ya puedes revisar el análisis de hoy o del mes actual.");
-  mostrarAnalisis("dia", fecha);
-}
-
-*/
-function graficaLinea(puntos) {
-  const datos = puntos.length ? puntos : [{ etiqueta: "Sin datos", valor: 0 }];
-  const ancho = 640;
-  const alto = 220;
-  const margen = 34;
-  const maximo = Math.max(...datos.map(punto => Number(punto.valor || 0)), 1);
-  const paso = datos.length > 1 ? (ancho - margen * 2) / (datos.length - 1) : 0;
-  const coords = datos.map((punto, indice) => {
-    const x = datos.length === 1 ? ancho / 2 : margen + indice * paso;
-    const y = alto - margen - (Number(punto.valor || 0) / maximo) * (alto - margen * 2);
-    return { ...punto, x, y };
-  });
-  const linea = coords.map(punto => `${punto.x},${punto.y}`).join(" ");
-  const area = `${margen},${alto - margen} ${linea} ${ancho - margen},${alto - margen}`;
-  const etiquetas = coords.map(punto => `<g><circle cx="${punto.x}" cy="${punto.y}" r="5"></circle><text x="${punto.x}" y="${alto - 10}" text-anchor="middle">${String(punto.etiqueta).slice(0, 10)}</text><text x="${punto.x}" y="${punto.y - 10}" text-anchor="middle">${Number(punto.valor || 0).toFixed(punto.valor % 1 ? 2 : 0)}</text></g>`).join("");
-
-  return `<div class="grafica-lineal">
-    <svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Grafica lineal">
-      <line x1="${margen}" y1="${alto - margen}" x2="${ancho - margen}" y2="${alto - margen}"></line>
-      <line x1="${margen}" y1="${margen}" x2="${margen}" y2="${alto - margen}"></line>
-      <polygon points="${area}"></polygon>
-      <polyline points="${linea}"></polyline>
-      ${etiquetas}
-    </svg>
-  </div>`;
-}
-
-function tablaProductosAnalisis(lista, baja = false) {
-  const filas = lista.map(producto => `<tr>
-    <td>${producto.nombre}</td>
-    <td>${baja ? producto.fechaBaja || "-" : producto.fechaEntrada || "-"}</td>
-    <td class="numero">${Number(producto.stockInicial || 0)}</td>
-    <td class="numero">$${Number(producto.precio || 0).toFixed(2)}</td>
-    <td>${producto.observaciones || "-"}</td>
-  </tr>`).join("");
-  return `<table class="tabla"><tr><th>Producto</th><th>Fecha</th><th>Stock inicial</th><th>Precio</th><th>Observaciones</th></tr>${filas || `<tr><td colspan="5">Sin registros.</td></tr>`}</table>`;
-}
-
-function tablaAnalisisMovimientos(lista, mostrarLote = false, mostrarMaquina = false) {
-  const filas = lista.slice().reverse().map(mov => `<tr>
-    <td>${mov.fecha || "-"}</td>
-    <td>${nombreTipo(mov.tipo)}</td>
-    <td>${mov.producto}</td>
-    <td class="numero">${mov.cantidad}</td>
-    ${mostrarLote ? `<td>${detalleLotes(mov) || mov.lote || "-"}</td>` : ""}
-    ${mostrarMaquina ? `<td>${mov.maquina || "-"}</td><td>${mov.espiral || "-"}</td><td>${mov.categoria || "-"}</td>` : ""}
-    <td class="numero">$${valorMovimiento(mov).toFixed(2)}</td>
-    <td>${mov.nota || "-"}</td>
-  </tr>`).join("");
-  const extras = `${mostrarLote ? "<th>Lote</th>" : ""}${mostrarMaquina ? "<th>Maquina</th><th>Espiral</th><th>Categoria</th>" : ""}`;
-  const columnas = 6 + (mostrarLote ? 1 : 0) + (mostrarMaquina ? 3 : 0);
-  return `<table class="tabla"><tr><th>Fecha</th><th>Tipo</th><th>Producto</th><th>Cantidad</th>${extras}<th>Importe estimado</th><th>Nota</th></tr>${filas || `<tr><td colspan="${columnas}">Sin registros.</td></tr>`}</table>`;
-}
-
-function tablaResumenAnalisisPorProducto(lista, productosAgregados = [], productosBaja = []) {
-  const nombres = new Set([...lista.map(mov => mov.producto), ...productosAgregados.map(p => p.nombre), ...productosBaja.map(p => p.nombre)]);
-  const filas = [...nombres].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" })).map(nombre => {
-    const calc = calcularProductoPeriodo(nombre, lista);
-    const agregado = productosAgregados.some(p => p.nombre === nombre) ? "Si" : "No";
-    const baja = productosBaja.some(p => p.nombre === nombre) ? "Si" : "No";
-    return `<tr>
-      <td>${nombre}</td>
-      <td>${agregado}</td>
-      <td>${baja}</td>
-      <td class="numero">${calc.compras}</td>
-      <td class="numero">${calc.salidaMaq1 + calc.salidaMaq2 + calc.salidaMaq3}</td>
-      <td class="numero">${calc.salidaBG}</td>
-      <td class="numero">${calc.mermas}</td>
-      <td class="numero">${calc.cortesia + calc.ventaExterna}</td>
-      <td class="numero">${calc.ajustes}</td>
-      <td class="numero">$${calc.ventas.toFixed(2)}</td>
-    </tr>`;
-  }).join("");
-  return `<table class="tabla"><tr><th>Producto</th><th>Agregado</th><th>Baja</th><th>Entradas</th><th>Salida maquina</th><th>Salida BG</th><th>Merma</th><th>Diversas</th><th>Ajustes</th><th>Ventas estimadas</th></tr>${filas || `<tr><td colspan="10">Sin registros.</td></tr>`}</table>`;
-}
-
-function mostrarCierreMes() {
-  if (bloquearSiLimitado("cierre")) return;
-  const filas = mesesCerrados.sort().reverse().map(mes => `<tr><td>${mes}</td><td><span class="pill pill-baja">Cerrado</span></td></tr>`).join("");
-  document.getElementById("contenido").innerHTML = `
-    <h2>Cierre de mes</h2>
-    <p class="texto-suave">Cuando cierres un mes, ya no se podrán capturar movimientos con fechas de ese mes. Para reabrirlo se necesita código.</p>
-    <div class="form-grid">
-      <div><label>Mes</label><input type="month" id="mesCierre" value="${mesActual()}"></div>
-      <div><label>Código</label><input type="password" id="codigoCierre" placeholder="Código del dueño"></div>
-      <button class="boton-pequeno" type="button" onclick="cerrarMes()">Cerrar mes</button>
-      <button class="boton-pequeno boton-secundario" type="button" onclick="abrirMes()">Reabrir mes</button>
-    </div>
-    <table class="tabla"><tr><th>Mes</th><th>Estado</th></tr>${filas || `<tr><td colspan="2">No hay meses cerrados.</td></tr>`}</table>`;
-}
-
-function cerrarMes() {
-  const mes = document.getElementById("mesCierre").value;
-  const codigo = document.getElementById("codigoCierre").value;
-  if (!mes) return mostrarMensaje("Falta el mes", "Elige el mes que quieres cerrar.", "alerta");
-  if (codigo !== CODIGO_CIERRE) return mostrarMensaje("Código incorrecto", "No se pudo cerrar el mes.", "error");
-  if (!mesesCerrados.includes(mes)) mesesCerrados.push(mes);
-  guardar();
-  mostrarMensaje("Mes cerrado", "Ya no se podrán capturar movimientos en ese mes.");
-  mostrarCierreMes();
-}
-
-function abrirMes() {
-  const mes = document.getElementById("mesCierre").value;
-  const codigo = document.getElementById("codigoCierre").value;
-  if (!mes) return mostrarMensaje("Falta el mes", "Elige el mes que quieres reabrir.", "alerta");
-  if (codigo !== CODIGO_CIERRE) return mostrarMensaje("Código incorrecto", "No se pudo reabrir el mes.", "error");
-  mesesCerrados = mesesCerrados.filter(item => item !== mes);
-  guardar();
-  mostrarMensaje("Mes reabierto", "Ya puedes capturar movimientos en ese mes.");
-  mostrarCierreMes();
-}
-
-function mostrarCierreMes() {
-  if (bloquearSiLimitado("cierre")) return;
-  const filas = mesesCerrados.sort().reverse().map(mes => `<tr><td>${mes}</td><td><span class="pill pill-baja">Cerrado</span></td></tr>`).join("");
-  document.getElementById("contenido").innerHTML = `
-    <h2>Cierre de mes</h2>
-    <p class="texto-suave">Elige el mes, escribe el código del dueño y desliza para cerrar o reabrir.</p>
-    <div class="cierre-panel">
-      <div><label>Mes</label><input type="month" id="mesCierre" value="${mesActual()}" onchange="actualizarSwitchCierre()"></div>
-      <div><label>Código</label><input type="password" id="codigoCierre" placeholder="Código del dueño"></div>
-      <label class="switch-cierre">
-        <input type="checkbox" id="switchCierreMes" onchange="procesarSwitchCierre(this)">
-        <span></span>
-        <strong id="textoSwitchCierre">Desliza para cerrar mes</strong>
-      </label>
-      <div class="carga-cierre" id="cargaCierre"><i></i></div>
-    </div>
-    <table class="tabla"><tr><th>Mes</th><th>Estado</th></tr>${filas || `<tr><td colspan="2">No hay meses cerrados.</td></tr>`}</table>`;
-  actualizarSwitchCierre();
-}
-
-function actualizarSwitchCierre() {
-  const mes = document.getElementById("mesCierre")?.value || mesActual();
-  const switchMes = document.getElementById("switchCierreMes");
-  const texto = document.getElementById("textoSwitchCierre");
-  if (!switchMes || !texto) return;
-  const cerrado = mesesCerrados.includes(mes);
-  switchMes.checked = cerrado;
-  texto.textContent = cerrado ? "Desliza para reabrir mes" : "Desliza para cerrar mes";
-}
-
-function procesarSwitchCierre(input) {
-  const mes = document.getElementById("mesCierre").value;
-  const codigo = document.getElementById("codigoCierre").value;
-  const estabaCerrado = mesesCerrados.includes(mes);
-  if (!mes) {
-    input.checked = estabaCerrado;
-    return mostrarMensaje("Falta el mes", "Elige el mes que quieres cambiar.", "alerta");
-  }
-  if (codigo !== CODIGO_CIERRE) {
-    input.checked = estabaCerrado;
-    return mostrarMensaje("Código incorrecto", "No se pudo cambiar el cierre del mes.", "error");
-  }
-
-  const carga = document.getElementById("cargaCierre");
-  carga?.classList.remove("activo");
-  void carga?.offsetWidth;
-  carga?.classList.add("activo");
-
-  setTimeout(() => {
-    if (estabaCerrado) {
-      mesesCerrados = mesesCerrados.filter(item => item !== mes);
-      mostrarMensaje("Mes reabierto", "Ya puedes capturar movimientos en ese mes.");
-    } else if (!mesesCerrados.includes(mes)) {
-      mesesCerrados.push(mes);
-      mostrarMensaje("Mes cerrado", "Ya no se podrán capturar movimientos en ese mes.");
-    }
-    guardar();
-    mostrarCierreMes();
-  }, 850);
-}
-
-function mostrarConfiguracion() {
-  if (bloquearSiLimitado("configuracion")) return;
-  document.getElementById("contenido").innerHTML = `
-    <h2>Configuración</h2>
-    <p class="texto-suave">Aquí puedes revisar la configuración principal del sistema.</p>
-    <div class="layout-doble">
-      <div class="panel"><h3>Empresa</h3><p><strong>${CONFIG.empresa || "Nuez de Avellana"}</strong></p><p class="texto-suave">Nombre mostrado en el sistema.</p></div>
-      <div class="panel"><h3>Código del dueño</h3><p><strong>${CODIGO_CIERRE}</strong></p><p class="texto-suave">Se usa para editar controles y cerrar o reabrir meses.</p></div>
-      <div class="panel"><h3>Máquinas</h3><p><strong>${(CONFIG.maquinas || ["MAQ 1", "MAQ 2", "MAQ 3"]).join(", ")}</strong></p><p class="texto-suave">Máquinas activas para salida.</p></div>
-      <div class="panel"><h3>Fotos de salida</h3><p><strong>${(CONFIG.fotosSalidaObligatorias ?? true) ? "Obligatorias" : "Opcionales"}</strong></p><p class="texto-suave">Se pide una foto por cada contenedor de la máquina.</p></div>
-    </div>
-    <section class="seccion-movimiento"><h3>Archivo de configuración</h3><p class="texto-suave">Esta información viene de <strong>config.js</strong>. Después podemos hacer que también se pueda editar y guardar desde esta pantalla.</p></section>`;
-}
-
-function pintarSalidaMaquina() {
-  document.getElementById("areaMovimiento").innerHTML = `<section class="seccion-movimiento">
-    <h3>Salida a máquina</h3>
-    <p class="texto-suave">Captura varias espirales de una sola vez. El sistema descuenta primero los lotes más próximos a caducar.</p>
-    <div class="form-grid">
-      <div><label>Fecha</label><input type="date" id="salidaFecha" value="${hoy()}" onchange="pintarCapturaSalida()"></div>
-      <div><label>Máquina</label><select id="salidaMaquina" onchange="pintarCapturaSalida()">${maquinasActivas().map(maquina => `<option>${maquina}</option>`).join("")}</select></div>
-      <button class="boton-secundario boton-pequeno" type="button" onclick="toggleObservacionesSalida()">Observaciones</button>
-      <button class="boton-pequeno" type="button" onclick="guardarSalidasMaquina()">Guardar salidas</button>
-    </div>
-    <div class="observaciones-salida" id="observacionesSalidaPanel" hidden>
-      <label>Observaciones de la máquina</label>
-      <textarea id="salidaObservaciones" rows="3" placeholder="Ejemplo: MAQ 1 espiral 1 poner adelante los productos nuevos que te mande"></textarea>
-    </div>
-    <div id="capturaSalidaMaquina"></div>${tablaControlesSalida(movimientos, true)}</section>`;
-  pintarCapturaSalida();
-}
-
-function toggleObservacionesSalida() {
-  const panel = document.getElementById("observacionesSalidaPanel");
-  if (!panel) return;
-  panel.hidden = !panel.hidden;
-  if (!panel.hidden) document.getElementById("salidaObservaciones")?.focus();
-}
-
-function pintarCapturaSalida() {
-  const contenedor = document.getElementById("capturaSalidaMaquina");
-  if (!contenedor) return;
-  const maquina = document.getElementById("salidaMaquina").value;
-  const fecha = document.getElementById("salidaFecha").value || hoy();
-  configuracionEspirales[maquina] = configuracionEspirales[maquina] || {};
-  const bloques = espiralesPorMaquina[maquina].map((grupo, indice) => {
-    const numero = indice + 1;
-    const filas = grupo.map(espiral => {
-      const guardado = configuracionEspirales[maquina][espiral] || "";
-      const activo = guardado && buscarProducto(guardado) && productoDisponibleEnFecha(buscarProducto(guardado), fecha) ? guardado : "";
-      return `<tr><td>${espiral}</td><td><input list="listaProductosSalida" class="salidaProducto" data-espiral="${espiral}" value="${activo}" placeholder="Producto"></td><td><input type="number" class="salidaCantidad" min="0" placeholder="0"></td></tr>`;
-    }).join("");
-    return `<div class="panel">
-      <h3>Contenedor ${numero}</h3>
-      <div class="foto-contenedor">
-        <label>Foto contenedor ${numero}</label>
-        <input type="file" class="fotoContenedor" data-contenedor="${numero}" accept="image/*" capture="environment" onchange="previsualizarFotoContenedor(${numero})">
-        <div class="preview-foto-contenedor" id="previewFotoContenedor${numero}"><span>Sin foto</span></div>
-      </div>
-      <table class="tabla tabla-rapida"><tr><th>Espiral</th><th>Producto</th><th>Salida</th></tr>${filas}</table>
-    </div>`;
-  }).join("");
-  contenedor.innerHTML = `${opcionesProductos("listaProductosSalida", fecha)}<div class="contenedores-grid">${bloques}</div>${pintarContenedorAdicional()}`;
-  calcularRestantesCA();
-}
-
-function previsualizarFotoContenedor(numero) {
-  const input = document.querySelector(`.fotoContenedor[data-contenedor="${numero}"]`);
-  const preview = document.getElementById(`previewFotoContenedor${numero}`);
-  const archivo = input?.files?.[0];
-  if (!preview) return;
-  if (!archivo) {
-    preview.innerHTML = "<span>Sin foto</span>";
-    return;
-  }
-  const url = URL.createObjectURL(archivo);
-  preview.innerHTML = `<img src="${url}" alt="Foto contenedor ${numero}"><strong>${archivo.name}</strong>`;
-}
-
-function leerFotosSalida() {
-  const inputs = [...document.querySelectorAll(".fotoContenedor")];
-  if (!inputs.length) return Promise.resolve([]);
-  const faltantes = inputs.filter(input => !input.files || input.files.length === 0).map(input => input.dataset.contenedor);
-  if (faltantes.length) {
-    return Promise.resolve({ error: `Falta foto del contenedor ${faltantes.join(", ")}` });
-  }
-  return Promise.all(inputs.map(input => new Promise((resolve, reject) => {
-    const archivo = input.files[0];
-    const lector = new FileReader();
-    lector.onload = () => resolve({ contenedor: input.dataset.contenedor, nombre: archivo.name, tipo: archivo.type, datos: lector.result });
-    lector.onerror = reject;
-    lector.readAsDataURL(archivo);
-  })));
-}
-
-function guardarSalidasMaquina() {
-  const faltantes = [...document.querySelectorAll(".fotoContenedor")]
-    .filter(input => !input.files || input.files.length === 0)
-    .map(input => input.dataset.contenedor);
-  if ((CONFIG.fotosSalidaObligatorias ?? true) && faltantes.length) {
-    return mostrarMensaje("Faltan fotos", `Sube o toma foto del contenedor ${faltantes.join(", ")}.`, "alerta");
-  }
-  confirmarAccion(
-    "¿Guardar control de salida?",
-    "Una vez guardado no puedes editar a menos del permiso del dueño.",
-    "Guardar",
-    () => guardarSalidasMaquinaConfirmada()
-  );
-}
-
-function verControlSalida(controlId) {
-  const lista = movimientos.filter(mov => String(mov.controlId || mov.id) === String(controlId));
-  const salidas = lista.filter(mov => mov.tipo === "salida");
-  const filas = salidas.map(mov => `<tr><td>${mov.espiral || "-"}</td><td>${mov.producto}</td><td class="numero">${mov.cantidad}</td></tr>`).join("");
-  const fotos = fotosControles[controlId] || [];
-  const galeria = fotos.map(foto => `<article class="foto-ver-contenedor"><h4>Contenedor ${foto.contenedor || "-"}</h4><img src="${foto.datos}" alt="${foto.nombre || "Foto del contenedor"}"><p>${foto.nombre || ""}</p></article>`).join("");
-  document.getElementById("detalleProducto").innerHTML = `
-    <h2>Control de salida</h2>
-    <p class="texto-suave">${salidas[0]?.fecha || ""} ${salidas[0]?.maquina || ""}</p>
-    <div class="galeria-fotos por-contenedor">${galeria || "<p class='texto-suave'>Este control no tiene fotos guardadas.</p>"}</div>
-    <table class="tabla"><tr><th>Espiral</th><th>Producto</th><th>Cantidad</th></tr>${filas || `<tr><td colspan="3">Sin salidas.</td></tr>`}</table>`;
-  document.getElementById("modalProducto").style.display = "flex";
-}
-
-function mostrarCierreMes() {
-  if (bloquearSiLimitado("cierre")) return;
-  const mes = mesActual();
-  const cerrado = mesesCerrados.includes(mes);
-  const filas = mesesCerrados.sort().reverse().map(item => `<tr><td>${item}</td><td><span class="pill pill-baja">Cerrado</span></td></tr>`).join("");
-  document.getElementById("contenido").innerHTML = `
-    <h2>Cierre de mes</h2>
-    <p class="texto-suave">Elige el mes, escribe el código del dueño y desliza el botón grande.</p>
-    <div class="cierre-panel">
-      <div><label>Mes</label><input type="month" id="mesCierre" value="${mes}" onchange="actualizarBotonCierre()"></div>
-      <div><label>Código</label><input type="password" id="codigoCierre" placeholder="Código del dueño"></div>
-      <div class="boton-deslizar-wrap">
-        <strong id="textoBotonCierre">${cerrado ? "Reabrir mes" : "Cerrar mes"}</strong>
-        <input type="range" min="0" max="100" value="0" class="boton-deslizar-cierre" id="sliderCierreMes" oninput="procesarDeslizarCierre(this)">
-        <span>&gt;&gt;</span>
-      </div>
-      <div class="carga-cierre" id="cargaCierre"><i></i></div>
-    </div>
-    <table class="tabla"><tr><th>Mes</th><th>Estado</th></tr>${filas || `<tr><td colspan="2">No hay meses cerrados.</td></tr>`}</table>`;
-  actualizarBotonCierre();
-}
-
-function actualizarBotonCierre() {
-  const mes = document.getElementById("mesCierre")?.value || mesActual();
-  const texto = document.getElementById("textoBotonCierre");
-  if (!texto) return;
-  texto.textContent = mesesCerrados.includes(mes) ? "Reabrir mes" : "Cerrar mes";
-  const slider = document.getElementById("sliderCierreMes");
-  if (slider) slider.value = 0;
-}
-
-function procesarDeslizarCierre(input) {
-  if (Number(input.value) < 96) return;
-  input.disabled = true;
-  const mes = document.getElementById("mesCierre").value;
-  const codigo = document.getElementById("codigoCierre").value;
-  const estabaCerrado = mesesCerrados.includes(mes);
-  if (!mes) {
-    input.value = 0;
-    input.disabled = false;
-    return mostrarMensaje("Falta el mes", "Elige el mes que quieres cambiar.", "alerta");
-  }
-  if (codigo !== CODIGO_CIERRE) {
-    input.value = 0;
-    input.disabled = false;
-    return mostrarMensaje("Código incorrecto", "No se pudo cambiar el cierre del mes.", "error");
-  }
-  const carga = document.getElementById("cargaCierre");
-  carga?.classList.remove("activo");
-  void carga?.offsetWidth;
-  carga?.classList.add("activo");
-  setTimeout(() => {
-    if (estabaCerrado) {
-      mesesCerrados = mesesCerrados.filter(item => item !== mes);
-      mostrarMensaje("Mes reabierto", "Ya puedes capturar movimientos en ese mes.");
-    } else if (!mesesCerrados.includes(mes)) {
-      mesesCerrados.push(mes);
-      mostrarMensaje("Mes cerrado", "Ya no se podrán capturar movimientos en ese mes.");
-    }
-    guardar();
-    mostrarCierreMes();
-  }, 850);
-}
-
-function aplicarConfiguracionVisual() {
-  document.body?.classList.toggle("modo-oscuro", !!ajustesSistema.modoOscuro);
-  document.body?.classList.toggle("sin-animacion-login", !ajustesSistema.animacionLogin);
-}
-
-function fotosSalidaObligatorias() {
-  return ajustesSistema.fotosSalidaObligatorias ?? (CONFIG.fotosSalidaObligatorias ?? true);
-}
-
-function mostrarConfiguracion() {
-  if (bloquearSiLimitado("configuracion")) return;
-  document.getElementById("contenido").innerHTML = `
-    <h2>Configuración</h2>
-    <p class="texto-suave">Ajustes visuales y reglas rápidas del sistema.</p>
-    <div class="config-grid">
-      <label class="config-opcion">
-        <input type="checkbox" id="configModoOscuro" ${ajustesSistema.modoOscuro ? "checked" : ""}>
-        <span><strong>Modo oscuro</strong><small>Cambia el sistema a colores oscuros.</small></span>
-      </label>
-      <label class="config-opcion">
-        <input type="checkbox" id="configAnimacionLogin" ${ajustesSistema.animacionLogin ? "checked" : ""}>
-        <span><strong>Animación del inicio</strong><small>Activa o detiene las bolas verdes del login.</small></span>
-      </label>
-      <label class="config-opcion">
-        <input type="checkbox" id="configFotosObligatorias" ${fotosSalidaObligatorias() ? "checked" : ""}>
-        <span><strong>Fotos obligatorias</strong><small>Pide una foto por cada contenedor, incluyendo adicional.</small></span>
-      </label>
-      <div class="config-opcion solo-texto">
-        <span><strong>Máquinas activas</strong><small>${maquinasActivas().join(", ")}</small></span>
-      </div>
-    </div>
-    <button class="boton-pequeno" type="button" onclick="guardarConfiguracionSistema()">Guardar configuración</button>
-    <section class="seccion-movimiento">
-      <h3>Agregar otra máquina</h3>
-      <p class="texto-suave">La nueva máquina se crea con espirales del 1 al 60 y queda disponible en salidas y reportes.</p>
-      <div class="form-grid">
-        <div><label>Nombre</label><input id="nombreNuevaMaquina" placeholder="Ejemplo: MAQ 5"></div>
-        <button class="boton-pequeno" type="button" onclick="agregarNuevaMaquina()">Agregar máquina</button>
-      </div>
-    </section>
-    <section class="seccion-movimiento">
-      <h3>Pruebas de salida</h3>
-      <p class="texto-suave">Crea dos controles de salida aleatorios para hoy en MAQ 1 y MAQ 2. Antes de crear, el sistema guarda una copia para poder deshacerlo.</p>
-      <div class="acciones">
-        <button type="button" onclick="crearSalidasPruebaMaquinas()">Crear 2 salidas aleatorias</button>
-        <button class="boton-secundario" type="button" onclick="deshacerSalidasPruebaMaquinas()">Deshacer prueba</button>
-      </div>
-    </section>`;
-}
-
-function guardarConfiguracionSistema() {
-  ajustesSistema.modoOscuro = !!document.getElementById("configModoOscuro")?.checked;
-  ajustesSistema.animacionLogin = !!document.getElementById("configAnimacionLogin")?.checked;
-  ajustesSistema.fotosSalidaObligatorias = !!document.getElementById("configFotosObligatorias")?.checked;
-  guardar();
-  aplicarConfiguracionVisual();
-  mostrarBarraGuardado("Configuración guardada");
-  mostrarMensaje("Configuración guardada", "Los cambios ya se aplicaron.");
-}
-
-function agregarNuevaMaquina() {
-  const input = document.getElementById("nombreNuevaMaquina");
-  const nombre = String(input?.value || "").trim().toUpperCase();
-  if (!nombre) return mostrarMensaje("Falta el nombre", "Escribe el nombre de la nueva máquina.", "alerta");
-  if (maquinasActivas().includes(nombre)) return mostrarMensaje("La máquina ya existe", `${nombre} ya está activa.`, "alerta");
-  ajustesSistema.maquinas = [...maquinasActivas(), nombre];
-  asegurarEspiralesMaquina(nombre);
-  guardar();
-  mostrarBarraGuardado(`${nombre} agregada correctamente`);
-  mostrarConfiguracion();
-}
-
-function productosConExistencia(fecha = hoy()) {
-  return productosDisponibles(fecha)
-    .map(producto => ({ producto, stock: calcularProducto(producto.nombre).inventarioFinal }))
-    .filter(item => item.stock > 0);
-}
-
-function elegirProductoPrueba(fecha) {
-  const disponibles = productosConExistencia(fecha);
-  if (!disponibles.length) return null;
-  return disponibles[Math.floor(Math.random() * disponibles.length)];
-}
-
-function crearControlPruebaMaquina(maquina, fecha) {
-  const controlId = `PRUEBA-${maquina.replace(/\s+/g, "")}-${generarId()}`;
-  const espirales = (espiralesPorMaquina[maquina] || []).flat();
-  let guardados = 0;
-  let adicionales = 0;
-
-  configuracionEspirales[maquina] = configuracionEspirales[maquina] || {};
-
-  for (const espiral of espirales) {
-    const elegido = elegirProductoPrueba(fecha);
-    if (!elegido) break;
-
-    const cantidad = Math.max(1, Math.min(elegido.stock, Math.floor(Math.random() * 3) + 1));
-    const mov = prepararMovimientoSalida("salida", elegido.producto.nombre, cantidad, fecha, "Prueba aleatoria para revisar reportes");
-    if (!mov || mov === "sin-stock") continue;
-
-    mov.maquina = maquina;
-    mov.espiral = String(espiral);
-    mov.categoria = "Salida";
-    mov.controlId = controlId;
-    movimientos.push(mov);
-    configuracionEspirales[maquina][espiral] = elegido.producto.nombre;
-    guardados++;
-  }
-
-  for (let i = 0; i < 4; i++) {
-    const elegido = elegirProductoPrueba(fecha);
-    if (!elegido) break;
-
-    const cantidad = Math.max(1, Math.min(elegido.stock, Math.floor(Math.random() * 3) + 1));
-    const mov = prepararMovimientoSalida("salida", elegido.producto.nombre, cantidad, fecha, "Prueba de contenedor adicional");
-    if (!mov || mov === "sin-stock") continue;
-
-    mov.maquina = maquina;
-    mov.espiral = `CA ${i + 1}`;
-    mov.categoria = "Contenedor adicional";
-    mov.controlId = controlId;
-    mov.caMaq1 = 0;
-    mov.caMaq2 = 0;
-    mov.caMaq3 = 0;
-    mov.caInicio = maquina;
-    mov.caEtapa = maquina;
-    mov.caCerrado = false;
-    movimientos.push(mov);
-    guardados++;
-    adicionales++;
-  }
-
-  fotosControles[controlId] = {
-    fotos: [],
-    cambiosPrecio: [],
-    maquina,
-    fecha,
-    observaciones: "Control de prueba con cantidades aleatorias.",
-    prueba: true
-  };
-
-  return { controlId, guardados, adicionales };
-}
-
-function crearSalidasPruebaMaquinas() {
-  if (bloquearSiLimitado("configuracion")) return;
-  if (ajustesSistema.salidasPruebaBackup) {
-    mostrarMensaje("Prueba pendiente", "Ya existe una prueba creada. Primero usa Deshacer prueba.", "alerta");
-    return;
-  }
-
-  ajustesSistema.salidasPruebaBackup = {
-    productos: JSON.parse(JSON.stringify(productos)),
-    movimientos: JSON.parse(JSON.stringify(movimientos)),
-    configuracionEspirales: JSON.parse(JSON.stringify(configuracionEspirales)),
-    fotosControles: JSON.parse(JSON.stringify(fotosControles))
-  };
-
-  const fecha = hoy();
-  const maq1 = crearControlPruebaMaquina("MAQ 1", fecha);
-  const maq2 = crearControlPruebaMaquina("MAQ 2", fecha);
-
-  guardar();
-  mostrarBarraGuardado("Salidas de prueba creadas");
-  mostrarMensaje("Prueba creada", `MAQ 1: ${maq1.guardados} registros (${maq1.adicionales} adicionales). MAQ 2: ${maq2.guardados} registros (${maq2.adicionales} adicionales).`);
-  mostrarMovimientos("salida");
-}
-
-function deshacerSalidasPruebaMaquinas() {
-  if (bloquearSiLimitado("configuracion")) return;
-  const backup = ajustesSistema.salidasPruebaBackup;
-  if (!backup) {
-    mostrarMensaje("Sin prueba pendiente", "No hay salidas de prueba para deshacer.", "alerta");
-    return;
-  }
-
-  productos = backup.productos || productos;
-  movimientos = backup.movimientos || movimientos;
-  configuracionEspirales = backup.configuracionEspirales || configuracionEspirales;
-  fotosControles = backup.fotosControles || fotosControles;
-  delete ajustesSistema.salidasPruebaBackup;
-
-  guardar();
-  mostrarBarraGuardado("Prueba deshecha");
-  mostrarMensaje("Listo", "Las salidas de prueba se quitaron y el inventario volvió como estaba.");
-  mostrarConfiguracion();
-}
-
-function pintarCapturaSalida() {
-  const contenedor = document.getElementById("capturaSalidaMaquina");
-  if (!contenedor) return;
-  const maquina = document.getElementById("salidaMaquina").value;
-  const fecha = document.getElementById("salidaFecha").value || hoy();
-  configuracionEspirales[maquina] = configuracionEspirales[maquina] || {};
-  const bloques = espiralesPorMaquina[maquina].map((grupo, indice) => {
-    const numero = indice + 1;
-    const filas = grupo.map(espiral => {
-      const guardado = configuracionEspirales[maquina][espiral] || "";
-      const activo = guardado && buscarProducto(guardado) && productoDisponibleEnFecha(buscarProducto(guardado), fecha) ? guardado : "";
-      return `<tr><td>${espiral}</td><td><input list="listaProductosSalida" class="salidaProducto" data-espiral="${espiral}" value="${activo}" placeholder="Producto"></td><td><input type="number" class="salidaCantidad" min="0" placeholder="0"></td></tr>`;
-    }).join("");
-    return `<div class="panel">
-      <h3>Contenedor ${numero}</h3>
-      ${campoFotoContenedor(numero, `Elegir o tomar foto del contenedor ${numero}`)}
-      <table class="tabla tabla-rapida"><tr><th>Espiral</th><th>Producto</th><th>Salida</th></tr>${filas}</table>
-    </div>`;
-  }).join("");
-  contenedor.innerHTML = `${opcionesProductos("listaProductosSalida", fecha)}<div class="contenedores-grid">${bloques}</div>${pintarContenedorAdicional()}`;
-  calcularRestantesCA();
-}
-
-function campoFotoContenedor(id, texto) {
-  return `<div class="foto-contenedor">
-    <label>${texto}</label>
-    <input type="file" class="fotoContenedor" data-contenedor="${id}" accept="image/*" capture="environment" onchange="previsualizarFotoContenedor('${id}')">
-    <div class="preview-foto-contenedor" id="previewFotoContenedor${id}"><span>Elegir o tomar foto</span></div>
-  </div>`;
-}
-
-function pintarContenedorAdicional() {
-  const filas = Array.from({ length: 8 }, () => `<tr>
-    <td><input list="listaProductosSalida" class="caProducto" placeholder="Producto"></td>
-    <td><input type="number" class="caSurtido" min="0" placeholder="Cantidad"></td>
-  </tr>`).join("");
-
-  return `<div class="seccion-movimiento">
-    <h3>Contenedor adicional</h3>
-    <p class="texto-suave">Aquí solo captura los adicionales que salieron. La repartición por máquina se cierra después en Ajustes de reportes.</p>
-    ${campoFotoContenedor("AD", "Elegir o tomar foto del contenedor adicional")}
-    <table class="tabla tabla-rapida">
-      <tr><th>Producto</th><th>Cantidad</th></tr>
-      ${filas}
-    </table>
-  </div>`;
-}
-
-function previsualizarFotoContenedor(id) {
-  const input = document.querySelector(`.fotoContenedor[data-contenedor="${id}"]`);
-  const preview = document.getElementById(`previewFotoContenedor${id}`);
-  const archivo = input?.files?.[0];
-  if (!preview) return;
-  if (!archivo) {
-    preview.innerHTML = "<span>Elegir o tomar foto</span>";
-    return;
-  }
-  const url = URL.createObjectURL(archivo);
-  preview.innerHTML = `<img src="${url}" alt="Foto contenedor ${id}"><strong>${archivo.name}</strong>`;
-}
-
-function comprimirImagenArchivo(archivo, maxAncho = 1100, calidad = 0.72) {
-  return new Promise((resolve, reject) => {
-    const lector = new FileReader();
-    lector.onload = () => {
-      const imagen = new Image();
-      imagen.onload = () => {
-        const escala = Math.min(1, maxAncho / imagen.width);
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(imagen.width * escala));
-        canvas.height = Math.max(1, Math.round(imagen.height * escala));
-        canvas.getContext("2d").drawImage(imagen, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", calidad));
-      };
-      imagen.onerror = () => resolve(lector.result);
-      imagen.src = lector.result;
-    };
-    lector.onerror = reject;
-    lector.readAsDataURL(archivo);
-  });
-}
-
-function leerFotosSalida() {
-  const inputs = [...document.querySelectorAll(".fotoContenedor")];
-  if (!inputs.length) return Promise.resolve([]);
-  const infoAnterior = controlSalidaEditando?.info || {};
-  const fotosPrevias = Array.isArray(infoAnterior) ? infoAnterior : (infoAnterior.fotos || []);
-  if (fotosSalidaObligatorias()) {
-    const faltantes = inputs
-      .filter(input => (!input.files || input.files.length === 0)
-        && !fotosPrevias.some(foto => String(foto.contenedor) === String(input.dataset.contenedor)))
-      .map(input => input.dataset.contenedor);
-    if (faltantes.length) return Promise.resolve({ error: `Falta foto del contenedor ${faltantes.join(", ")}` });
-  }
-  return Promise.all(inputs.filter(input => input.files && input.files.length > 0).map(async input => {
-    const archivo = input.files[0];
-    const datos = await comprimirImagenArchivo(archivo);
-    return { contenedor: input.dataset.contenedor, nombre: archivo.name, tipo: "image/jpeg", datos };
-  })).then(fotosNuevas => {
-    const contenedoresNuevos = new Set(fotosNuevas.map(foto => String(foto.contenedor)));
-    return [...fotosPrevias.filter(foto => !contenedoresNuevos.has(String(foto.contenedor))), ...fotosNuevas];
-  });
-}
-
-function guardarSalidasMaquina() {
-  if (fotosSalidaObligatorias()) {
-    const infoAnterior = controlSalidaEditando?.info || {};
-    const fotosPrevias = Array.isArray(infoAnterior) ? infoAnterior : (infoAnterior.fotos || []);
-    const faltantes = [...document.querySelectorAll(".fotoContenedor")]
-      .filter(input => (!input.files || input.files.length === 0)
-        && !fotosPrevias.some(foto => String(foto.contenedor) === String(input.dataset.contenedor)))
-      .map(input => input.dataset.contenedor);
-    if (faltantes.length) return mostrarMensaje("Faltan fotos", `Sube o toma foto del contenedor ${faltantes.join(", ")}.`, "alerta");
-  }
-  confirmarAccion(
-    "¿Guardar control de salida?",
-    "Una vez guardado no puedes editar a menos del permiso del dueño.",
-    "Guardar",
-    () => guardarSalidasMaquinaConfirmada()
-  );
-}
-
-function verControlSalida(controlId) {
-  const lista = movimientos.filter(mov => String(mov.controlId || mov.id) === String(controlId));
-  const salidas = lista.filter(mov => mov.tipo === "salida");
-  const filas = salidas.map(mov => `<tr><td>${mov.espiral || "-"}</td><td>${mov.producto}</td><td class="numero">${mov.cantidad}</td></tr>`).join("");
-  const fotos = fotosControles[controlId] || [];
-  const galeria = fotos
-    .sort((a, b) => String(a.contenedor).localeCompare(String(b.contenedor), "es", { numeric: true }))
-    .map(foto => `<article class="foto-ver-contenedor"><h4>Contenedor ${foto.contenedor === "AD" ? "adicional" : foto.contenedor}</h4><img src="${foto.datos}" alt="${foto.nombre || "Foto del contenedor"}"><p>${foto.nombre || ""}</p></article>`)
-    .join("");
-  document.getElementById("detalleProducto").innerHTML = `
-    <h2>Control de salida</h2>
-    <p class="texto-suave">${salidas[0]?.fecha || ""} ${salidas[0]?.maquina || ""}</p>
-    <div class="galeria-fotos por-contenedor">${galeria || "<p class='texto-suave'>Este control no tiene fotos guardadas.</p>"}</div>
-    <table class="tabla"><tr><th>Espiral</th><th>Producto</th><th>Cantidad</th></tr>${filas || `<tr><td colspan="3">Sin salidas.</td></tr>`}</table>`;
-  document.getElementById("modalProducto").style.display = "flex";
-}
-
-function mostrarCierreMes() {
-  if (bloquearSiLimitado("cierre")) return;
-  const mes = mesActual();
-  const filas = mesesCerrados.sort().reverse().map(item => `<tr><td>${item}</td><td><span class="pill pill-baja">Cerrado</span></td></tr>`).join("");
-  document.getElementById("contenido").innerHTML = `
-    <h2>Cierre de mes</h2>
-    <p class="texto-suave">Elige el mes, escribe el código del dueño y desliza el botón grande.</p>
-    <div class="cierre-panel">
-      <div><label>Mes</label><input type="month" id="mesCierre" value="${mes}" onchange="actualizarBotonCierre()"></div>
-      <div><label>Código</label><input type="password" id="codigoCierre" placeholder="Código del dueño"></div>
-      <div class="boton-deslizar-wrap" id="botonDeslizarWrap">
-        <span>&gt;&gt;</span>
-        <strong id="textoBotonCierre">Desliza para cerrar mes</strong>
-        <input type="range" min="0" max="100" value="0" class="boton-deslizar-cierre" id="sliderCierreMes" oninput="procesarDeslizarCierre(this)">
-      </div>
-      <div class="carga-cierre" id="cargaCierre"><i></i></div>
-    </div>
-    <table class="tabla"><tr><th>Mes</th><th>Estado</th></tr>${filas || `<tr><td colspan="2">No hay meses cerrados.</td></tr>`}</table>`;
-  actualizarBotonCierre();
-}
-
-function actualizarBotonCierre() {
-  const mes = document.getElementById("mesCierre")?.value || mesActual();
-  const texto = document.getElementById("textoBotonCierre");
-  const wrap = document.getElementById("botonDeslizarWrap");
-  const cerrado = mesesCerrados.includes(mes);
-  if (texto) texto.textContent = cerrado ? "Desliza para abrir mes" : "Desliza para cerrar mes";
-  wrap?.classList.toggle("abrir", cerrado);
-  const slider = document.getElementById("sliderCierreMes");
-  if (slider) {
-    slider.value = 0;
-    slider.disabled = false;
-  }
-}
-
-function controlesSalidaPorMaquina(lista, maquina) {
-  return controlesSalida(lista).filter(control => [...control.maquinas].includes(maquina));
-}
-
-function tablaControlesSalidaPorMaquina(lista, maquina) {
-  const controles = controlesSalidaPorMaquina(lista, maquina);
-  const filas = controles.map(control => `<tr>
-    <td>${control.fecha || "-"}<br><small>${control.etiqueta}</small></td>
-    <td class="numero">${control.total}</td>
-    <td class="numero">${control.ca}</td>
-    <td class="numero">${control.registros}</td>
-    <td><button type="button" onclick="verControlSalida('${control.id}')">Abrir</button></td>
-  </tr>`).join("");
-  return `<table class="tabla"><tr><th>Fecha</th><th>Total surtido</th><th>Adicional</th><th>Registros</th><th>Fotos y detalle</th></tr>${filas || `<tr><td colspan="5">Sin salidas guardadas para ${maquina}.</td></tr>`}</table>`;
-}
-
-function mostrarReportes(tipoPeriodo = "dia", valor = hoy()) {
-  const lista = movimientosPorPeriodo(tipoPeriodo, valor);
-  const seccionesCompletas = esLimitado() ? "" : `
-    <section class="seccion-movimiento"><h3>Entradas</h3>${tablaHistorialReporte(lista.filter(mov => mov.tipo === "entrada"))}</section>
-    <section class="seccion-movimiento"><h3>Salidas diversas</h3>${tablaHistorialReporte(lista.filter(mov => ["cortesia", "merma", "ventaExterna", "salidaBG"].includes(mov.tipo)))}</section>
-    <section class="seccion-movimiento"><h3>Ajustes</h3>${tablaHistorialReporte(lista.filter(mov => mov.tipo === "ajuste"), true)}</section>`;
-  const resumenVisible = esLimitado() ? "" : `<div class="panel"><h3>Resumen del periodo</h3>${reporteResumenPeriodo(lista)}</div>`;
-
-  const reportesMaquinas = maquinasActivas().map((maquina, indice) => `
-    <div class="panel reporte-color reporte-color-${(indice % 4) + 1}"><h3>${maquina} - salidas guardadas</h3>${tablaControlesSalidaPorMaquina(lista, maquina)}</div>`).join("");
-
-  document.getElementById("contenido").innerHTML = `
-    <h2>Reportes y análisis</h2>
-    <p class="texto-suave">Elige un día o mes. Abre cada máquina para ver lo surtido y sus fotos por contenedor.</p>
-    <div class="form-grid">
-      <div><label>Ver por</label><select id="repTipo" onchange="cambiarFiltroReporte()"><option value="dia" ${tipoPeriodo === "dia" ? "selected" : ""}>Día</option><option value="mes" ${tipoPeriodo === "mes" ? "selected" : ""}>Mes completo</option></select></div>
-      <div><label>Fecha</label><input id="repFecha" type="${tipoPeriodo === "dia" ? "date" : "month"}" value="${valor}" onchange="cambiarFiltroReporte()"></div>
-    </div>
-    ${resumenVisible}
-    ${reportesMaquinas}
-    <div class="panel reporte-color reporte-color-4"><h3>Espiral de productos por máquina</h3>${tablaEspiralesReporte(lista)}</div>
-    ${seccionesCompletas}`;
-}
-
-function graficaPastel(puntos, prefijo = "") {
-  const colores = ["#16a34a", "#0f766e", "#22c55e", "#84cc16", "#f59e0b", "#2563eb", "#dc2626", "#9333ea", "#0891b2", "#f43f5e", "#65a30d", "#7c3aed"];
-  const datos = puntos.filter(punto => Number(punto.valor || 0) > 0);
-  if (!datos.length) {
-    return `<div class="grafica-pastel"><div class="pastel-vacio">Sin datos</div><div class="pastel-leyenda"><span>No hay información para mostrar.</span></div></div>`;
-  }
-
-  const total = datos.reduce((suma, punto) => suma + Number(punto.valor || 0), 0);
-  let avance = 0;
-  const segmentos = datos.map((punto, indice) => {
-    const inicio = avance;
-    const porcentaje = (Number(punto.valor || 0) / total) * 100;
-    avance += porcentaje;
-    return `${colores[indice % colores.length]} ${inicio}% ${avance}%`;
-  }).join(", ");
-
-  const leyenda = datos.map((punto, indice) => {
-    const valor = Number(punto.valor || 0);
-    const porcentaje = total ? ((valor / total) * 100).toFixed(1) : "0.0";
-    const textoValor = `${prefijo}${valor.toFixed(valor % 1 ? 2 : 0)}`;
-    return `<div class="pastel-item">
-      <i style="background:${colores[indice % colores.length]}"></i>
-      <span>${punto.etiqueta}</span>
-      <strong>${textoValor} <small>${porcentaje}%</small></strong>
-    </div>`;
-  }).join("");
-
-  return `<div class="grafica-pastel">
-    <div class="pastel-circulo" style="background: conic-gradient(${segmentos});"><span>${prefijo}${total.toFixed(total % 1 ? 2 : 0)}</span></div>
-    <div class="pastel-leyenda">${leyenda}</div>
-  </div>`;
-}
-
-function actualizarBotonCierre() {
-  const mes = document.getElementById("mesCierre")?.value || mesActual();
-  const texto = document.getElementById("textoBotonCierre");
-  const wrap = document.getElementById("botonDeslizarWrap");
-  const cerrado = mesesCerrados.includes(mes);
-  if (texto) texto.textContent = cerrado ? "Abrir mes" : "Cerrar mes";
-  wrap?.classList.toggle("abrir", cerrado);
-  const slider = document.getElementById("sliderCierreMes");
-  if (slider) {
-    slider.value = 0;
-    slider.disabled = false;
-    slider.style.setProperty("--avance", "0%");
-  }
-}
-
-function procesarDeslizarCierre(input) {
-  const avance = `${input.value}%`;
-  input.style.setProperty("--avance", avance);
-  const wrap = document.getElementById("botonDeslizarWrap");
-  wrap?.style.setProperty("--avance", avance);
-  if (Number(input.value) < 96) return;
-  input.disabled = true;
-  const mes = document.getElementById("mesCierre").value;
-  const codigo = document.getElementById("codigoCierre").value;
-  const estabaCerrado = mesesCerrados.includes(mes);
-  if (!mes) {
-    input.value = 0;
-    input.disabled = false;
-    input.style.setProperty("--avance", "0%");
-    return mostrarMensaje("Falta el mes", "Elige el mes que quieres cambiar.", "alerta");
-  }
-  if (codigo !== CODIGO_CIERRE) {
-    input.value = 0;
-    input.disabled = false;
-    input.style.setProperty("--avance", "0%");
-    return mostrarMensaje("Código incorrecto", "No se pudo cambiar el cierre del mes.", "error");
-  }
-  const carga = document.getElementById("cargaCierre");
-  carga?.classList.remove("activo");
-  void carga?.offsetWidth;
-  carga?.classList.add("activo");
-  setTimeout(() => {
-    if (estabaCerrado) {
-      mesesCerrados = mesesCerrados.filter(item => item !== mes);
-      mostrarMensaje("Mes abierto", "Ya puedes capturar movimientos en ese mes.");
-    } else if (!mesesCerrados.includes(mes)) {
-      mesesCerrados.push(mes);
-      mostrarMensaje("Mes cerrado", "Ya no se podrán capturar movimientos en ese mes.");
-    }
-    guardar();
-    mostrarCierreMes();
-  }, 850);
-}
-
-function productoAnteriorEspiral(maquina, espiral) {
-  return (configuracionEspirales[maquina] || {})[espiral] || "";
-}
-
-function revisarCambioEspiral(input) {
-  const maquina = document.getElementById("salidaMaquina")?.value || "MAQ 1";
-  const espiral = input.dataset.espiral;
-  const anterior = productoAnteriorEspiral(maquina, espiral);
-  const actual = input.value.trim();
-  const aviso = input.closest("td")?.querySelector(".aviso-cambio-precio");
-  const cambio = anterior && actual && anterior.toLowerCase() !== actual.toLowerCase();
-  input.closest("tr")?.classList.toggle("fila-cambio-precio", cambio);
-  if (aviso) aviso.textContent = cambio ? `Antes: ${anterior}` : "";
-}
-
-function cambiosPrecioActuales(maquina) {
-  return [...document.querySelectorAll(".salidaProducto")].map(input => {
-    const espiral = input.dataset.espiral;
-    const anterior = productoAnteriorEspiral(maquina, espiral);
-    const nuevo = input.value.trim();
-    return { espiral, anterior, nuevo };
-  }).filter(item => item.anterior && item.nuevo && item.anterior.toLowerCase() !== item.nuevo.toLowerCase());
-}
-
-function pintarCapturaSalida() {
-  const contenedor = document.getElementById("capturaSalidaMaquina");
-  if (!contenedor) return;
-  const maquina = document.getElementById("salidaMaquina").value;
-  const fecha = document.getElementById("salidaFecha").value || hoy();
-  configuracionEspirales[maquina] = configuracionEspirales[maquina] || {};
-  const bloques = espiralesPorMaquina[maquina].map((grupo, indice) => {
-    const numero = indice + 1;
-    const filas = grupo.map(espiral => {
-      const guardado = configuracionEspirales[maquina][espiral] || "";
-      const activo = guardado && buscarProducto(guardado) && productoDisponibleEnFecha(buscarProducto(guardado), fecha) ? guardado : "";
-      return `<tr><td>${espiral}</td><td><input list="listaProductosSalida" class="salidaProducto" data-espiral="${espiral}" value="${activo}" placeholder="Producto" oninput="revisarCambioEspiral(this)"><small class="aviso-cambio-precio"></small></td><td><input type="number" class="salidaCantidad" min="0" placeholder="0"></td></tr>`;
-    }).join("");
-    return `<div class="panel">
-      <h3>Contenedor ${numero}</h3>
-      ${campoFotoContenedor(numero, `Elegir o tomar foto del contenedor ${numero}`)}
-      <table class="tabla tabla-rapida"><tr><th>Espiral</th><th>Producto</th><th>Salida</th></tr>${filas}</table>
-    </div>`;
-  }).join("");
-  contenedor.innerHTML = `${opcionesProductos("listaProductosSalida", fecha)}<div class="contenedores-grid">${bloques}</div>${pintarContenedorAdicional()}`;
-  calcularRestantesCA();
-}
-
-async function guardarSalidasMaquinaConfirmada() {
-  const fecha = document.getElementById("salidaFecha").value;
-  const maquina = document.getElementById("salidaMaquina").value;
-  const observaciones = document.getElementById("salidaObservaciones")?.value.trim() || "";
-  if (!puedeUsarFecha(fecha)) return;
-  const fotos = await leerFotosSalida();
-  if (fotos.error) return mostrarMensaje("Faltan fotos", fotos.error, "alerta");
-  if (fotosSalidaObligatorias() && fotos.length === 0) {
-    return mostrarMensaje("Falta foto", "Toma o sube al menos una foto del contenedor antes de guardar.", "alerta");
-  }
-
-  configuracionEspirales[maquina] = configuracionEspirales[maquina] || {};
-  const edicion = controlSalidaEditando;
-  const movimientosAntes = movimientos.slice();
-  if (edicion) {
-    movimientos = movimientos.filter(mov => String(mov.controlId || mov.id) !== String(edicion.controlId));
-  }
-  const configuracionAntesDeIntentar = { ...configuracionEspirales[maquina] };
-  const configuracionAnterior = {
-    ...((!Array.isArray(edicion?.info) && edicion?.info?.configuracionAnterior) || configuracionEspirales[maquina])
-  };
-  const controlId = edicion?.controlId || generarId();
-  let guardados = 0;
-
-  const cancelarGuardado = (titulo, texto, tipo = "alerta") => {
-    movimientos = movimientosAntes;
-    configuracionEspirales[maquina] = configuracionAntesDeIntentar;
-    mostrarMensaje(titulo, texto, tipo);
-  };
-
-  const productosSalida = [...document.querySelectorAll(".salidaProducto")];
-  const cantidadesSalida = [...document.querySelectorAll(".salidaCantidad")];
-  for (let i = 0; i < productosSalida.length; i++) {
-    const producto = productosSalida[i].value.trim();
-    const cantidad = Number(cantidadesSalida[i].value || 0);
-    const espiral = productosSalida[i].dataset.espiral;
-    if (producto) configuracionEspirales[maquina][espiral] = producto;
-    if (!producto || cantidad <= 0) continue;
-
-    const mov = prepararMovimientoSalida("salida", producto, cantidad, fecha, observaciones);
-    if (mov === "sin-stock") return cancelarGuardado("Sin lote suficiente", `No hay existencia suficiente por lote para ${producto}. No se guardó ninguna salida de este control.`);
-    if (!mov) return cancelarGuardado("Producto no disponible", `${producto} está de baja o no existe. No se guardó ninguna salida de este control.`);
-    mov.maquina = maquina;
-    mov.espiral = espiral;
-    mov.categoria = "Salida";
-    mov.controlId = controlId;
-    movimientos.push(mov);
-    guardados++;
-  }
-
-  const productosCA = [...document.querySelectorAll(".caProducto")];
-  const surtidos = [...document.querySelectorAll(".caSurtido")];
-  for (let i = 0; i < productosCA.length; i++) {
-    const producto = productosCA[i].value.trim();
-    const surtido = Number(surtidos[i]?.value || 0);
-    if (!producto || surtido <= 0) continue;
-    if (!buscarProducto(producto)) return cancelarGuardado("Producto no encontrado", `${producto} no está registrado. No se guardó ninguna salida de este control.`);
-
-    const salidaCA = prepararMovimientoSalida("salida", producto, surtido, fecha, observaciones || "Contenedor adicional");
-    if (salidaCA === "sin-stock") return cancelarGuardado("Sin lote suficiente", `No hay existencia suficiente por lote para ${producto}. No se guardó ninguna salida de este control.`);
-    if (!salidaCA) return cancelarGuardado("Producto no disponible", `${producto} está de baja o no existe. No se guardó ninguna salida de este control.`);
-    salidaCA.maquina = maquina;
-    salidaCA.espiral = `CA ${i + 1}`;
-    salidaCA.categoria = "Contenedor adicional";
-    salidaCA.controlId = controlId;
-    salidaCA.caMaq1 = 0;
-    salidaCA.caMaq2 = 0;
-    salidaCA.caMaq3 = 0;
-    salidaCA.caInicio = maquina;
-    salidaCA.caEtapa = maquina;
-    salidaCA.caCerrado = false;
-    movimientos.push(salidaCA);
-    guardados++;
-  }
-
-  if (guardados === 0) return cancelarGuardado("Sin salidas", "Captura al menos una salida con producto válido.", "alerta");
-  const configuracionFinal = { ...configuracionEspirales[maquina] };
-  const cambiosPrecio = [...new Set([...Object.keys(configuracionAnterior), ...Object.keys(configuracionFinal)])]
-    .map(espiral => ({
-      espiral,
-      anterior: configuracionAnterior[espiral] || "",
-      nuevo: configuracionFinal[espiral] || ""
-    }))
-    .filter(item => item.anterior && item.nuevo && item.anterior.toLowerCase() !== item.nuevo.toLowerCase());
-  const infoAnterior = (!Array.isArray(edicion?.info) && edicion?.info) || {};
-  fotosControles[controlId] = {
-    ...infoAnterior,
-    fotos,
-    cambiosPrecio,
-    maquina,
-    fecha,
-    observaciones,
-    configuracionAnterior,
-    configuracionFinal,
-    cerrado: false
-  };
-  controlSalidaEditando = null;
-  guardar();
-  clearTimeout(timerSyncSupabase);
-  const guardadoNube = await guardarEstadoSupabase();
-  if (guardadoNube) {
-    mostrarBarraGuardado("Control guardado en este equipo y en la nube");
-  } else {
-    mostrarBarraGuardado("Control protegido en este equipo. Pendiente de sincronizar");
-    mostrarMensaje(
-      "Control guardado en este equipo",
-      "No se perdió el control. La copia en la nube está pendiente y se volverá a intentar en el próximo guardado.",
-      "alerta"
-    );
-  }
-  mostrarMovimientos("salida");
-}
-
-function mapaMaquinaHTML(maquina, cambios = []) {
-  const cambiados = new Set(cambios.map(item => String(item.espiral)));
-  const grupos = espiralesPorMaquina[maquina] || [];
-  return `<div class="mapa-maquina">
-    ${grupos.map((grupo, indice) => `<section><h4>Contenedor ${indice + 1}</h4><div class="mapa-grid">${grupo.map(espiral => {
-      const producto = (configuracionEspirales[maquina] || {})[espiral] || "-";
-      return `<div class="mapa-celda ${cambiados.has(String(espiral)) ? "cambio" : ""}"><strong>${espiral}</strong><span>${producto}</span></div>`;
-    }).join("")}</div></section>`).join("")}
-  </div>`;
-}
-
-function fotoReferenciaMaquinaHTML(maquina) {
-  const fotos = {
-    "MAQ 1": ["assets/maq1-ref-1.png", "assets/maq1-ref-2.png"],
-    "MAQ 2": ["assets/maq2-ref.png"],
-    "MAQ 3": []
-  }[maquina] || [];
-  if (!fotos.length) return "";
-  return `<div class="referencias-maquina">
-    <h3>Referencia visual ${maquina}</h3>
-    <div>${fotos.map((src, indice) => `<article><img src="${src}" alt="Referencia ${maquina} ${indice + 1}"><span>Foto ${indice + 1}</span></article>`).join("")}</div>
-  </div>`;
-}
-
-function mostrarRevisionMaquina(controlId) {
-  const info = fotosControles[controlId] || {};
-  const cambios = info.cambiosPrecio || [];
-  const maquina = info.maquina || "";
-  const observaciones = info.observaciones || "";
-  const lista = cambios.map(item => `<li><strong>Espiral ${item.espiral}</strong>: cambió de ${item.anterior} a ${item.nuevo}. Revisar precio en la máquina.</li>`).join("");
-  document.getElementById("detalleProducto").innerHTML = `
-    <h2>Revisión final de ${maquina}</h2>
-    <p class="texto-suave">Antes de terminar, confirma que los precios del sistema de la máquina coincidan con los productos nuevos.</p>
-    ${observaciones ? `<div class="nota-control"><h3>Observaciones</h3><p>${observaciones}</p></div>` : ""}
-    <div class="alerta-precio">${lista ? `<ul>${lista}</ul>` : "<p>No hubo cambios de producto por espiral. Aun así revisa que el acomodo físico coincida.</p>"}</div>
-    ${fotoReferenciaMaquinaHTML(maquina)}
-    <h3>Así debe quedar la máquina</h3>
-    ${mapaMaquinaHTML(maquina, cambios)}
-    <button type="button" onclick="cerrarDetalleProducto()">Listo, revisado</button>`;
-  document.getElementById("modalProducto").style.display = "flex";
-}
-
-function mostrarRevisionMaquinaCerrada(controlId, maquina) {
-  const info = fotosControles[controlId] || {};
-  if (!info.maquina) info.maquina = maquina;
-  mostrarRevisionMaquina(controlId);
-}
-
-function verControlSalida(controlId) {
-  const lista = movimientos.filter(mov => String(mov.controlId || mov.id) === String(controlId));
-  const salidas = lista.filter(mov => mov.tipo === "salida");
-  const registroFotos = fotosControles[controlId] || [];
-  const fotos = Array.isArray(registroFotos) ? registroFotos : (registroFotos.fotos || []);
-  const cambios = Array.isArray(registroFotos) ? [] : (registroFotos.cambiosPrecio || []);
-  const maquina = salidas[0]?.maquina || registroFotos.maquina || "";
-  const observaciones = Array.isArray(registroFotos) ? "" : (registroFotos.observaciones || "");
-  const gruposMaquina = espiralesPorMaquina[maquina] || [];
-  const salidasNormales = salidas.filter(mov => mov.categoria !== "Contenedor adicional");
-  const adicionales = salidas.filter(mov => mov.categoria === "Contenedor adicional");
-  const tablaProductosControl = movimientosGrupo => {
-    const filas = movimientosGrupo
-      .slice()
-      .sort((a, b) => Number.parseInt(a.espiral, 10) - Number.parseInt(b.espiral, 10))
-      .map(mov => `<tr><td class="espiral-grande">${mov.espiral || "-"}</td><td>${mov.producto}</td><td class="numero cantidad-grande">${mov.cantidad}</td></tr>`)
-      .join("");
-    return `<table class="tabla tabla-control-detalle"><tr><th>Espiral</th><th>Producto</th><th>Cantidad</th></tr>${filas || `<tr><td colspan="3">Sin productos surtidos.</td></tr>`}</table>`;
-  };
-  const contenedores = gruposMaquina.map((espirales, indice) => {
-    const conjunto = new Set(espirales.map(String));
-    const movimientosGrupo = salidasNormales.filter(mov => conjunto.has(String(mov.espiral)));
-    return `<section class="detalle-contenedor-control">
-      <div class="detalle-contenedor-titulo"><span>${indice + 1}</span><h3>Contenedor ${indice + 1}</h3><strong>${movimientosGrupo.length} productos</strong></div>
-      ${tablaProductosControl(movimientosGrupo)}
-    </section>`;
-  }).join("");
-  const seccionAdicional = adicionales.length ? `<section class="detalle-contenedor-control detalle-adicional">
-    <div class="detalle-contenedor-titulo"><span>+</span><h3>Contenedor adicional</h3><strong>${adicionales.length} productos</strong></div>
-    ${tablaProductosControl(adicionales)}
-  </section>` : "";
-  const galeria = fotos
-    .sort((a, b) => String(a.contenedor).localeCompare(String(b.contenedor), "es", { numeric: true }))
-    .map(foto => `<article class="foto-ver-contenedor"><h4>Contenedor ${foto.contenedor === "AD" ? "adicional" : foto.contenedor}</h4><img src="${foto.datos}" alt="${foto.nombre || "Foto del contenedor"}"><p>${foto.nombre || ""}</p></article>`)
-    .join("");
-  const listaCambios = cambios.map(item => `<li><strong>Espiral ${item.espiral}</strong>: ${item.anterior} → ${item.nuevo}. Revisar precio.</li>`).join("");
-  document.getElementById("detalleProducto").innerHTML = `
-    <div class="encabezado-control-detalle"><div><span>Control de salida</span><h2>${maquina}</h2></div><strong>${salidas[0]?.fecha || ""}</strong></div>
-    ${observaciones ? `<div class="nota-control"><h3>Observaciones</h3><p>${observaciones}</p></div>` : ""}
-    <div class="alerta-precio">${listaCambios ? `<h3>Cambios de precio a revisar</h3><ul>${listaCambios}</ul>` : "<p>No hubo cambios de producto por espiral guardados en este control.</p>"}</div>
-    <div class="detalle-contenedores-grid">${contenedores}${seccionAdicional}</div>
-    <h3 class="titulo-fotos-control">Fotos por contenedor</h3>
-    <div class="galeria-fotos por-contenedor">${galeria || "<p class='texto-suave'>Este control no tiene fotos guardadas.</p>"}</div>`;
-  document.getElementById("modalProducto").style.display = "flex";
-}
-
-document.addEventListener("keydown", event => {
-  const editable = event.target.matches("input, select, textarea");
-  const tabla = event.target.closest?.("table");
-  if (!editable || !tabla || !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
-
-  const controles = [...tabla.querySelectorAll("input, select, textarea")];
-  const actual = controles.indexOf(event.target);
-  if (actual < 0) return;
-
-  let siguiente = actual;
-  if (event.key === "ArrowRight") siguiente = actual + 1;
-  if (event.key === "ArrowLeft") siguiente = actual - 1;
-  if (event.key === "ArrowDown") siguiente = actual + 2;
-  if (event.key === "ArrowUp") siguiente = actual - 2;
-
-  if (controles[siguiente]) {
-    event.preventDefault();
-    controles[siguiente].focus();
-  }
-});
-
-var supabaseDB = null;
-var timerSyncSupabase = null;
-var cargandoDesdeSupabase = false;
-var ultimoEstadoSupabase = "sin-probar";
-var ultimoErrorSupabase = "";
-var canalTiempoRealSupabase = null;
-var clienteSincronizacion = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-var vistaActual = { nombre: "inicio", args: [] };
-var ultimoCambioRemoto = "";
-var ultimaNubeCargada = "";
-
-function supabaseActivo() {
-  return !!(CONFIG.supabaseUrl && CONFIG.supabaseKey && window.supabase);
-}
-
-function clienteSupabase() {
-  if (!supabaseActivo()) return null;
-  if (!supabaseDB) {
-    supabaseDB = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
-  }
-  return supabaseDB;
-}
-
-function estadoCompletoSistema() {
-  return {
-    usuarios,
-    productos,
-    movimientos,
-    mesesCerrados,
-    configuracionEspirales,
-    ajustesSistema,
-    clienteSincronizacion,
-    guardadoEn: new Date().toISOString()
-  };
-}
-
-function indicadorSupabase() {
-  if (!supabaseActivo()) return `<span class="estado-conexion local">Modo local</span>`;
-  if (ultimoEstadoSupabase === "ok") return `<span class="estado-conexion conectado">Base de datos conectada</span>`;
-  if (ultimoEstadoSupabase === "error") return `<span class="estado-conexion error">Base de datos con error</span>`;
-  return `<span class="estado-conexion revisando">Revisando base de datos</span>`;
-}
-
-function detalleConexionSupabase() {
-  if (!window.supabase) return "No cargó la librería de Supabase. Revisa internet o recarga la página.";
-  if (!CONFIG.supabaseUrl || !CONFIG.supabaseKey) return "Falta la URL o la clave pública en config.js.";
-  if (ultimoEstadoSupabase === "error") return ultimoErrorSupabase || "Supabase rechazó la conexión.";
-  const ultima = localStorage.getItem(`${CLAVE}-ultimaSync`) || "Todavía no se ha subido nada en este dispositivo";
-  return `Proyecto: ${CONFIG.supabaseUrl}. Ultima subida: ${ultima}`;
-}
-
-function guardar() {
-  ordenarProductos();
-
-  localStorage.setItem(`${CLAVE}-usuarios`, JSON.stringify(usuarios));
-  localStorage.setItem(`${CLAVE}-productos`, JSON.stringify(productos));
-  localStorage.setItem(`${CLAVE}-movimientos`, JSON.stringify(movimientos));
-  localStorage.setItem(`${CLAVE}-mesesCerrados`, JSON.stringify(mesesCerrados));
-  localStorage.setItem(`${CLAVE}-configuracionEspirales`, JSON.stringify(configuracionEspirales));
-  localStorage.setItem(`${CLAVE}-fotosControles`, JSON.stringify(fotosControles));
-  localStorage.setItem(`${CLAVE}-ajustesSistema`, JSON.stringify(ajustesSistema));
-
-  if (!cargandoDesdeSupabase && guardadoNubeHabilitado) {
-    programarGuardadoSupabase();
-  }
-}
-
-function programarGuardadoSupabase() {
-  if (!supabaseActivo()) return;
-
-  clearTimeout(timerSyncSupabase);
-  timerSyncSupabase = setTimeout(() => {
-    guardarEstadoSupabase();
-  }, 150);
-}
-
-function fechaMs(valor) {
-  const tiempo = Date.parse(valor || "");
-  return Number.isFinite(tiempo) ? tiempo : 0;
-}
-
-async function guardarEstadoSupabase() {
-  const db = clienteSupabase();
-  if (!db) {
-    ultimoEstadoSupabase = "error";
-    ultimoErrorSupabase = "No se cargó la librería de Supabase.";
-    return false;
-  }
-
-  const datos = estadoCompletoSistema();
-
-  const { error } = await db
-    .from("app_estado")
-    .upsert({
-      id: "principal",
-      datos,
-      actualizado_en: new Date().toISOString()
-    });
-
-  if (error) {
-    ultimoEstadoSupabase = "error";
-    ultimoErrorSupabase = error.message;
-    console.warn("No se pudo guardar en Supabase:", error.message);
-    mostrarBarraGuardado(`Guardado solo en este dispositivo. Error nube: ${error.message}`);
-    return false;
-  }
-
-  ultimoEstadoSupabase = "ok";
-  ultimoErrorSupabase = "";
-  const ahora = new Date().toISOString();
-  ultimaNubeCargada = ahora;
-  localStorage.setItem(`${CLAVE}-ultimaSync`, ahora);
-  return true;
-}
-
-function aplicarDatosSupabase(datos) {
-  if (!datos) return false;
-
-  cargandoDesdeSupabase = true;
-
-  usuarios = Array.isArray(datos.usuarios) ? datos.usuarios : usuarios;
-  productos = Array.isArray(datos.productos) ? datos.productos : productos;
-  movimientos = Array.isArray(datos.movimientos) ? datos.movimientos : movimientos;
-  mesesCerrados = Array.isArray(datos.mesesCerrados) ? datos.mesesCerrados : mesesCerrados;
-  configuracionEspirales = datos.configuracionEspirales || configuracionEspirales;
-  fotosControles = datos.fotosControles || fotosControles;
-  ajustesSistema = datos.ajustesSistema || ajustesSistema;
-
-  localStorage.setItem(`${CLAVE}-usuarios`, JSON.stringify(usuarios));
-  localStorage.setItem(`${CLAVE}-productos`, JSON.stringify(productos));
-  localStorage.setItem(`${CLAVE}-movimientos`, JSON.stringify(movimientos));
-  localStorage.setItem(`${CLAVE}-mesesCerrados`, JSON.stringify(mesesCerrados));
-  localStorage.setItem(`${CLAVE}-configuracionEspirales`, JSON.stringify(configuracionEspirales));
-  localStorage.setItem(`${CLAVE}-fotosControles`, JSON.stringify(fotosControles));
-  localStorage.setItem(`${CLAVE}-ajustesSistema`, JSON.stringify(ajustesSistema));
-
-  normalizarDatos();
-  aplicarConfiguracionVisual();
-  cargandoDesdeSupabase = false;
-  return true;
-}
-
-async function cargarEstadoSupabase() {
-  const db = clienteSupabase();
-  if (!db) return false;
-
-  const { data, error } = await db
-    .from("app_estado")
-    .select("datos, actualizado_en")
-    .eq("id", "principal")
-    .maybeSingle();
-
-  if (error) {
-    ultimoEstadoSupabase = "error";
-    ultimoErrorSupabase = error.message;
-    console.warn("No se pudo cargar Supabase:", error.message);
-    return false;
-  }
-
-  if (!data || !data.datos) {
-    ultimoEstadoSupabase = "ok";
-    ultimoErrorSupabase = "";
-    return false;
-  }
-
-  ultimaNubeCargada = data.actualizado_en || new Date().toISOString();
-  return aplicarDatosSupabase(data.datos);
-}
-
-function refrescarVistaActual() {
-  if (!usuarioActual) return;
-  const activo = document.activeElement;
-  if (activo?.matches?.("input, select, textarea")) return;
-  const args = vistaActual.args || [];
-  if (vistaActual.nombre === "inventario") return mostrarInventario(...args);
-  if (vistaActual.nombre === "productos") return mostrarProductos();
-  if (vistaActual.nombre === "movimientos") return mostrarMovimientos(...args);
-  if (vistaActual.nombre === "reportes") return mostrarPanelReportesAnalisis();
-  if (vistaActual.nombre === "cierre") return mostrarCierreMes();
-  if (vistaActual.nombre === "configuracion") return mostrarConfiguracion();
-  if (vistaActual.nombre === "escanear") return mostrarEscanerCompras();
-  return mostrarInicio();
-}
-
-function activarTiempoRealSupabase() {
-  const db = clienteSupabase();
-  if (!db || canalTiempoRealSupabase) return;
-
-  canalTiempoRealSupabase = db
-    .channel("nuez-avellana-app-estado")
-    .on("postgres_changes", {
-      event: "*",
-      schema: "public",
-      table: "app_estado",
-      filter: "id=eq.principal"
-    }, payload => {
-      const datos = payload.new?.datos;
-      if (!datos || datos.clienteSincronizacion === clienteSincronizacion) return;
-      if (datos.guardadoEn && datos.guardadoEn === ultimoCambioRemoto) return;
-      ultimoCambioRemoto = datos.guardadoEn || String(Date.now());
-      aplicarDatosSupabase(datos);
-      refrescarVistaActual();
-      if (!document.activeElement?.matches?.("input, select, textarea")) {
-        mostrarBarraGuardado("Datos actualizados desde otro dispositivo");
-      }
-    })
-    .subscribe(status => {
-      if (status === "SUBSCRIBED") {
-        ultimoEstadoSupabase = "ok";
-        if (usuarioActual) refrescarVistaActual();
-      }
-    });
-}
-
-async function probarSupabaseManual() {
-  const ok = await guardarEstadoSupabase();
-  if (ok) {
-    const db = clienteSupabase();
-    const { data, error } = await db
-      .from("app_estado")
-      .select("actualizado_en")
-      .eq("id", "principal")
-      .maybeSingle();
-    if (error) {
-      mostrarMensaje("Sube pero no puede leer", error.message, "alerta");
-      return;
-    }
-    mostrarMensaje("Base de datos conectada", `Supabase recibió y leyó la información correctamente. Actualizado: ${data?.actualizado_en || "-"}`);
-    if (usuarioActual) mostrarInicio();
-    return;
-  }
-
-  mostrarMensaje("No se pudo conectar", ultimoErrorSupabase || "Supabase no respondió. Revisa los permisos de la tabla app_estado.");
-  if (usuarioActual) mostrarInicio();
 }
 
 async function iniciarSesion() {
-  const usuario = document.getElementById("usuario").value.trim();
+  const usuario = document.getElementById("usuario").value;
   const clave = document.getElementById("clave").value.trim();
-  const mensaje = document.getElementById("mensaje");
-
-  mensaje.textContent = "Conectando con la base de datos...";
-
-  await cargarEstadoSupabase();
-
-  const existe = usuarios.find(item => item.usuario === usuario && item.clave === clave);
-
-  if (!existe) {
-    mensaje.textContent = "Usuario o contraseña incorrectos";
+  if (!usuario || !clave) {
+    document.getElementById("mensaje").textContent = "Selecciona el usuario y escribe la contraseña";
     return;
   }
+  try {
+    const sesion = await supabaseRpc("agenda_iniciar_sesion", { p_usuario: usuario, p_clave: clave });
+    tokenSesion = sesion.token;
+    usuarioActual = { usuario: sesion.usuario, nombre: sesion.nombre, rol: sesion.rol };
+  } catch (error) {
+    console.warn("Inicio de sesión rechazado:", error);
+    document.getElementById("mensaje").textContent = "Usuario o contraseña incorrectos";
+    return;
+  }
+  const recordar = !!document.getElementById("recordarme")?.checked;
+  localStorage.removeItem(`${CLAVE}-sesion`);
+  if (recordar) {
+    localStorage.setItem(`${CLAVE}-token`, tokenSesion);
+    sessionStorage.removeItem(`${CLAVE}-token`);
+  } else {
+    localStorage.removeItem(`${CLAVE}-token`);
+    sessionStorage.removeItem(`${CLAVE}-token`);
+  }
+  remotoListo = true;
+  if (!await cargarRemoto()) return;
+  mostrarSistemaDesdeSesion(recordar);
+}
 
-  usuarioActual = existe;
-  guardadoNubeHabilitado = true;
-  mensaje.textContent = "";
-
+function mostrarSistemaDesdeSesion(recordada = false) {
+  document.body.classList.toggle("modo-solo-ver", !puedeEditar());
+  document.getElementById("rolActual").textContent = usuarioActual.nombre;
   document.getElementById("pantallaLogin").style.display = "none";
-  document.getElementById("sistema").style.display = "block";
-
-  aplicarPermisosMenu();
-  // La sincronizacion queda en modo manual: otros cambios se ven al recargar.
-
-  if (esLimitado()) mostrarMovimientos("ajustes");
-  else mostrarInicio();
-
-  mostrarBienvenidaSesion();
-  guardarEstadoSupabase();
+  document.getElementById("sistema").style.display = "flex";
+  document.getElementById("recordarme").checked = recordada;
+  if (screen.orientation?.lock) screen.orientation.lock("portrait").catch(() => {});
+  mostrarInicio();
 }
 
-const mostrarInicioBase = mostrarInicio;
-function revisarAlertaPendienteTrasAnalizar(nombre, args = []) {
-  if (esLimitado()) return;
-  if (!alertaPendienteTrasAnalizar) return;
-  const sigueEnEntrada = nombre === "movimientos" && args[0] === "entrada";
-  if (sigueEnEntrada) return;
-  alertaPendienteTrasAnalizar = false;
+function cerrarSesion() {
+  if (tokenSesion) supabaseRpc("agenda_cerrar_sesion", { p_token: tokenSesion }).catch(() => {});
+  usuarioActual = null;
+  tokenSesion = "";
+  versionRemota = null;
+  remotoListo = false;
+  localStorage.removeItem(`${CLAVE}-sesion`);
+  localStorage.removeItem(`${CLAVE}-token`);
+  sessionStorage.removeItem(`${CLAVE}-token`);
+  document.body.classList.remove("modo-solo-ver");
+  document.getElementById("pantallaLogin").style.display = "grid";
+  document.getElementById("sistema").style.display = "none";
+  document.getElementById("usuario").value = "";
+  document.getElementById("clave").value = "";
+  document.getElementById("recordarme").checked = false;
+  usuarioSeleccionado();
+}
+
+function puedeEditar() {
+  return usuarioActual?.rol === "editora";
+}
+
+function exigirEdicion() {
+  if (puedeEditar()) return true;
+  mostrarMensaje("Solo lectura", "Este usuario solo puede ver la agenda.", "alerta");
+  return false;
+}
+
+function mostrarMensaje(titulo, texto = "", tipo = "ok") {
+  const modal = document.getElementById("mensajeGuardado");
+  document.getElementById("tituloMensaje").textContent = titulo;
+  document.getElementById("textoMensaje").textContent = texto;
+  modal.className = `modal ${tipo}`;
+  modal.style.display = "grid";
+  reproducirSonido(tipo === "ok" ? "success" : "danger", tipo === "ok" ? 0.5 : 0.45);
+  setTimeout(() => modal.style.display = "none", tipo === "ok" ? 2200 : 4200);
+}
+
+function activarMenu(seccion) {
+  document.querySelectorAll(".sidebar button[data-seccion]").forEach(btn => {
+    btn.classList.toggle("nav-activo", btn.dataset.seccion === seccion);
+  });
+}
+
+function formatoFecha(fecha) {
+  if (!fecha) return "-";
+  const [y, m, d] = fecha.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function dinero(valor) {
+  const montoPesos = Number(valor || 0);
+  return `$${montoPesos.toLocaleString("es-MX", { minimumFractionDigits: 0, maximumFractionDigits: 2 })} MXN`;
+}
+
+function valorParaEntrada(valorEnPesos) {
+  return Number(valorEnPesos || 0);
+}
+
+function valorDesdeEntrada(valorMostrado) {
+  return Number(valorMostrado || 0);
+}
+
+function simboloMoneda() {
+  return "$";
+}
+
+function citasDeFecha(fecha) {
+  return citas.filter(cita => cita.fecha === fecha).sort((a, b) => a.hora.localeCompare(b.hora));
+}
+
+function citasActivas(fecha = null) {
+  return citas.filter(cita => cita.estado !== "Cancelada" && (!fecha || cita.fecha === fecha));
+}
+
+function citasCanceladas() {
+  return citas.filter(cita => cita.estado === "Cancelada").sort((a, b) => String(b.canceladaEn || "").localeCompare(String(a.canceladaEn || "")));
+}
+
+function servicioPorNombre(nombre) {
+  return servicios.find(servicio => servicio.nombre === nombre) || servicios[0];
+}
+
+function resumenDia() {
+  const delDia = citasDeFecha(hoy());
+  const activas = delDia.filter(cita => cita.estado !== "Cancelada");
+  const canceladasHoy = citasCanceladas().filter(cita => cita.canceladaEn?.slice(0, 10) === hoy());
+  const pendientes = citas.filter(cita => cita.estado === "Pendiente" && cita.fecha >= hoy());
+  const ingresos = activas.reduce((suma, cita) => suma + Number(cita.precio || 0), 0);
+  return { activas, canceladasHoy, pendientes, ingresos };
+}
+
+function kpi(titulo, valor, texto, icono, clase = "", accion = "") {
+  return `<article class="kpi ${clase} ${accion ? "kpi-action" : ""}" ${accion ? `role="button" tabindex="0" onclick="${accion}" onkeydown="if(event.key==='Enter')${accion}"` : ""}>
+    <div><span>${titulo}</span><strong>${valor}</strong><p>${texto}</p></div>
+    <i><img src="assets/icons/${icono}.png" alt=""></i>
+  </article>`;
+}
+
+function mostrarInicio(fecha = hoy()) {
+  activarMenu("inicio");
+  const resumen = resumenDia();
+  const canceladas = citasCanceladas().slice(0, 5);
+  const citasDia = citasDeFecha(fecha);
+
+  document.getElementById("contenido").innerHTML = `
+    <div class="kpi-grid">
+      ${kpi("Turnos de Hoy", resumen.activas.length, "Reservas para hoy", "turnos-hoy", "morado")}
+      ${kpi("Cancelaciones Hoy", resumen.canceladasHoy.length, "Cancelaciones realizadas hoy", "cancelaciones-hoy", "dorado")}
+      ${kpi("Turnos pendientes", resumen.pendientes.length, "Total de próximos turnos", "turnos-pendientes", "morado")}
+      ${kpi("Ingresos del día", dinero(resumen.ingresos), "Pagos estimados por revisar", "ingresos-dia", "verde")}
+    </div>
+
+    <section class="panel soft">
+      <h2>Últimas cancelaciones</h2>
+      <p>Listado de reservas canceladas recientemente. Puedes contactar rápidamente a las clientas para reprogramar.</p>
+      <table>
+        <thead><tr><th>Cliente</th><th>Contacto</th><th>Servicio</th><th>Personal</th><th>Fecha/Hora Original</th><th>Cancelado</th></tr></thead>
+        <tbody>${canceladas.map(cita => `<tr><td>${cita.cliente}</td><td>${cita.telefono || "-"}</td><td>${cita.servicio}</td><td>${cita.personal || "Maestra"}</td><td>${formatoFecha(cita.fecha)} ${cita.hora}</td><td>${cita.canceladaEn || "-"}</td></tr>`).join("") || `<tr><td colspan="6" class="vacio">No hay cancelaciones recientes</td></tr>`}</tbody>
+      </table>
+    </section>
+
+    <section class="agenda-grid">
+      <article class="panel agenda-dia">
+        <div class="section-head">
+          <button type="button" onclick="cambiarDia('${fecha}', -1)">‹</button>
+          <h2>${formatoFecha(fecha)}</h2>
+          <button type="button" onclick="cambiarDia('${fecha}', 1)">›</button>
+          <input type="date" value="${fecha}" onchange="mostrarInicio(this.value)">
+        </div>
+        ${formularioCita(fecha)}
+        <div class="timeline">${pintarCitas(citasDia)}</div>
+      </article>
+
+      <article class="panel fotos-panel">
+        <h2>Servicios destacados</h2>
+        <div class="foto-grid">
+          ${servicios.map(servicio => `<button type="button" class="foto-card ${servicio.color}" onclick="prepararServicio('${servicio.nombre}')"><span>${servicio.nombre}</span><small>${servicio.duracion} min · ${dinero(servicio.precio)}</small></button>`).join("")}
+        </div>
+      </article>
+    </section>`;
+}
+
+function formularioCita(fecha) {
+  if (!puedeEditar()) return `<p class="solo-ver">Modo solo lectura: puedes revisar las citas, pero no modificarlas.</p>`;
+  return `<form class="form-grid" onsubmit="guardarCita(event)">
+    <input type="date" id="citaFecha" value="${fecha}">
+    <input type="time" id="citaHora" value="${horaActual()}">
+    <input id="citaCliente" placeholder="Cliente">
+    <input id="citaTelefono" placeholder="Teléfono">
+    <select id="citaServicio" onchange="actualizarPrecioServicio()">${servicios.map(s => `<option>${s.nombre}</option>`).join("")}</select>
+    <input id="citaPrecio" type="number" min="0" placeholder="Precio" value="${servicios[0]?.precio || 0}">
+    <select id="citaEstado"><option>Pendiente</option><option>Confirmada</option><option>Atendida</option></select>
+    <button type="submit">Agregar cita</button>
+  </form>`;
+}
+
+function pintarCitas(lista) {
+  return lista.map(cita => `<article class="cita ${cita.estado.toLowerCase()}">
+    <time>${cita.hora}</time>
+    <div>
+      <strong>${cita.cliente}</strong>
+      <span>${cita.servicio} · ${cita.telefono || "Sin teléfono"}</span>
+      <small>${cita.estado} · ${dinero(cita.precio)}</small>
+    </div>
+    <div class="acciones-cita">
+      ${puedeEditar() && cita.estado !== "Cancelada" ? `<button type="button" onclick="marcarAtendida(${cita.id})">Atendida</button><button type="button" onclick="cancelarCita(${cita.id})">Cancelar</button><button type="button" onclick="eliminarCita(${cita.id})">Eliminar</button>` : ""}
+    </div>
+  </article>`).join("") || `<div class="vacio agenda-vacia">No hay citas para este día.</div>`;
+}
+
+function cambiarDia(fecha, dias) {
+  const base = new Date(`${fecha}T00:00:00`);
+  base.setDate(base.getDate() + dias);
+  mostrarInicio(`${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-${String(base.getDate()).padStart(2, "0")}`);
+}
+
+function prepararServicio(nombre) {
+  mostrarInicio();
   setTimeout(() => {
-    colaAlertasInventario = alertasInventarioActuales();
-    mostrarSiguienteAlertaInventario();
-  }, 350);
+    const select = document.getElementById("citaServicio");
+    if (!select) return;
+    select.value = nombre;
+    actualizarPrecioServicio();
+    document.getElementById("citaCliente")?.focus();
+  }, 20);
 }
 
-mostrarInicio = function(...args) {
-  vistaActual = { nombre: "inicio", args };
-  const resultado = mostrarInicioBase.apply(this, args);
-  revisarAlertaPendienteTrasAnalizar("inicio", args);
-  return resultado;
-};
+function actualizarPrecioServicio() {
+  const servicio = servicioPorNombre(document.getElementById("citaServicio").value);
+  document.getElementById("citaPrecio").value = servicio.precio || 0;
+}
 
-const mostrarInventarioBase = mostrarInventario;
-mostrarInventario = function(...args) {
-  vistaActual = { nombre: "inventario", args };
-  const resultado = mostrarInventarioBase.apply(this, args);
-  revisarAlertaPendienteTrasAnalizar("inventario", args);
-  return resultado;
-};
+function guardarCita(event) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  const cita = {
+    id: idNuevo(),
+    fecha: document.getElementById("citaFecha").value,
+    hora: document.getElementById("citaHora").value,
+    cliente: document.getElementById("citaCliente").value.trim(),
+    telefono: document.getElementById("citaTelefono").value.trim(),
+    servicio: document.getElementById("citaServicio").value,
+    precio: Number(document.getElementById("citaPrecio").value || 0),
+    estado: document.getElementById("citaEstado").value,
+    personal: "Maestra"
+  };
+  if (!cita.fecha || !cita.hora || !cita.cliente) return mostrarMensaje("Faltan datos", "Agrega fecha, hora y cliente.", "alerta");
+  if (bloqueos.some(b => b.fecha === cita.fecha && b.hora === cita.hora)) return mostrarMensaje("Horario bloqueado", "Ese horario no está disponible.", "alerta");
+  citas.push(cita);
+  guardar();
+  mostrarMensaje("Cita guardada", "La reserva quedó registrada.");
+  mostrarInicio(cita.fecha);
+}
 
-const mostrarProductosBase = mostrarProductos;
-mostrarProductos = function(...args) {
-  vistaActual = { nombre: "productos", args };
-  const resultado = mostrarProductosBase.apply(this, args);
-  revisarAlertaPendienteTrasAnalizar("productos", args);
-  return resultado;
-};
+function marcarAtendida(id) {
+  if (!exigirEdicion()) return;
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return;
+  cita.estado = "Atendida";
+  cita.servicioRealizadoEn = new Date().toISOString();
+  guardar();
+  mostrarInicio(cita.fecha || hoy());
+  if (saldoCita(cita) <= 0) mostrarTicketPago(cita.id);
+  else mostrarMensaje("Servicio realizado", "La cita seguirá en rojo hasta completar el pago.", "alerta");
+}
 
-const mostrarMovimientosBase = mostrarMovimientos;
-mostrarMovimientos = function(...args) {
-  vistaActual = { nombre: "movimientos", args };
-  const resultado = mostrarMovimientosBase.apply(this, args);
-  revisarAlertaPendienteTrasAnalizar("movimientos", args);
-  return resultado;
-};
+function cancelarCita(id) {
+  if (!exigirEdicion()) return;
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return;
+  cita.estado = "Cancelada";
+  cita.canceladaEn = `${hoy()} ${horaActual()}`;
+  guardar();
+  mostrarMensaje("Cita cancelada", "Quedo en el historial de cancelaciones.");
+  mostrarInicio(cita.fecha);
+}
 
-if (typeof mostrarPanelReportesAnalisis === "function") {
-  const mostrarPanelReportesAnalisisBase = mostrarPanelReportesAnalisis;
-  mostrarPanelReportesAnalisis = function(...args) {
-    vistaActual = { nombre: "reportes", args };
-    const resultado = mostrarPanelReportesAnalisisBase.apply(this, args);
-    revisarAlertaPendienteTrasAnalizar("reportes", args);
-    return resultado;
+function eliminarCita(id) {
+  if (!exigirEdicion()) return;
+  const cita = citas.find(item => item.id === id);
+  citas = citas.filter(item => item.id !== id);
+  guardar();
+  mostrarInicio(cita?.fecha || hoy());
+}
+
+function mostrarEstadisticas(tipoPeriodo = "mes", valor = hoy().slice(0, 7)) {
+  activarMenu("estadisticas");
+  const datos = calcularEstadisticas(tipoPeriodo, valor);
+  const porServicio = datos.porServicio.map(item => `<tr><td>${item.nombre}</td><td>${item.total}</td><td>${dinero(item.dinero)}</td></tr>`).join("");
+  const porPersonal = datos.porPersonal.map(item => `<tr><td>${item.nombre}</td><td>${item.total}</td><td>${dinero(item.dinero)}</td></tr>`).join("");
+  document.getElementById("contenido").innerHTML = `
+    <section class="panel stats-filter">
+      <div class="stats-title-row"><div><h2>Estadísticas por periodo</h2><p>Consulta el trabajo realizado y los ingresos estimados.</p></div><div class="stats-actions"><button type="button" onclick="exportarEstadisticasExcel()">Exportar a Excel</button><button class="primary-action" type="button" onclick="imprimirEstadisticas()">Imprimir reporte</button></div></div>
+      <div class="stats-picker">
+        <div><label>Periodo</label><select id="statsTipo" onchange="cambiarFiltroEstadisticas()"><option value="mes" ${tipoPeriodo === "mes" ? "selected" : ""}>Mes completo</option><option value="dia" ${tipoPeriodo === "dia" ? "selected" : ""}>Día exacto</option></select></div>
+        <div><label>${tipoPeriodo === "dia" ? "Día" : "Mes"}</label><input id="statsFecha" type="${tipoPeriodo === "dia" ? "date" : "month"}" value="${valor}" onchange="cambiarFiltroEstadisticas()"></div>
+      </div>
+    </section>
+    <div class="kpi-grid">
+      ${kpi("Citas activas", datos.activas.length, "Reservas no canceladas", "citas-activas")}
+      ${kpi("Canceladas", datos.canceladas.length, "Historial del periodo", "canceladas", "dorado")}
+      ${kpi("Ingresos estimados", dinero(datos.ingresos), "Según el precio de las citas", "ingresos-estimados", "verde")}
+      ${kpi("Personal activo", datos.porPersonal.filter(item => item.total > 0).length, "Con trabajo en el periodo", "personal")}
+    </div>
+    <section class="stats-charts">
+      ${graficaPastel3D("Servicios más vendidos", datos.porServicio.map(item => ({ nombre: item.nombre, valor: item.total })), "citas")}
+      ${graficaPastel3D("Servicios que generaron más ingresos", datos.porServicio.map(item => ({ nombre: item.nombre, valor: item.dinero })), "dinero")}
+    </section>
+    <section class="stats-charts">
+      ${graficaPastel3D("Personal con más citas", datos.porPersonal.map(item => ({ nombre: item.nombre, valor: item.total })), "citas")}
+      ${graficaPastel3D("Personal que generó más ingresos", datos.porPersonal.map(item => ({ nombre: item.nombre, valor: item.dinero })), "dinero")}
+    </section>
+    <section class="stats-tables">
+      <article class="panel"><h2>Estadísticas por servicio</h2><table><thead><tr><th>Servicio</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${porServicio || `<tr><td colspan="3" class="vacio">No hay datos en este periodo.</td></tr>`}</tbody></table></article>
+      <article class="panel"><h2>Estadísticas por personal</h2><table><thead><tr><th>Personal</th><th>Citas realizadas</th><th>Ingresos generados</th></tr></thead><tbody>${porPersonal || `<tr><td colspan="3" class="vacio">No hay datos en este periodo.</td></tr>`}</tbody></table></article>
+    </section>`;
+}
+
+function calcularEstadisticas(tipoPeriodo, valor) {
+  const activas = citasActivas().filter(cita => citaEnPeriodo(cita, tipoPeriodo, valor));
+  const canceladas = citasCanceladas().filter(cita => citaEnPeriodo(cita, tipoPeriodo, valor));
+  const ingresos = activas.reduce((suma, cita) => suma + Number(cita.precio || 0), 0);
+  const nombresServicios = [...new Set([...servicios.map(item => item.nombre), ...activas.flatMap(cita => detallesServiciosCita(cita).map(item => item.nombre))])];
+  const nombresPersonal = [...new Set([...personal.map(item => item.nombre), ...activas.map(item => item.personal || "Sin asignar")])];
+  const resumir = (nombres, propiedad) => nombres.map(nombre => {
+    if (propiedad === "servicio") {
+      const lista = activas.filter(cita => detallesServiciosCita(cita).some(item => item.nombre === nombre));
+      const dineroServicio = lista.reduce((suma, cita) => {
+        const detalles = detallesServiciosCita(cita);
+        const subtotal = detalles.reduce((total, item) => total + Number(item.precio || 0), 0) || 1;
+        const precioServicio = detalles.filter(item => item.nombre === nombre).reduce((total, item) => total + Number(item.precio || 0), 0);
+        return suma + Number(cita.precio || 0) * (precioServicio / subtotal);
+      }, 0);
+      return { nombre, total: lista.length, dinero: dineroServicio };
+    }
+    const lista = activas.filter(cita => (cita[propiedad] || "Sin asignar") === nombre);
+    return { nombre, total: lista.length, dinero: lista.reduce((suma, cita) => suma + Number(cita.precio || 0), 0) };
+  }).sort((a, b) => b.total - a.total || b.dinero - a.dinero);
+  return {
+    activas,
+    canceladas,
+    ingresos,
+    porServicio: resumir(nombresServicios, "servicio"),
+    porPersonal: resumir(nombresPersonal, "personal")
   };
 }
 
-const mostrarCierreMesBase = mostrarCierreMes;
-mostrarCierreMes = function(...args) {
-  vistaActual = { nombre: "cierre", args };
-  const resultado = mostrarCierreMesBase.apply(this, args);
-  revisarAlertaPendienteTrasAnalizar("cierre", args);
-  return resultado;
-};
-
-const mostrarConfiguracionBase = mostrarConfiguracion;
-mostrarConfiguracion = function(...args) {
-  vistaActual = { nombre: "configuracion", args };
-  const resultado = mostrarConfiguracionBase.apply(this, args);
-  revisarAlertaPendienteTrasAnalizar("configuracion", args);
-  return resultado;
-};
-
-async function cargarNubeYRefrescarVista() {
-  if (!usuarioActual) return;
-  const cargo = await cargarEstadoSupabase();
-  if (cargo) refrescarVistaActual();
+function diasDelMes(mes) {
+  const [anio, numeroMes] = mes.split("-").map(Number);
+  return new Date(anio, numeroMes, 0).getDate();
 }
 
-document.addEventListener("click", (evento) => {
-  const botonMenu = evento.target.closest?.(".sidebar button");
-  if (botonMenu && botonMenu.dataset.menu !== "escanear") detenerCamaraEscaner();
-});
+function metaMensual(mes) {
+  return Math.max(0, Number(configuracion.metasMensuales?.[mes] || 0));
+}
 
-window.addEventListener("pagehide", detenerCamaraEscaner);
+function mesAnterior(mes) {
+  const [anio, numeroMes] = mes.split("-").map(Number);
+  const fecha = new Date(anio, numeroMes - 2, 1);
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+}
 
-window.addEventListener("online", () => {
-  cargarNubeYRefrescarVista();
+function saldoArrastradoAntesDe(mes) {
+  const metas = configuracion.metasMensuales || {};
+  const meses = [];
+  let cursor = mesAnterior(mes);
+  while (metaMensual(cursor) > 0) {
+    meses.unshift(cursor);
+    cursor = mesAnterior(cursor);
+  }
+  return meses.reduce((saldo, mesCalculado) => {
+    const ventasMes = calcularEstadisticas("mes", mesCalculado).ingresos;
+    return saldo + ventasMes - metaMensual(mesCalculado);
+  }, 0);
+}
+
+function datosMetaMensual(mes) {
+  const estadisticas = calcularEstadisticas("mes", mes);
+  const meta = metaMensual(mes);
+  const ventas = estadisticas.ingresos;
+  const faltante = Math.max(0, meta - ventas);
+  const saldoAnterior = saldoArrastradoAntesDe(mes);
+  const pendienteAnterior = Math.max(0, -saldoAnterior);
+  const creditoAnterior = Math.max(0, saldoAnterior);
+  const objetivoAcumulado = meta + pendienteAnterior;
+  const saldoAcumulado = saldoAnterior + ventas - meta;
+  const faltanteAcumulado = Math.max(0, -saldoAcumulado);
+  const diasMes = diasDelMes(mes);
+  const hoyMes = hoy().slice(0, 7);
+  const esMesActual = mes === hoyMes;
+  const esMesFuturo = mes > hoyMes;
+  const diasRestantes = esMesActual ? Math.max(1, diasMes - Number(hoy().slice(8, 10)) + 1) : (esMesFuturo ? diasMes : 0);
+  const porcentaje = objetivoAcumulado ? Math.min(100, (ventas + creditoAnterior) / objetivoAcumulado * 100) : 0;
+  const diasTranscurridos = esMesActual ? Number(hoy().slice(8, 10)) : (mes < hoyMes ? diasMes : 0);
+  const fechaCorte = mes < hoyMes ? `${mes}-${String(diasMes).padStart(2, "0")}` : hoy();
+  const ventasHastaHoy = esMesFuturo ? 0 : estadisticas.activas
+    .filter(cita => cita.fecha <= fechaCorte)
+    .reduce((suma, cita) => suma + Number(cita.precio || 0), 0);
+  const esperadoHoy = objetivoAcumulado && diasTranscurridos ? objetivoAcumulado * diasTranscurridos / diasMes : 0;
+  const proyeccion = diasTranscurridos ? ventasHastaHoy / diasTranscurridos * diasMes : 0;
+  const estadoRitmo = !meta ? "sin-meta" : saldoAcumulado >= 0 ? (ventas >= meta ? "superada" : "con-credito") : mes < hoyMes ? "cerrada" : esMesFuturo ? "planeada" : ventasHastaHoy + creditoAnterior >= esperadoHoy ? "en-ruta" : "atencion";
+  const liderVentas = estadisticas.porServicio.slice().sort((a, b) => b.dinero - a.dinero || b.total - a.total)[0] || null;
+  const liderCitas = estadisticas.porServicio[0] || null;
+  return { meta, ventas, faltante, saldoAnterior, pendienteAnterior, creditoAnterior, objetivoAcumulado, saldoAcumulado, faltanteAcumulado, porcentaje, diasMes, diasRestantes, diasTranscurridos, ventasHastaHoy, esperadoHoy, proyeccion, estadoRitmo, diarioPlaneado: objetivoAcumulado ? objetivoAcumulado / diasMes : 0, diarioNecesario: diasRestantes ? faltanteAcumulado / diasRestantes : faltanteAcumulado, liderVentas, liderCitas, citas: estadisticas.activas.length };
+}
+
+function mostrarMetas(mes = hoy().slice(0, 7)) {
+  activarMenu("metas");
+  const datos = datosMetaMensual(mes);
+  const hayMeta = datos.meta > 0;
+  const nombre = nombreMes(`${mes}-01`);
+  const avance = Math.round(datos.porcentaje);
+  const mensajeRitmo = !hayMeta
+    ? "Define una meta para ver el plan diario de este mes."
+    : datos.faltante <= 0
+      ? "La meta ya fue alcanzada. Todo lo adicional será ganancia sobre el objetivo."
+      : datos.diasRestantes
+        ? `Faltan ${datos.diasRestantes} día${datos.diasRestantes === 1 ? "" : "s"} para cerrar el mes.`
+        : "Este mes ya terminó; puedes revisar el resultado final.";
+  const aporteLider = datos.liderVentas && datos.ventas ? Math.round(datos.liderVentas.dinero / datos.ventas * 100) : 0;
+  const estadoRitmo = {
+    "sin-meta": { titulo: "Define tu punto de partida", texto: "Escribe una meta clara y la agenda hará el cálculo diario por ti." },
+    "planeada": { titulo: "Meta lista para empezar", texto: "Cuando inicie el mes, el termómetro mostrará tu ritmo real." },
+    "en-ruta": { titulo: "Vas en buen ritmo", texto: "Tus ventas hasta hoy están al nivel que necesitas para cumplir la meta." },
+    "atencion": { titulo: "Hay que recuperar ritmo", texto: "No es una alarma: significa que conviene impulsar citas o servicios esta semana." },
+    "superada": { titulo: "Meta superada", texto: "Ya alcanzaste el objetivo. Cada venta adicional es crecimiento sobre tu plan." },
+    "con-credito": { titulo: "El saldo a favor te respalda", texto: "La venta real del mes aún no llega a su meta, pero el saldo acumulado positivo cubre la diferencia." },
+    "cerrada": { titulo: "Mes cerrado", texto: "Este es el resultado final del mes seleccionado." }
+  }[datos.estadoRitmo];
+  document.getElementById("contenido").innerHTML = `
+    <section class="meta-hero">
+      <div class="meta-hero-copy"><span class="meta-eyebrow">OBJETIVO DE VENTAS</span><h1>Meta de ${nombre}</h1><p>${mensajeRitmo}</p></div>
+      <form class="meta-form" onsubmit="guardarMetaMensual(event)">
+        <label class="meta-field"><span>Mes que vas a medir</span><input id="metaMes" type="month" value="${mes}" onchange="mostrarMetas(this.value)"></label>
+        <label class="meta-field meta-field-money"><span>¿Cuánto quieres vender?</span><div class="meta-amount"><b>$</b><input id="metaMonto" type="number" min="0" step="100" value="${hayMeta ? datos.meta : ""}" placeholder="100000" ${puedeEditar() ? "" : "readonly"}></div><small>Ejemplo: 100,000 pesos</small></label>
+        ${puedeEditar() ? `<button class="primary-action" type="submit">Guardar meta</button>` : ""}
+      </form>
+    </section>
+    <section class="meta-progress-panel">
+      <div class="meta-progress-layout"><div class="meta-ring ${datos.estadoRitmo}" style="--avance:${datos.porcentaje}%"><div><b>${avance}%</b><span>acumulado</span></div></div><div class="meta-progress-copy"><div class="meta-progress-head"><div><span>VENTAS REALES DE ${nombre.toUpperCase()}</span><strong>${dinero(datos.ventas)}</strong></div><b>${estadoRitmo.titulo}</b></div><div class="meta-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance}"><span style="width:${datos.porcentaje}%"></span></div><div class="meta-progress-footer"><span>${datos.creditoAnterior ? `Objetivo con crédito: ${dinero(Math.max(0, datos.meta - datos.creditoAnterior))}` : `Objetivo acumulado: ${hayMeta ? dinero(datos.objetivoAcumulado) : "una meta por definir"}`}</span><strong>${datos.faltanteAcumulado > 0 && hayMeta ? `Faltan ${dinero(datos.faltanteAcumulado)}` : hayMeta ? `Saldo a favor ${dinero(datos.saldoAcumulado)}` : "Sin meta aún"}</strong></div><p class="meta-rhythm-text">${estadoRitmo.texto}</p></div></div>
+    </section>
+    ${hayMeta ? `<section class="meta-balance-grid"><article><span>META PROPIA DEL MES</span><strong>${dinero(datos.meta)}</strong><small>La venta que quieres lograr en ${nombre}.</small></article><article class="${datos.pendienteAnterior ? "pending" : datos.creditoAnterior ? "credit" : "neutral"}"><span>${datos.pendienteAnterior ? "PENDIENTE DE MESES ANTERIORES" : datos.creditoAnterior ? "SALDO A FAVOR ANTERIOR" : "SALDO ARRASTRADO"}</span><strong>${datos.pendienteAnterior ? `+${dinero(datos.pendienteAnterior)}` : datos.creditoAnterior ? `-${dinero(datos.creditoAnterior)}` : "$0 MXN"}</strong><small>${datos.pendienteAnterior ? "Se suma al objetivo, no borra la meta de este mes." : datos.creditoAnterior ? "Puede cubrir parte del objetivo acumulado, sin cambiar la venta real del mes." : "No hay pendiente ni crédito previo."}</small></article><article class="total"><span>${datos.creditoAnterior ? "OBJETIVO DESPUÉS DEL CRÉDITO" : "OBJETIVO ACUMULADO"}</span><strong>${dinero(datos.creditoAnterior ? Math.max(0, datos.meta - datos.creditoAnterior) : datos.objetivoAcumulado)}</strong><small>${datos.pendienteAnterior ? "Meta propia + pendiente anterior." : datos.creditoAnterior ? "La venta real del mes seguirá mostrándose por separado." : "Es igual a tu meta propia este mes."}</small></article></section>` : ""}
+    <section class="meta-cards">
+      <article class="meta-card goal"><span>Meta diaria planeada</span><strong>${hayMeta ? dinero(datos.diarioPlaneado) : "-"}</strong><p>Promedio necesario por cada día del mes.</p></article>
+      <article class="meta-card pace"><span>Necesitas desde hoy</span><strong>${hayMeta && datos.faltanteAcumulado > 0 ? dinero(datos.diarioNecesario) : hayMeta ? "$0 MXN" : "-"}</strong><p>${datos.diasRestantes ? "Por día para cumplir el objetivo acumulado." : "Resultado del periodo seleccionado."}</p></article>
+      <article class="meta-card appointments"><span>Si mantienes este ritmo</span><strong>${hayMeta && datos.diasTranscurridos ? dinero(datos.proyeccion) : "-"}</strong><p>${datos.diasTranscurridos ? `Proyección de cierre · ${datos.citas} citas activas en ${nombre}.` : `Hay ${datos.citas} citas activas programadas en ${nombre}.`}</p></article>
+    </section>
+    <section class="meta-insights">
+      <article class="panel meta-leader"><span class="meta-kicker">SERVICIO DESTACADO</span><h2>${datos.liderVentas ? escaparTexto(datos.liderVentas.nombre) : "Aún sin ventas"}</h2><p>${datos.liderVentas ? `${dinero(datos.liderVentas.dinero)} en ventas · ${aporteLider}% del total mensual.` : "Al registrar citas aparecerá el servicio con más ventas."}</p>${datos.liderVentas ? `<div class="leader-line"><b>${datos.liderVentas.total}</b><span>cita${datos.liderVentas.total === 1 ? "" : "s"} registradas</span></div>` : ""}</article>
+      <article class="panel meta-leader secondary"><span class="meta-kicker">MÁS SOLICITADO</span><h2>${datos.liderCitas ? escaparTexto(datos.liderCitas.nombre) : "Aún sin citas"}</h2><p>${datos.liderCitas ? `${datos.liderCitas.total} cita${datos.liderCitas.total === 1 ? "" : "s"} · ${dinero(datos.liderCitas.dinero)} en ventas.` : "Aquí verás cuál es el favorito de tus clientas."}</p></article>
+    </section>
+    <section class="meta-scenarios">
+      <article class="meta-scenario ${datos.estadoRitmo === "atencion" ? "active" : ""}"><span>SI NO ALCANZAS LA META</span><h2>No significa que fallaste</h2><p>${hayMeta && datos.faltanteAcumulado > 0 ? `Hoy faltan ${dinero(datos.faltanteAcumulado)} en el objetivo acumulado. Si el mes termina así, quedará visible como pendiente para el siguiente, sin ocultar la meta nueva.` : "Compara lo vendido con tus costos y usa el resultado para ajustar la siguiente meta."}</p></article>
+      <article class="meta-scenario ${datos.estadoRitmo === "superada" ? "active success" : ""}"><span>SI SUPERAS LA META</span><h2>Convierte el excedente en crecimiento</h2><p>${hayMeta && datos.ventas > datos.meta ? `Llevas ${dinero(datos.ventas - datos.meta)} arriba de la meta. Separa una parte para gastos, ahorro e inventario antes de aumentar compromisos.` : "El excedente puede ayudarte a crear un fondo, comprar inventario o premiar al equipo sin comprometer el dinero de operación."}</p></article>
+    </section>
+    <section class="panel meta-objectives"><div><span class="meta-kicker">PLAN PARA CUMPLIRLA</span><h2>${hayMeta ? "Tu siguiente objetivo" : "Primero define tu meta"}</h2></div><p>${hayMeta ? (datos.faltanteAcumulado > 0 ? `Para cerrar ${nombre} con tu objetivo acumulado, busca registrar ${dinero(datos.diarioNecesario)} al día durante los ${datos.diasRestantes || "días restantes"}.` : datos.creditoAnterior && datos.ventas < datos.meta ? `Tu meta real de ${nombre} aún tiene un faltante de ${dinero(datos.faltante)}, pero el crédito anterior lo cubre. Por transparencia, ambas cifras se muestran separadas.` : `Superaste el objetivo acumulado por ${dinero(datos.saldoAcumulado)}. Puedes apartar ese excedente o usarlo como crédito para la meta siguiente.`) : "Escribe el monto que quieres alcanzar y la agenda preparará los objetivos diarios por ti."}</p></section>`;
+}
+
+function guardarMetaMensual(evento) {
+  evento.preventDefault();
+  if (!exigirEdicion()) return;
+  const mes = document.getElementById("metaMes")?.value;
+  const monto = Number(document.getElementById("metaMonto")?.value || 0);
+  if (!/^\d{4}-\d{2}$/.test(mes) || monto < 0) return mostrarMensaje("Revisa la meta", "Elige un mes y escribe un monto válido.", "alerta");
+  configuracion.metasMensuales = { ...(configuracion.metasMensuales || {}), [mes]: monto };
+  guardar();
+  mostrarMetas(mes);
+  mostrarMensaje("Meta guardada", "La agenda actualizará el avance con cada venta registrada.", "ok");
+}
+
+function periodoEstadisticasActual() {
+  const tipo = document.getElementById("statsTipo")?.value || "mes";
+  const valor = document.getElementById("statsFecha")?.value || (tipo === "mes" ? hoy().slice(0, 7) : hoy());
+  return { tipo, valor, datos: calcularEstadisticas(tipo, valor) };
+}
+
+function etiquetaPeriodo(tipo, valor) {
+  return tipo === "mes" ? nombreMes(`${valor}-01`) : formatoFecha(valor);
+}
+
+function exportarEstadisticasExcel() {
+  const { tipo, valor, datos } = periodoEstadisticasActual();
+  const filas = [
+    ["OH, MA BELLE - REPORTE DE ESTADÍSTICAS"],
+    ["Periodo", etiquetaPeriodo(tipo, valor)],
+    ["Citas activas", datos.activas.length],
+    ["Canceladas", datos.canceladas.length],
+    ["Ingresos", dinero(datos.ingresos)],
+    [],
+    ["ESTADÍSTICAS POR PERSONAL"],
+    ["Personal", "Citas realizadas", "Ingresos generados"],
+    ...datos.porPersonal.map(item => [item.nombre, item.total, dinero(item.dinero)]),
+    [],
+    ["ESTADÍSTICAS POR SERVICIO"],
+    ["Servicio", "Citas", "Ingresos"],
+    ...datos.porServicio.map(item => [item.nombre, item.total, dinero(item.dinero)])
+  ];
+  const csv = `\uFEFF${filas.map(fila => fila.map(valorCelda => `"${String(valorCelda ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n")}`;
+  const enlace = document.createElement("a");
+  enlace.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  enlace.download = `estadisticas-oh-ma-belle-${valor}.csv`;
+  enlace.click();
+  URL.revokeObjectURL(enlace.href);
+  mostrarMensaje("Reporte preparado", "El archivo puede abrirse directamente en Excel.", "ok");
+}
+
+function imprimirEstadisticas() {
+  const { tipo, valor, datos } = periodoEstadisticasActual();
+  const logoReporte = configuracion.logo || new URL(LOGO_PREDETERMINADO, window.location.href).href;
+  const filas = lista => lista.map(item => `<tr><td>${item.nombre}</td><td>${item.total}</td><td>${dinero(item.dinero)}</td></tr>`).join("");
+  const grafica = (titulo, lista, propiedad, tipoValor) => {
+    const colores = ["#6d63ef", "#d68c2f", "#2fbf93", "#cf4f78", "#8a63d2", "#4aa3df", "#b46a56"];
+    const utiles = lista.map(item => ({ nombre: item.nombre, valor: Number(item[propiedad] || 0) })).filter(item => item.valor > 0);
+    const total = utiles.reduce((suma, item) => suma + item.valor, 0);
+    if (!total) return `<article class="grafica"><h3>${titulo}</h3><p class="sin-datos">Sin datos en este periodo.</p></article>`;
+    let acumulado = 0;
+    const segmentos = utiles.map((item, indice) => {
+      const inicio = acumulado;
+      acumulado += item.valor / total * 100;
+      return `${colores[indice % colores.length]} ${inicio}% ${acumulado}%`;
+    }).join(",");
+    const leyenda = utiles.map((item, indice) => `<li><i style="background:${colores[indice % colores.length]}"></i><span>${item.nombre}</span><b>${tipoValor === "dinero" ? dinero(item.valor) : `${item.valor} cita(s)`}</b></li>`).join("");
+    return `<article class="grafica"><h3>${titulo}</h3><div class="grafica-contenido"><div class="pastel" style="background:conic-gradient(${segmentos})"></div><ul>${leyenda}</ul></div></article>`;
+  };
+  const graficas = [
+    grafica("Servicios más vendidos", datos.porServicio, "total", "citas"),
+    grafica("Ingresos por servicio", datos.porServicio, "dinero", "dinero"),
+    grafica("Personal con más citas", datos.porPersonal, "total", "citas"),
+    grafica("Ingresos por personal", datos.porPersonal, "dinero", "dinero")
+  ].join("");
+  const ventana = window.open("", "_blank", "width=960,height=720");
+  if (!ventana) return mostrarMensaje("No se pudo abrir", "Permite las ventanas emergentes para imprimir el reporte.", "alerta");
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Reporte ${NOMBRE_NEGOCIO}</title><style>*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#28233b;margin:36px}header{display:flex;align-items:center;gap:18px;border-bottom:3px solid #6d63ef;padding-bottom:18px}header img{width:120px;height:70px;object-fit:contain}h1{margin:0;font-size:28px}h2{margin-top:30px;color:#513c75}h3{margin:0 0 14px;color:#513c75;font-size:16px}.resumen{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}.dato{padding:16px;border:1px solid #ddd5e8;border-radius:8px}.dato strong{display:block;font-size:22px;margin-top:8px}.graficas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0}.grafica{padding:16px;border:1px solid #ddd5e8;border-radius:8px;break-inside:avoid}.grafica-contenido{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:14px}.pastel{width:106px;height:106px;border-radius:50%;box-shadow:inset -8px -10px 0 rgba(40,35,59,.14),0 7px 0 #d9d3e3}.grafica ul{list-style:none;padding:0;margin:0}.grafica li{display:grid;grid-template-columns:10px 1fr auto;gap:6px;align-items:center;padding:3px 0;font-size:10px}.grafica li i{width:9px;height:9px;border-radius:2px}.grafica li b{text-align:right}.sin-datos{color:#777}table{width:100%;border-collapse:collapse;margin-top:12px}th,td{padding:11px;border-bottom:1px solid #e8e3ee;text-align:left}th{background:#f4f0fb}@media print{body{margin:10mm}.graficas{page-break-after:always}.grafica{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><header><img src="${logoReporte}" alt="Logo"><div><h1>${NOMBRE_NEGOCIO}</h1><p>Reporte de estadísticas · ${etiquetaPeriodo(tipo, valor)}</p></div></header><section class="resumen"><div class="dato">Citas activas<strong>${datos.activas.length}</strong></div><div class="dato">Canceladas<strong>${datos.canceladas.length}</strong></div><div class="dato">Ingresos<strong>${dinero(datos.ingresos)}</strong></div></section><h2>Gráficas del periodo</h2><section class="graficas">${graficas}</section><h2>Resultados por personal</h2><table><thead><tr><th>Personal</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porPersonal)}</tbody></table><h2>Resultados por servicio</h2><table><thead><tr><th>Servicio</th><th>Citas</th><th>Ingresos</th></tr></thead><tbody>${filas(datos.porServicio)}</tbody></table></body></html>`);
+  ventana.document.close();
+  setTimeout(() => ventana.print(), 300);
+}
+
+function citaEnPeriodo(cita, tipoPeriodo, valor) {
+  if (!cita?.fecha) return false;
+  return tipoPeriodo === "mes" ? cita.fecha.slice(0, 7) === valor : cita.fecha === valor;
+}
+
+function cambiarFiltroEstadisticas() {
+  const tipo = document.getElementById("statsTipo").value;
+  const campo = document.getElementById("statsFecha");
+  let valor = campo.value;
+  if (tipo === "dia" && campo.type === "month") valor = valor === hoy().slice(0, 7) ? hoy() : `${valor}-01`;
+  if (tipo === "mes" && campo.type === "date") valor = valor.slice(0, 7);
+  if (!valor) valor = tipo === "mes" ? hoy().slice(0, 7) : hoy();
+  mostrarEstadisticas(tipo, valor);
+}
+
+function graficaPastel3D(titulo, datos, tipo = "citas") {
+  const colores = ["#6d63ef", "#d68c2f", "#2fbf93", "#cf4f78", "#8a63d2", "#4aa3df", "#b46a56"];
+  const utiles = datos.filter(item => Number(item.valor || 0) > 0);
+  const total = utiles.reduce((s, item) => s + Number(item.valor || 0), 0);
+  if (!total) {
+    return `<section class="panel chart-card"><h2>${titulo}</h2><div class="chart-empty">Aún no hay datos para este periodo.</div></section>`;
+  }
+  let acumulado = 0;
+  const segmentos = utiles.map((item, indice) => {
+    const inicio = acumulado;
+    const fin = inicio + (Number(item.valor) / total) * 100;
+    acumulado = fin;
+    return `${colores[indice % colores.length]} ${inicio}% ${fin}%`;
+  }).join(", ");
+  const lista = utiles.map((item, indice) => `<li><span style="background:${colores[indice % colores.length]}"></span><strong>${item.nombre}</strong><em>${tipo === "dinero" ? dinero(item.valor) : `${item.valor} cita(s)`}</em></li>`).join("");
+  return `<section class="panel chart-card"><h2>${titulo}</h2><div class="pie-layout"><div class="pie-3d" style="background: conic-gradient(${segmentos});"></div><ul class="pie-legend">${lista}</ul></div></section>`;
+}
+
+function mostrarServicios() {
+  activarMenu("servicios");
+  document.getElementById("contenido").innerHTML = `
+    <section class="panel">
+      <div class="section-head"><h2>Servicios</h2></div>
+      ${puedeEditar() ? `<form class="form-grid" onsubmit="guardarServicio(event)">
+        <input id="servicioNombre" placeholder="Servicio">
+        <input id="servicioDuracion" type="number" min="1" placeholder="Minutos">
+        <input id="servicioPrecio" type="number" min="0" placeholder="Precio">
+        <select id="servicioColor"><option value="rosa">Rosa</option><option value="dorado">Dorado</option><option value="uva">Uva</option><option value="verde">Verde</option></select>
+        <button type="submit">Agregar servicio</button>
+      </form>` : `<p class="solo-ver">Modo solo lectura.</p>`}
+      <div class="servicios-lista">${servicios.map((servicio, i) => `<article class="servicio-item ${servicio.color}"><strong>${servicio.nombre}</strong><span>${servicio.duracion} min</span><span>${dinero(servicio.precio)}</span>${puedeEditar() ? `<button type="button" onclick="eliminarServicio(${i})">Eliminar</button>` : ""}</article>`).join("")}</div>
+    </section>`;
+}
+
+function guardarServicio(event) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  const nombre = document.getElementById("servicioNombre").value.trim();
+  const duracion = Number(document.getElementById("servicioDuracion").value || 0);
+  const precio = Number(document.getElementById("servicioPrecio").value || 0);
+  const color = document.getElementById("servicioColor").value;
+  if (!nombre || duracion <= 0) return mostrarMensaje("Faltan datos", "Agrega nombre y duración.", "alerta");
+  servicios.push({ nombre, duracion, precio, color });
+  guardar();
+  mostrarServicios();
+}
+
+function eliminarServicio(indice) {
+  if (!exigirEdicion()) return;
+  const servicio = servicios[indice];
+  if (!confirm(`Eliminar el servicio "${servicio?.nombre || "seleccionado"}"?`)) return;
+  servicios.splice(indice, 1);
+  guardar();
+  mostrarServicios("servicios");
+}
+
+function mostrarBloquearHorario() {
+  activarMenu("bloquear");
+  document.getElementById("contenido").innerHTML = `
+    <section class="panel">
+      <h2>Bloquear horario</h2>
+      ${puedeEditar() ? `<form class="form-grid" onsubmit="guardarBloqueo(event)">
+        <input type="date" id="bloqueoFecha" value="${hoy()}">
+        <input type="time" id="bloqueoHora" value="${horaActual()}">
+        <input id="bloqueoMotivo" placeholder="Motivo">
+        <button type="submit">Bloquear</button>
+      </form>` : `<p class="solo-ver">Modo solo lectura.</p>`}
+      <table><thead><tr><th>Fecha</th><th>Hora</th><th>Motivo</th><th>Acción</th></tr></thead><tbody>${bloqueos.map(b => `<tr><td>${formatoFecha(b.fecha)}</td><td>${b.hora}</td><td>${b.motivo || "-"}</td><td>${puedeEditar() ? `<button type="button" onclick="eliminarBloqueo(${b.id})">Eliminar</button>` : "-"}</td></tr>`).join("") || `<tr><td colspan="4" class="vacio">No hay horarios bloqueados.</td></tr>`}</tbody></table>
+    </section>`;
+}
+
+function guardarBloqueo(event) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  bloqueos.push({ id: idNuevo(), fecha: document.getElementById("bloqueoFecha").value, hora: document.getElementById("bloqueoHora").value, motivo: document.getElementById("bloqueoMotivo").value.trim() });
+  guardar();
+  mostrarBloquearHorario();
+}
+
+function eliminarBloqueo(id) {
+  if (!exigirEdicion()) return;
+  bloqueos = bloqueos.filter(item => item.id !== id);
+  guardar();
+  mostrarBloquearHorario();
+}
+
+function mostrarExtras() {
+  activarMenu("extras");
+  document.getElementById("contenido").innerHTML = `<section class="panel"><h2>Extras</h2><div class="extra-grid"><article>Recordatorios por WhatsApp</article><article>Notas de clientas</article></div></section>`;
+}
+
+function mostrarTransferencias() {
+  activarMenu("transferencias");
+  const pagos = citasActivas().filter(c => Number(c.precio || 0) > 0);
+  document.getElementById("contenido").innerHTML = `<section class="panel"><h2>Transferencias</h2><table><thead><tr><th>Cliente</th><th>Servicio</th><th>Fecha</th><th>Monto</th></tr></thead><tbody>${pagos.map(c => `<tr><td>${c.cliente}</td><td>${c.servicio}</td><td>${formatoFecha(c.fecha)}</td><td>${dinero(c.precio)}</td></tr>`).join("") || `<tr><td colspan="4" class="vacio">No hay pagos pendientes.</td></tr>`}</tbody></table></section>`;
+}
+
+function mostrarSuscripcion() {
+  activarMenu("suscripcion");
+  document.getElementById("contenido").innerHTML = `<section class="panel suscripcion"><h2>Mi suscripción</h2><strong>Premium</strong><p>Agenda activa para ${NOMBRE_NEGOCIO} ${SUBTITULO_NEGOCIO}.</p></section>`;
+}
+
+function historialDeClienta(clienta) {
+  return citas.filter(cita => cita.clienteId === clienta.id || cita.telefono === clienta.telefono)
+    .sort((a, b) => `${b.fecha} ${b.hora}`.localeCompare(`${a.fecha} ${a.hora}`));
+}
+
+function mostrarClientas(busqueda = "") {
+  activarMenu("clientas");
+  document.getElementById("contenido").innerHTML = `
+    <section class="panel clientas-head">
+      <div><h2>Clientas</h2><p>Consulta sus visitas y servicios anteriores.</p></div>
+      <div class="client-search"><input id="buscarClienta" value="${escaparAtributo(busqueda)}" placeholder="Buscar por nombre o teléfono" oninput="filtrarClientasEnVivo(this.value)"><span id="conteoClientas"></span></div>
+    </section>
+    <section id="resultadosClientas" class="clientas-grid"></section>`;
+  filtrarClientasEnVivo(busqueda);
+}
+
+function tarjetaClienta(clienta) {
+      const historial = historialDeClienta(clienta);
+      const ultima = historial[0];
+      return `<article class="client-card"><div class="client-avatar">${clienta.nombre.charAt(0).toUpperCase()}</div><div><h3>${clienta.nombre}</h3><a href="tel:${clienta.telefono}">${clienta.telefono}</a><p>${historial.length} visita(s)${ultima ? ` · Última: ${formatoFecha(ultima.fecha)}` : ""}</p></div><div class="client-actions"><button type="button" onclick="verHistorialClienta(${clienta.id})">Ver historial</button>${puedeEditar() ? `<button type="button" onclick="abrirClientaModal(${clienta.id})">Editar</button><button class="trash" type="button" onclick="eliminarClienta(${clienta.id})">Eliminar</button>` : ""}</div></article>`;
+}
+
+function distanciaTexto(a, b) {
+  const anterior = Array.from({ length: b.length + 1 }, (_, indice) => indice);
+  for (let i = 1; i <= a.length; i += 1) {
+    let diagonal = anterior[0];
+    anterior[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const arriba = anterior[j];
+      anterior[j] = Math.min(anterior[j] + 1, anterior[j - 1] + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diagonal = arriba;
+    }
+  }
+  return anterior[b.length];
+}
+
+function filtrarClientasEnVivo(busqueda = "") {
+  const contenedor = document.getElementById("resultadosClientas");
+  if (!contenedor) return;
+  const termino = nombreComparable(busqueda);
+  const digitos = String(busqueda).replace(/\D/g, "");
+  let lista = clientas.map(clienta => {
+    const nombre = nombreComparable(clienta.nombre);
+    const telefono = String(clienta.telefono || "");
+    let puntaje = 0;
+    if (termino || digitos) {
+      if (digitos && telefono.includes(digitos)) puntaje = telefono.startsWith(digitos) ? 0 : 1;
+      else if (digitos) puntaje = 10 + distanciaTexto(digitos, telefono);
+      else if (nombre === termino) puntaje = 0;
+      else if (nombre.startsWith(termino) || nombre.split(" ").some(parte => parte.startsWith(termino))) puntaje = 1;
+      else if (nombre.includes(termino)) puntaje = 2 + nombre.indexOf(termino) / 100;
+      else puntaje = 10 + Math.min(distanciaTexto(termino, nombre), ...nombre.split(" ").map(parte => distanciaTexto(termino, parte)));
+    }
+    return { clienta, puntaje };
+  }).sort((a, b) => a.puntaje - b.puntaje || a.clienta.nombre.localeCompare(b.clienta.nombre, "es"));
+  if (termino || digitos) {
+    const coincidencias = lista.filter(item => item.puntaje < 10);
+    lista = coincidencias.length ? coincidencias : lista.slice(0, 3);
+  }
+  contenedor.innerHTML = lista.map(item => tarjetaClienta(item.clienta)).join("") || `<div class="panel empty-state"><h2>No encontramos clientas</h2><p>Prueba con otro nombre o teléfono.</p></div>`;
+  const conteo = document.getElementById("conteoClientas");
+  if (conteo) conteo.textContent = `${lista.length} resultado${lista.length === 1 ? "" : "s"}`;
+}
+
+function abrirClientaModal(id = null) {
+  if (!exigirEdicion()) return;
+  const clienta = id === null ? null : clientas.find(item => item.id === id);
+  abrirModal(clienta ? "Editar clienta" : "Nueva clienta", `<form class="modal-stack" novalidate onsubmit="guardarClientaModal(event, ${clienta?.id ?? "null"})"><label>Nombre completo</label><input id="clientaNombre" value="${escaparAtributo(clienta?.nombre)}" required><label>Teléfono</label><input id="clientaTelefono" type="tel" inputmode="numeric" maxlength="10" value="${escaparAtributo(clienta?.telefono)}" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)" required><label>Notas</label><textarea id="clientaNotas" rows="4" placeholder="Preferencias, alergias o información importante">${clienta?.notas || ""}</textarea><div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar clienta</button></div></form>`);
+}
+
+function guardarClientaModal(event, id = null) {
+  event.preventDefault();
+  const nombre = document.getElementById("clientaNombre").value.trim();
+  const telefono = document.getElementById("clientaTelefono").value.trim();
+  if (!nombre) return mostrarMensaje("Faltan datos", "Escribe el nombre de la clienta.", "alerta");
+  if (!/^\d{10}$/.test(telefono)) return mostrarMensaje("Teléfono incorrecto", "El teléfono debe tener exactamente 10 números.", "alerta");
+  if (clientas.some(item => item.telefono === telefono && item.id !== id)) return mostrarMensaje("Clienta existente", "Ese teléfono ya pertenece a otra clienta.", "alerta");
+  const anterior = clientas.find(item => item.id === id);
+  const clienta = { id: anterior?.id || idNuevo(), nombre, telefono, notas: document.getElementById("clientaNotas").value.trim(), creadaEn: anterior?.creadaEn || new Date().toISOString() };
+  configuracion.clientasEliminadas = (configuracion.clientasEliminadas || []).filter(numero => numero !== telefono);
+  if (anterior) clientas[clientas.indexOf(anterior)] = clienta; else clientas.push(clienta);
+  citas.forEach(cita => { if (cita.clienteId === clienta.id || cita.telefono === anterior?.telefono) { cita.clienteId = clienta.id; cita.cliente = clienta.nombre; cita.telefono = clienta.telefono; } });
+  guardar(); cerrarModalFormulario(); mostrarClientas(); mostrarMensaje("Clienta guardada", "Su historial quedó actualizado.", "ok");
+}
+
+function eliminarClienta(id) {
+  if (!exigirEdicion()) return;
+  const clienta = clientas.find(item => item.id === id);
+  if (!clienta || !confirm(`¿Segura que quieres eliminar a ${clienta.nombre}? Sus citas históricas no se borrarán.`)) return;
+  configuracion.clientasEliminadas = [...new Set([...(configuracion.clientasEliminadas || []), clienta.telefono])];
+  clientas = clientas.filter(item => item.id !== id);
+  guardar();
+  mostrarClientas();
+  mostrarMensaje("Clienta eliminada", `${clienta.nombre} ya no aparece en el directorio.`, "ok");
+}
+
+function verHistorialClienta(id) {
+  const clienta = clientas.find(item => item.id === id); if (!clienta) return;
+  const historial = historialDeClienta(clienta);
+  const completadas = historial.filter(cita => cita.estado === "Atendida");
+  const totalGastado = completadas.reduce((total, cita) => total + Number(cita.precio || 0), 0);
+  const conteoServicios = {};
+  completadas.forEach(cita => detallesServiciosCita(cita).forEach(servicio => {
+    conteoServicios[servicio.nombre] = (conteoServicios[servicio.nombre] || 0) + 1;
+  }));
+  const favorito = Object.entries(conteoServicios).sort((a, b) => b[1] - a[1])[0]?.[0] || "Aún sin datos";
+  const ultimaVisita = completadas[0];
+  const movimientos = historial.map(cita => {
+    const visual = estadoVisualCita(cita);
+    return `<article class="history-entry history-${visual.color}">
+      <div class="history-date"><strong>${cita.fecha?.slice(8, 10) || "--"}</strong><span>${formatoFecha(cita.fecha)}</span><small>${cita.hora || ""}</small></div>
+      <div class="history-info"><h3>${nombresServiciosCita(cita)}</h3><p>${duracionTotalCita(cita)} min · ${cita.personal || "Sin asignar"}</p><span class="history-status">${visual.texto}</span></div>
+      <strong class="history-amount">${dinero(cita.precio)}</strong>
+    </article>`;
+  }).join("");
+  abrirModal(`Historial de ${clienta.nombre}`, `<div class="client-history">
+    <header class="history-profile"><div class="client-avatar">${clienta.nombre.charAt(0).toUpperCase()}</div><div><h2>${clienta.nombre}</h2><a href="tel:${clienta.telefono}">${clienta.telefono}</a><p>Clienta desde ${formatoFecha((clienta.creadaEn || "").slice(0, 10))}</p></div></header>
+    <div class="history-stats"><article><span>Visitas realizadas</span><strong>${completadas.length}</strong></article><article><span>Total en servicios</span><strong>${dinero(totalGastado)}</strong></article><article><span>Servicio frecuente</span><strong>${favorito}</strong></article><article><span>Última visita</span><strong>${ultimaVisita ? formatoFecha(ultimaVisita.fecha) : "Sin visitas"}</strong></article></div>
+    ${clienta.notas ? `<div class="client-notes"><strong>Notas importantes</strong><p>${clienta.notas}</p></div>` : ""}
+    <div class="history-section-title"><h3>Actividad de la clienta</h3><span>${historial.length} registro(s)</span></div>
+    <div class="history-timeline">${movimientos || `<div class="history-empty"><strong>Aún no tiene visitas registradas</strong><p>Sus próximas citas aparecerán aquí automáticamente.</p></div>`}</div>
+  </div>`);
+}
+
+function telefonoLocalWhatsApp(telefono = "") {
+  const digitos = String(telefono || "").replace(/\D/g, "");
+  if (digitos.length === 12 && digitos.startsWith("52")) return digitos.slice(2);
+  if (digitos.length === 11 && digitos.startsWith("1")) return digitos.slice(1);
+  return digitos.slice(-10);
+}
+
+function fechaHoraMensaje(fecha) {
+  const valor = new Date(fecha || "");
+  if (Number.isNaN(valor.getTime())) return "";
+  return valor.toLocaleString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function conversacionesWhatsApp() {
+  const mapa = new Map();
+  mensajesWhatsApp.forEach(mensaje => {
+    const telefono = mensaje.telefono || mensaje.wa_id || "";
+    if (!telefono) return;
+    const actual = mapa.get(telefono) || { telefono, nombre: mensaje.nombre || "", mensajes: [], ultimo: null, sinLeer: 0 };
+    actual.nombre = mensaje.nombre || actual.nombre || clientas.find(item => item.telefono === telefonoLocalWhatsApp(telefono))?.nombre || telefono;
+    actual.mensajes.push(mensaje);
+    if (!actual.ultimo || String(mensaje.creado_en || "").localeCompare(String(actual.ultimo.creado_en || "")) > 0) actual.ultimo = mensaje;
+    if (mensaje.direccion === "entrante" && !mensaje.leido) actual.sinLeer += 1;
+    mapa.set(telefono, actual);
+  });
+  return [...mapa.values()].sort((a, b) => String(b.ultimo?.creado_en || "").localeCompare(String(a.ultimo?.creado_en || "")));
+}
+
+async function cargarMensajesWhatsApp(telefono = chatWhatsAppActivo) {
+  try {
+    const resultado = await llamarFuncionSupabase("whatsapp-inbox", { accion: "listar", token: tokenSesion, telefono });
+    mensajesWhatsApp = Array.isArray(resultado?.mensajes) ? resultado.mensajes : [];
+    if (telefono) chatWhatsAppActivo = telefono;
+    return true;
+  } catch (error) {
+    console.warn("No se pudo cargar WhatsApp:", error);
+    const texto = /404|Function not found/i.test(error.message || "") ? "Sube la función whatsapp-inbox a Supabase y ejecuta el SQL de la bandeja." : "Revisa la sesión, la función de Supabase y la conexión.";
+    document.getElementById("contenido").innerHTML = `<section class="panel empty-state"><h2>Bandeja no disponible</h2><p>${texto}</p></section>`;
+    return false;
+  }
+}
+
+async function mostrarMensajesWhatsApp(telefono = chatWhatsAppActivo) {
+  activarMenu("mensajes");
+  document.getElementById("contenido").innerHTML = `<section class="panel empty-state"><h2>Cargando mensajes...</h2><p>Estamos consultando WhatsApp.</p></section>`;
+  const ok = await cargarMensajesWhatsApp(telefono);
+  if (ok) pintarMensajesWhatsApp();
+}
+
+function pintarMensajesWhatsApp() {
+  const conversaciones = conversacionesWhatsApp();
+  if (!chatWhatsAppActivo && conversaciones[0]) chatWhatsAppActivo = conversaciones[0].telefono;
+  const activa = conversaciones.find(item => item.telefono === chatWhatsAppActivo);
+  const mensajes = (activa?.mensajes || []).sort((a, b) => String(a.creado_en || "").localeCompare(String(b.creado_en || "")));
+  document.getElementById("contenido").innerHTML = `
+    <section class="whatsapp-inbox">
+      <aside class="panel whatsapp-conversations">
+        <div class="section-head"><div><h2>Mensajes</h2><p>Responde manualmente desde el número del negocio.</p></div><button type="button" onclick="mostrarMensajesWhatsApp()">Actualizar</button></div>
+        <div class="whatsapp-search"><input id="telefonoChatNuevo" inputmode="numeric" maxlength="12" placeholder="Abrir teléfono"><button type="button" onclick="abrirChatWhatsApp(document.getElementById('telefonoChatNuevo').value)">Abrir</button></div>
+        <div class="conversation-list">${conversaciones.map(item => `
+          <button class="${item.telefono === chatWhatsAppActivo ? "activo" : ""}" type="button" onclick="abrirChatWhatsApp('${item.telefono}')">
+            <strong>${escaparTexto(item.nombre || item.telefono)}</strong>
+            <span>${escaparTexto(item.ultimo?.texto || item.ultimo?.tipo || "Mensaje")}</span>
+            ${item.sinLeer ? `<b>${item.sinLeer}</b>` : ""}
+          </button>`).join("") || `<p class="vacio">Aún no hay mensajes recibidos.</p>`}</div>
+      </aside>
+      <article class="panel whatsapp-chat">
+        ${activa ? `
+          <header><div><h2>${escaparTexto(activa.nombre || activa.telefono)}</h2><p>+${escaparTexto(activa.telefono)}</p></div><button type="button" onclick="vincularChatConClienta('${activa.telefono}')">Vincular clienta</button></header>
+          <div class="message-list">${mensajes.map(mensaje => `
+            <div class="message-bubble ${mensaje.direccion === "saliente" ? "saliente" : "entrante"}">
+              <p>${escaparTexto(mensaje.texto || `[${mensaje.tipo || "mensaje"}]`)}</p>
+              <span>${fechaHoraMensaje(mensaje.creado_en)}${mensaje.estado ? ` · ${escaparTexto(mensaje.estado)}` : ""}</span>
+            </div>`).join("") || `<div class="history-empty"><strong>Sin mensajes todavía</strong><p>Cuando la clienta escriba, aparecerá aquí.</p></div>`}</div>
+          ${puedeEditar() ? `<form class="reply-box" onsubmit="enviarMensajeWhatsApp(event)"><textarea id="respuestaWhatsApp" rows="3" placeholder="Escribe tu respuesta como persona..."></textarea><button class="primary-action" type="submit">Enviar</button></form>` : `<p class="solo-ver">Modo solo lectura: puedes ver los mensajes, pero no responder.</p>`}
+        ` : `<div class="history-empty"><strong>Selecciona una conversación</strong><p>También puedes abrir un teléfono nuevo para responder dentro de la ventana de 24 horas.</p></div>`}
+      </article>
+    </section>`;
+  requestAnimationFrame(() => {
+    const lista = document.querySelector(".message-list");
+    if (lista) lista.scrollTop = lista.scrollHeight;
+  });
+}
+
+function abrirChatWhatsApp(telefono) {
+  const limpio = String(telefono || "").replace(/\D/g, "");
+  if (!limpio) return mostrarMensaje("Falta teléfono", "Escribe o selecciona un número.", "alerta");
+  chatWhatsAppActivo = limpio.length === 10 ? `52${limpio}` : limpio;
+  mostrarMensajesWhatsApp(chatWhatsAppActivo);
+}
+
+async function enviarMensajeWhatsApp(event) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  const texto = document.getElementById("respuestaWhatsApp")?.value.trim();
+  if (!chatWhatsAppActivo || !texto) return mostrarMensaje("Falta mensaje", "Escribe una respuesta antes de enviar.", "alerta");
+  try {
+    await llamarFuncionSupabase("whatsapp-inbox", { accion: "enviar", token: tokenSesion, telefono: chatWhatsAppActivo, texto });
+    document.getElementById("respuestaWhatsApp").value = "";
+    await cargarMensajesWhatsApp(chatWhatsAppActivo);
+    pintarMensajesWhatsApp();
+    mostrarMensaje("Mensaje enviado", "Se envió desde WhatsApp Business API.", "ok");
+  } catch (error) {
+    console.warn("No se pudo enviar WhatsApp:", error);
+    const fueraVentana = /24|outside|window|131047|template/i.test(error.message || "");
+    mostrarMensaje("No se pudo enviar", fueraVentana ? "Si la clienta no ha escrito en las últimas 24 horas, WhatsApp exige una plantilla aprobada." : "Revisa el token, el número de WhatsApp y la función en Supabase.", "alerta");
+  }
+}
+
+function vincularChatConClienta(telefono) {
+  const local = telefonoLocalWhatsApp(telefono);
+  const clienta = clientas.find(item => item.telefono === local);
+  if (clienta) return verHistorialClienta(clienta.id);
+  abrirClientaModal(null);
+  setTimeout(() => {
+    const input = document.getElementById("clientaTelefono");
+    if (input) input.value = local;
+  }, 50);
+}
+
+function mostrarConfiguracion() {
+  activarMenu("configuracion");
+  const filasUsuarios = usuarios.map((usuario, indice) => `<tr><td>${usuario.nombre}</td><td>${usuario.usuario}</td><td>${usuario.rol === "editora" ? "Puede ver y editar" : "Solo puede ver"}</td><td>${puedeEditar() ? `<div class="table-actions"><button type="button" onclick="abrirUsuarioModal(${indice})">Editar</button><button class="danger-action" type="button" onclick="eliminarUsuario(${indice})">Eliminar</button></div>` : "-"}</td></tr>`).join("");
+  document.getElementById("contenido").innerHTML = `
+    <section class="config-grid">
+      <article class="panel config-card">
+        <h2>Configuración</h2>
+        <p>Usuario actual: <strong>${usuarioActual?.nombre || "-"}</strong></p>
+        <p>Permiso: <strong>${puedeEditar() ? "Puede ver y editar" : "Solo puede ver"}</strong></p>
+      </article>
+
+      <article class="panel config-card">
+        <h2>Cambiar contraseña</h2>
+        <form class="config-form" onsubmit="cambiarContrasena(event)">
+          <label>Contraseña anterior</label>
+          <input type="password" id="claveAnterior" autocomplete="current-password" placeholder="Escribe la contraseña anterior">
+          <label>Nueva contraseña</label>
+          <input type="password" id="claveNueva" autocomplete="new-password" placeholder="Escribe la nueva contraseña">
+          <button class="primary-action" type="submit">Guardar</button>
+        </form>
+      </article>
+
+      <article class="panel config-card notification-settings">
+        <div class="notification-heading"><div><h2>Notificaciones al personal</h2><p>Recibe avisos 1 hora y 30 minutos antes de cada cita.</p></div><span id="estadoNotificaciones" class="notification-badge">Comprobando...</span></div>
+        <div class="notification-actions"><button class="primary-action" type="button" onclick="activarNotificaciones()">Activar notificaciones</button><button type="button" onclick="probarNotificacion()">Enviar prueba</button></div>
+        <p class="texto-suave">Actívalas en cada celular donde quieras recibir recordatorios.</p>
+      </article>
+
+      <article class="panel config-card">
+        <h2>Apariencia</h2>
+        <p>Activa o desactiva el modo oscuro para trabajar más cómodo.</p>
+        <label class="switch-line"><input type="checkbox" id="toggleOscuro" ${modoOscuro ? "checked" : ""} onchange="cambiarModoOscuro(this.checked)"> Modo oscuro</label>
+        <label class="switch-line"><input type="checkbox" ${sonidosActivos ? "checked" : ""} onchange="cambiarSonidos(this.checked)"> Sonidos de la aplicación</label>
+      </article>
+
+      <article class="panel config-card config-company">
+        <h2>Logo de la empresa</h2>
+        <div class="logo-config-preview"><img src="${configuracion.logo || LOGO_PREDETERMINADO}" alt="Logo actual"></div>
+        ${puedeEditar() ? `<form class="config-form" onsubmit="guardarConfiguracionEmpresa(event)">
+          <label>Seleccionar imagen</label><input id="configLogo" type="file" accept="image/*">
+          <div class="config-buttons"><button class="primary-action" type="submit">Guardar logo</button></div>
+        </form>` : ""}
+      </article>
+    </section>
+
+    <section class="panel users-panel">
+      <div class="section-head"><div><h2>Perfiles de usuario</h2><p>Administra quién puede consultar o editar la agenda.</p></div>${puedeEditar() ? `<button class="primary-action add-user-button" type="button" onclick="abrirUsuarioModal(null)">+ Agregar usuario</button>` : ""}</div>
+      <table><thead><tr><th>Nombre</th><th>Usuario</th><th>Permiso</th><th>Acciones</th></tr></thead><tbody>${filasUsuarios}</tbody></table>
+    </section>`;
+  actualizarEstadoNotificaciones();
+}
+
+function convertirClavePush(clave) {
+  const relleno = "=".repeat((4 - clave.length % 4) % 4);
+  const base64 = (clave + relleno).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(base64), caracter => caracter.charCodeAt(0));
+}
+
+async function actualizarEstadoNotificaciones() {
+  const etiqueta = document.getElementById("estadoNotificaciones");
+  if (!etiqueta) return;
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
+    etiqueta.textContent = "No compatible";
+    etiqueta.className = "notification-badge notification-off";
+    return;
+  }
+  try {
+    const registro = await obtenerRegistroNotificaciones();
+    const suscripcion = await registro.pushManager.getSubscription();
+    const activa = Notification.permission === "granted" && !!suscripcion;
+    etiqueta.textContent = activa ? "Activadas" : Notification.permission === "denied" ? "Bloqueadas" : "Desactivadas";
+    etiqueta.className = `notification-badge ${activa ? "notification-on" : "notification-off"}`;
+  } catch {
+    etiqueta.textContent = "Reabre la app";
+    etiqueta.className = "notification-badge notification-off";
+  }
+}
+
+async function obtenerRegistroNotificaciones() {
+  const existente = await navigator.serviceWorker.getRegistration();
+  if (existente?.active) return existente;
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((_, rechazar) => setTimeout(() => rechazar(new Error("Service Worker no disponible")), 6000))
+  ]);
+}
+
+async function activarNotificaciones() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) return mostrarMensaje("No compatible", "Este navegador no permite notificaciones push. Abre la aplicación instalada con Chrome o Safari.", "alerta");
+  try {
+    const permiso = await Notification.requestPermission();
+    if (permiso !== "granted") return mostrarMensaje("Permiso necesario", "Debes permitir las notificaciones desde la configuración del celular.", "alerta");
+    const registro = await obtenerRegistroNotificaciones();
+    let suscripcion = await registro.pushManager.getSubscription();
+    if (!suscripcion) suscripcion = await registro.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: convertirClavePush(VAPID_PUBLIC_KEY) });
+    const datos = suscripcion.toJSON();
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/rpc/registrar_push`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_KEY,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal"
+      },
+      body: JSON.stringify({
+        p_token: tokenSesion,
+        p_endpoint: datos.endpoint,
+        p_p256dh: datos.keys?.p256dh,
+        p_auth: datos.keys?.auth,
+        p_usuario: usuarioActual?.usuario || "sin-sesion",
+        p_nombre: usuarioActual?.nombre || "Personal"
+      })
+    });
+    if (!respuesta.ok) {
+      const detalle = await respuesta.text();
+      const error = new Error(detalle || `Error ${respuesta.status}`);
+      error.status = respuesta.status;
+      throw error;
+    }
+    await actualizarEstadoNotificaciones();
+    mostrarMensaje("Notificaciones activadas", "Este celular quedó registrado para recibir los recordatorios.", "ok");
+  } catch (error) {
+    console.warn("No se pudieron activar las notificaciones:", error);
+    if (error?.status === 404 || /registrar_push|does not exist|schema cache|PGRST202|PGRST205|42P01/i.test(error?.message || "")) {
+      mostrarMensaje("Falta configurar la seguridad", "Ejecuta supabase-seguridad.sql en el Editor SQL.", "alerta");
+    } else if (error?.status === 401 || error?.status === 403 || /row-level security|permission/i.test(error?.message || "")) {
+      mostrarMensaje("Falta actualizar permisos", "Ejecuta supabase-seguridad.sql en el Editor SQL.", "alerta");
+    } else {
+      mostrarMensaje("No se pudieron activar", "Revisa el permiso de notificaciones del celular, la conexión y vuelve a intentarlo.", "alerta");
+    }
+  }
+}
+
+async function probarNotificacion() {
+  if (Notification.permission !== "granted") return activarNotificaciones();
+  const registro = await obtenerRegistroNotificaciones();
+  await registro.showNotification(`Prueba de ${NOMBRE_NEGOCIO}`, {
+    body: "Las notificaciones están funcionando en este celular.",
+    icon: "assets/beloved-body-icon-192.png",
+    badge: "assets/beloved-body-icon-192.png",
+    tag: "prueba-notificaciones"
+  });
+}
+
+function leerImagenOptimizada(input, callback) {
+  const archivo = input?.files?.[0];
+  if (!archivo) return callback("");
+  if (!archivo.type.startsWith("image/")) return mostrarMensaje("Archivo incorrecto", "Selecciona una imagen para el logo.", "alerta");
+  const lector = new FileReader();
+  lector.onload = () => {
+    const imagen = new Image();
+    imagen.onload = () => {
+      const escala = Math.min(1, 700 / imagen.width, 350 / imagen.height);
+      const lienzo = document.createElement("canvas");
+      lienzo.width = Math.max(1, Math.round(imagen.width * escala));
+      lienzo.height = Math.max(1, Math.round(imagen.height * escala));
+      lienzo.getContext("2d").drawImage(imagen, 0, 0, lienzo.width, lienzo.height);
+      callback(lienzo.toDataURL("image/png"));
+    };
+    imagen.src = lector.result;
+  };
+  lector.readAsDataURL(archivo);
+}
+
+function guardarConfiguracionEmpresa(event) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  leerImagenOptimizada(document.getElementById("configLogo"), logoNuevo => {
+    if (logoNuevo) configuracion.logo = logoNuevo;
+    guardar();
+    aplicarConfiguracion();
+    mostrarConfiguracion();
+    mostrarMensaje("Logo guardado", "La imagen de la empresa quedó actualizada.", "ok");
+  });
+}
+
+function abrirUsuarioModal(indice = null) {
+  if (!exigirEdicion()) return;
+  const usuario = indice === null ? {} : usuarios[indice];
+  abrirModal(indice === null ? "Agregar usuario" : "Editar usuario", `<form class="modal-stack" novalidate onsubmit="guardarUsuarioModal(event, ${indice === null ? "null" : indice})">
+    <label>Nombre completo</label><input id="perfilNombre" value="${escaparAtributo(usuario.nombre)}" required>
+    <label>Nombre de usuario</label><input id="perfilUsuario" value="${escaparAtributo(usuario.usuario)}" placeholder="Ejemplo: rosa" required>
+    <label>${indice === null ? "Contraseña" : "Nueva contraseña (opcional)"}</label><input id="perfilClave" type="password" autocomplete="new-password" ${indice === null ? "required" : ""}>
+    <label>Permiso</label><select id="perfilRol"><option value="soloVista" ${usuario.rol !== "editora" ? "selected" : ""}>Solo puede ver</option><option value="editora" ${usuario.rol === "editora" ? "selected" : ""}>Puede ver y editar</option></select>
+    ${indice === null ? `<label>Código para crear el perfil</label><input id="perfilCodigo" type="password" inputmode="numeric" placeholder="Código de autorización" required>` : ""}
+    <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar perfil</button></div>
+  </form>`);
+}
+
+async function guardarUsuarioModal(event, indice) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  const nombre = document.getElementById("perfilNombre").value.trim();
+  const nombreUsuario = document.getElementById("perfilUsuario").value.trim().toLowerCase();
+  const clave = document.getElementById("perfilClave").value.trim();
+  const rol = document.getElementById("perfilRol").value === "editora" ? "editora" : "soloVista";
+  if (!nombre || !nombreUsuario || (indice === null && !clave)) return mostrarMensaje("Faltan datos por completar", "Escribe el nombre, usuario y contraseña.", "alerta");
+  if (!/^[a-z0-9._-]{3,24}$/.test(nombreUsuario)) return mostrarMensaje("Datos incorrectos", "El usuario debe tener de 3 a 24 letras, números, puntos, guiones o guion bajo.", "alerta");
+  if (clave && clave.length < 4) return mostrarMensaje("Datos incorrectos", "La contraseña debe tener al menos 4 caracteres.", "alerta");
+  if (usuarios.some((item, posicion) => item.usuario === nombreUsuario && posicion !== indice)) return mostrarMensaje("Usuario existente", "Ese nombre de usuario ya está registrado.", "alerta");
+  if (indice === null && document.getElementById("perfilCodigo").value.trim() !== CODIGO_ADMINISTRACION) return mostrarMensaje("Código incorrecto", "No fue posible crear el perfil.", "alerta");
+  if (indice !== null && usuarios[indice].rol === "editora" && rol !== "editora" && usuarios.filter(item => item.rol === "editora").length <= 1) return mostrarMensaje("Se necesita una editora", "Debe quedar al menos un perfil con permiso para editar.", "alerta");
+  const anterior = indice === null ? null : usuarios[indice];
+  try {
+    await supabaseRpc("agenda_guardar_usuario", {
+      p_token: tokenSesion,
+      p_original: anterior?.usuario || null,
+      p_usuario: nombreUsuario,
+      p_nombre: nombre,
+      p_clave: clave || null,
+      p_rol: rol,
+      p_codigo: indice === null ? document.getElementById("perfilCodigo").value.trim() : null
+    });
+  } catch (error) {
+    console.warn("No se pudo guardar el perfil:", error);
+    return mostrarMensaje("No se guardó el perfil", "Revisa los datos, el código y que el usuario no esté repetido.", "alerta");
+  }
+  await cargarUsuariosPublicos();
+  if (anterior?.usuario === usuarioActual?.usuario) await cargarRemoto(true);
+  actualizarSelectorUsuarios();
+  cerrarModalFormulario();
+  mostrarConfiguracion();
+  mostrarMensaje("Perfil guardado", "Los permisos del usuario quedaron actualizados.", "ok");
+}
+
+async function eliminarUsuario(indice) {
+  if (!exigirEdicion()) return;
+  const usuario = usuarios[indice];
+  if (!usuario) return;
+  if (usuario.usuario === usuarioActual?.usuario) return mostrarMensaje("No se puede eliminar", "No puedes eliminar el perfil que tiene la sesión abierta.", "alerta");
+  if (usuario.rol === "editora" && usuarios.filter(item => item.rol === "editora").length <= 1) return mostrarMensaje("Se necesita una editora", "Debe quedar al menos un perfil con permiso para editar.", "alerta");
+  if (!confirm(`¿Eliminar el perfil de ${usuario.nombre}?`)) return;
+  try {
+    await supabaseRpc("agenda_eliminar_usuario", { p_token: tokenSesion, p_usuario: usuario.usuario });
+  } catch (error) {
+    console.warn("No se pudo eliminar el perfil:", error);
+    return mostrarMensaje("No se pudo eliminar", "Debe quedar al menos una editora y no puedes eliminar tu propia sesión.", "alerta");
+  }
+  await cargarUsuariosPublicos();
+  actualizarSelectorUsuarios();
+  mostrarConfiguracion();
+}
+
+async function cambiarContrasena(event) {
+  event.preventDefault();
+  const anterior = document.getElementById("claveAnterior").value.trim();
+  const nueva = document.getElementById("claveNueva").value.trim();
+  if (!anterior || !nueva) return mostrarMensaje("Faltan datos", "Escribe la contraseña anterior y la nueva.", "alerta");
+  if (nueva.length < 4) return mostrarMensaje("Contraseña corta", "Usa al menos 4 caracteres.", "alerta");
+  try {
+    await supabaseRpc("agenda_cambiar_clave", { p_token: tokenSesion, p_anterior: anterior, p_nueva: nueva });
+  } catch (error) {
+    console.warn("No se pudo cambiar la contraseña:", error);
+    return mostrarMensaje("Contraseña incorrecta", "La contraseña anterior no coincide.", "error");
+  }
+  document.getElementById("claveAnterior").value = "";
+  document.getElementById("claveNueva").value = "";
+  mostrarMensaje("Contraseña actualizada", "La nueva contraseña quedó guardada.");
+}
+
+function aplicarModoOscuro() {
+  document.body.classList.toggle("modo-oscuro", !!modoOscuro);
+}
+
+function cambiarModoOscuro(valor) {
+  modoOscuro = !!valor;
+  guardar();
+  aplicarModoOscuro();
+}
+
+function cambiarSonidos(valor) {
+  sonidosActivos = !!valor;
+  localStorage.setItem(`${CLAVE}-sonidosActivos`, JSON.stringify(sonidosActivos));
+  if (sonidosActivos) reproducirSonido("success", 0.5);
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  document.getElementById("sistema").style.display = "none";
+  aplicarModoOscuro();
+  aplicarConfiguracion();
+  await cargarUsuariosPublicos();
+  actualizarSelectorUsuarios();
+  usuarioSeleccionado();
+  if (tokenSesion && await cargarRemoto(true)) {
+    mostrarSistemaDesdeSesion(!!localStorage.getItem(`${CLAVE}-token`));
+  }
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") detenerCamaraEscaner();
-  if (document.visibilityState === "visible") cargarNubeYRefrescarVista();
+  if (document.visibilityState === "visible" && usuarioActual && remotoListo && !guardandoRemoto) cargarRemoto(true);
 });
+
+setInterval(() => {
+  if (document.visibilityState === "visible" && usuarioActual && remotoListo && !guardandoRemoto) cargarRemoto(true);
+}, 30000);
+
+function cerrarModalFormulario() {
+  document.getElementById("modalFormulario").style.display = "none";
+  document.getElementById("modalContenido").innerHTML = "";
+}
+
+function abrirModal(titulo, contenido) {
+  document.getElementById("modalContenido").innerHTML = `<h2>${titulo}</h2>${contenido}`;
+  document.getElementById("modalFormulario").style.display = "grid";
+}
+
+function leerArchivo(input, callback) {
+  const archivo = input.files?.[0];
+  if (!archivo) {
+    callback("");
+    return;
+  }
+  const lector = new FileReader();
+  lector.onload = () => callback(lector.result);
+  lector.readAsDataURL(archivo);
+}
+
+function nombreMes(fecha) {
+  const base = new Date(`${fecha.slice(0, 7)}-01T00:00:00`);
+  return base.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+}
+
+function cambiarMes(fecha, cantidad) {
+  const base = new Date(`${fecha.slice(0, 7)}-01T00:00:00`);
+  base.setMonth(base.getMonth() + cantidad);
+  mostrarInicio(`${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, "0")}-01`);
+}
+
+function calendarioGrande(fecha) {
+  const [anio, mes] = fecha.split("-").map(Number);
+  const primero = new Date(anio, mes - 1, 1);
+  const diasMes = new Date(anio, mes, 0).getDate();
+  const inicio = (primero.getDay() + 6) % 7;
+  const celdas = [];
+  for (let i = 0; i < inicio; i++) celdas.push(`<div class="cal-cell cal-empty"></div>`);
+  for (let dia = 1; dia <= diasMes; dia++) {
+    const fechaDia = `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+    const citasDia = citasDeFecha(fechaDia).filter(cita => cita.estado !== "Cancelada");
+    celdas.push(`<div class="cal-cell ${fechaDia === hoy() ? "hoy" : ""}">
+      <div class="cal-day"><strong>${dia}</strong>${puedeEditar() ? `<button type="button" onclick="abrirModalCita('${fechaDia}')">+</button>` : ""}</div>
+      <div class="cal-citas">${citasDia.map(cita => {
+        const visual = estadoVisualCita(cita);
+        return `<button type="button" class="cal-cita cita-${visual.color}" onclick="abrirDetalleCita(${cita.id})"><span>${cita.hora}</span>${cita.cliente}<small>${nombresServiciosCita(cita)} · ${duracionTotalCita(cita)} min</small><em>${visual.texto}</em></button>`;
+      }).join("")}</div>
+    </div>`);
+  }
+  return `<div class="calendar-weekdays"><span>Lunes</span><span>Martes</span><span>Miércoles</span><span>Jueves</span><span>Viernes</span><span>Sábado</span><span>Domingo</span></div><div class="calendar-grid">${celdas.join("")}</div>`;
+}
+
+function abrirResumenInicio(tipo) {
+  const resumen = resumenDia();
+  const esTurnos = tipo === "turnos";
+  const lista = esTurnos ? resumen.activas : resumen.canceladasHoy;
+  const titulo = esTurnos ? "Turnos de hoy" : "Cancelaciones de hoy";
+  const contenido = lista.map(cita => `<button class="today-item" type="button" onclick="cerrarModalFormulario(); abrirDetalleCita(${cita.id})">
+    <time>${cita.hora || "--:--"}</time>
+    <span><strong>${cita.cliente}</strong><small>${nombresServiciosCita(cita)} · ${cita.personal || "Sin asignar"}</small></span>
+    <b>${dinero(cita.precio || 0)}</b>
+  </button>`).join("") || `<div class="empty-summary"><strong>No hay ${esTurnos ? "turnos" : "cancelaciones"} hoy</strong><span>La información aparecerá aquí cuando exista.</span></div>`;
+  abrirModal(titulo, `<div class="today-list">${contenido}</div><div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cerrar</button></div>`);
+}
+
+function contactarCancelacion(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return mostrarMensaje("Cita no encontrada", "Actualiza la agenda e inténtalo otra vez.", "alerta");
+  const telefono = String(cita.telefono || "").replace(/\D/g, "");
+  if (!/^\d{10}$/.test(telefono)) return mostrarMensaje("Teléfono incorrecto", "Se necesita un teléfono de 10 dígitos para contactar a la clienta.", "alerta");
+  const mensaje = `Hola ${cita.cliente}, somos de ${NOMBRE_NEGOCIO} ${SUBTITULO_NEGOCIO}. Lamentamos la cancelación de tu cita de ${nombresServiciosCita(cita)}. Si deseas, con gusto podemos ayudarte a reprogramarla para otra fecha y horario.`;
+  location.href = `https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`;
+}
+
+mostrarInicio = function (fecha = hoy()) {
+  activarMenu("inicio");
+  const resumen = resumenDia();
+  const canceladas = citasCanceladas().slice(0, 5);
+  const pendientesPago = citasPorLiquidar(fecha);
+  document.getElementById("contenido").innerHTML = `
+    <div class="kpi-grid">
+      ${kpi("Turnos de Hoy", resumen.activas.length, "Reservas para hoy", "turnos-hoy", "morado", "abrirResumenInicio('turnos')")}
+      ${kpi("Cancelaciones Hoy", resumen.canceladasHoy.length, "Cancelaciones realizadas hoy", "cancelaciones-hoy", "dorado", "abrirResumenInicio('cancelaciones')")}
+      ${kpi("Turnos pendientes", resumen.pendientes.length, "Total de próximos turnos", "turnos-pendientes", "morado")}
+      ${kpi("Ingresos del día", dinero(resumen.ingresos), "Pagos estimados por revisar", "ingresos-dia", "verde")}
+    </div>
+
+    <section class="panel soft recent-cancellations">
+      <div class="section-head"><div><h2>Últimas cancelaciones</h2><p>Contacta a la clienta para ofrecerle una nueva fecha.</p></div></div>
+      <div class="cancellation-list">${canceladas.map(cita => `<article class="cancellation-item">
+        <div><strong>${cita.cliente}</strong><span>${nombresServiciosCita(cita)}</span></div>
+        <div><small>Fecha original</small><b>${formatoFecha(cita.fecha)} · ${cita.hora}</b></div>
+        <div><small>Personal</small><b>${cita.personal || "Sin asignar"}</b></div>
+        <button class="whatsapp-action" type="button" onclick="contactarCancelacion(${cita.id})">Contactar</button>
+      </article>`).join("") || `<div class="empty-summary"><strong>No hay cancelaciones recientes</strong><span>Las cancelaciones aparecerán aquí.</span></div>`}</div>
+    </section>
+
+    <section class="panel calendario-panel">
+      <div class="section-head calendario-head">
+        <button type="button" onclick="cambiarMes('${fecha}', -1)">‹</button>
+        <h2>${nombreMes(fecha)}</h2>
+        <button type="button" onclick="cambiarMes('${fecha}', 1)">›</button>
+        <input type="month" value="${fecha.slice(0, 7)}" onchange="mostrarInicio(this.value + '-01')">
+        ${puedeEditar() ? `<button class="primary-action" type="button" onclick="abrirModalCita('${fecha}')">Agregar cita</button>` : ""}
+      </div>
+      ${calendarioGrande(fecha)}
+    </section>
+
+    <section class="panel pagos-panel">
+      <div class="section-head"><h2>Citas pendientes por liquidar</h2></div>
+      ${vistaPagosPendientes(pendientesPago)}
+    </section>`;
+};
+
+function escaparAtributo(valor) {
+  return String(valor ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escaparTexto(valor) {
+  return String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function detallesServiciosCita(cita) {
+  return Array.isArray(cita?.serviciosDetalle) && cita.serviciosDetalle.length ? cita.serviciosDetalle : [{ nombre: cita?.servicio || "Servicio", duracion: duracionDeCita(cita || {}), precio: Number(cita?.precio || 0) }];
+}
+
+function nombresServiciosCita(cita) {
+  return detallesServiciosCita(cita).map(nombreDetalleServicio).join(" + ");
+}
+
+function nombreDetalleServicio(item) {
+  return item?.detalle ? `${item.nombre} (${item.detalle})` : item?.nombre || "Servicio";
+}
+
+function duracionTotalCita(cita) {
+  return detallesServiciosCita(cita).reduce((suma, item) => suma + Number(item.duracion || 0), 0);
+}
+
+function abrirModalCita(fecha = hoy(), citaId = null) {
+  if (!exigirEdicion()) return;
+  const cita = citaId === null ? null : citas.find(item => item.id === citaId);
+  if (citaId !== null && !cita) return mostrarMensaje("Cita no encontrada", "Actualiza la página e inténtalo nuevamente.", "alerta");
+  const nombresPersonal = [...new Set([cita?.personal, ...personal.filter(item => item.activo !== false).map(item => item.nombre)].filter(Boolean))];
+  const seleccionados = new Set(detallesServiciosCita(cita).map(item => item.nombre));
+  const detallesSeleccionados = detallesServiciosCita(cita).reduce((mapa, item) => {
+    if (item.detalle) mapa[item.nombre] = new Set(String(item.detalle).split(" · ").map(detalle => detalle.trim()).filter(Boolean));
+    return mapa;
+  }, {});
+  const metodosPago = ["Pago presencial/efectivo", "Transferencia bancaria"];
+  const metodoActual = cita?.metodoPago || "";
+  if (metodoActual && metodoActual !== "Tarjeta" && !metodosPago.includes(metodoActual)) metodosPago.unshift(metodoActual);
+  abrirModal(cita ? "Editar cita" : "Agregar cita", `<form class="modal-stack" novalidate onsubmit="guardarCitaModal(event, ${cita ? cita.id : "null"})">
+    <label>Fecha</label><input type="date" id="modalCitaFecha" value="${cita?.fecha || fecha}" required>
+    <label>Hora</label><input type="time" id="modalCitaHora" value="${cita?.hora || horaActual()}" required>
+    <label>Cliente</label><input id="modalCitaCliente" value="${escaparAtributo(cita?.cliente)}" placeholder="Nombre de la clienta" required>
+    <label>Teléfono</label><input id="modalCitaTelefono" type="tel" inputmode="numeric" maxlength="10" value="${escaparAtributo(cita?.telefono)}" placeholder="10 dígitos" oninput="this.value=this.value.replace(/\\D/g, '').slice(0, 10); actualizarClientaCita()" required>
+    <div id="estadoClientaCita" class="client-match"></div>
+    <label>Servicios</label><div class="appointment-services">${servicios.map((servicio, indice) => {
+      const detalles = normalizarDetallesServicio(servicio);
+      const detalleActual = detallesSeleccionados[servicio.nombre] || new Set();
+      return `<div class="appointment-service-option">
+        <label><input class="cita-servicio-check" type="checkbox" value="${indice}" ${seleccionados.has(servicio.nombre) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span><strong>${servicio.nombre}</strong><small>Desde ${dinero(servicio.precio)} · elige una opción</small></span></label>
+        ${detalles.length ? `<div class="service-suboptions">${detalles.map((grupo, grupoIndice) => `<div class="service-subgroup"><strong>${grupo.grupo}</strong>${renderOpcionesServicio(grupo, indice, grupoIndice, detalleActual)}</div>`).join("")}</div>` : ""}
+      </div>`;
+    }).join("")}</div>
+    <div id="resumenServiciosCita" class="appointment-summary"></div>
+    <label>Personal</label><select id="modalCitaPersonal" required><option value="">Selecciona al personal</option>${nombresPersonal.map(nombre => `<option ${nombre === cita?.personal ? "selected" : ""}>${nombre}</option>`).join("")}</select>
+    <label>Total (MXN)</label><input id="modalCitaPrecio" type="number" min="0.01" step="0.01" value="${valorParaEntrada(cita?.precio ?? 0)}" required>
+    <h3>Método de pago</h3>
+    <select id="modalCitaPago" required><option value="">Selecciona un método</option>${metodosPago.map(metodo => `<option ${metodo === metodoActual ? "selected" : ""}>${metodo}</option>`).join("")}</select>
+    <label>Anticipo de pago (opcional)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="modalCitaAnticipo" type="number" min="0" step="0.01" value="${valorParaEntrada(cita?.anticipo || 0)}" placeholder="Monto del anticipo"></div>
+    <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">${cita ? "Guardar cambios" : "Guardar cita"}</button></div>
+  </form>`);
+  actualizarClientaCita();
+  actualizarResumenServiciosCita(false);
+}
+
+function actualizarPrecioServicioModal() {
+  actualizarResumenServiciosCita();
+}
+
+function actualizarClientaCita() {
+  const telefono = document.getElementById("modalCitaTelefono")?.value || "";
+  const clienta = clientas.find(item => item.telefono === telefono);
+  const estado = document.getElementById("estadoClientaCita");
+  const nombre = document.getElementById("modalCitaCliente");
+  if (!estado) return;
+  if (clienta) {
+    nombre.value = clienta.nombre;
+    nombre.readOnly = true;
+    estado.innerHTML = `<strong>Clienta registrada: ${clienta.nombre}</strong><span>Este teléfono ya tiene historial. Para cambiar el nombre, edita su perfil en Clientas.</span>`;
+  } else {
+    nombre.readOnly = false;
+    estado.innerHTML = telefono.length === 10 ? `<strong>Nueva clienta</strong><span>Se creará su historial al guardar.</span>` : "";
+  }
+}
+
+function nombreComparable(valor) {
+  return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function clonarDetalles(detalles) {
+  return detalles.map(item => ({
+    grupo: item.grupo,
+    seleccion: item.seleccion || "varias",
+    opciones: (item.opciones || []).map(opcion => datoOpcion(opcion))
+  }));
+}
+
+function clonarServicioBase(servicio) {
+  return {
+    ...servicio,
+    detalles: clonarDetalles(servicio.detalles || []),
+    horarios: horariosBase()
+  };
+}
+
+function datoOpcion(opcion) {
+  return typeof opcion === "object" ? {
+    nombre: String(opcion.nombre || "Opción").trim(),
+    precio: Number(opcion.precio || 0),
+    duracion: Number(opcion.duracion || 0),
+    nota: String(opcion.nota || "").trim(),
+    subgrupo: String(opcion.subgrupo || "Elige una variante").trim(),
+    subopciones: Array.isArray(opcion.subopciones) ? opcion.subopciones.map(datoOpcion).filter(item => item.nombre) : []
+  } : { nombre: String(opcion || "").trim(), precio: 0, duracion: 0, nota: "", subgrupo: "", subopciones: [] };
+}
+
+function normalizarDetallesServicio(servicio = {}) {
+  const nombre = nombreComparable(servicio.nombre);
+  if (nombre === "manicure" || nombre === "manicure y spa") return clonarDetalles(servicio.detalles?.length ? servicio.detalles : detallesManicureBase);
+  if (!Array.isArray(servicio.detalles)) return [];
+  if (servicio.detalles.some(item => item && typeof item === "object")) {
+    return servicio.detalles.map(item => ({
+      grupo: String(item.grupo || "Detalles").trim(),
+      seleccion: ["una", "varias", "texto"].includes(item.seleccion) ? item.seleccion : "varias",
+      opciones: Array.isArray(item.opciones) ? item.opciones.map(datoOpcion).filter(opcion => opcion.nombre) : []
+    })).filter(item => item.grupo);
+  }
+  const opciones = servicio.detalles.map(item => String(item).trim()).filter(Boolean);
+  return opciones.length ? [{ grupo: "Detalles", seleccion: "varias", opciones: opciones.map(datoOpcion) }] : [];
+}
+
+function textoDetallesServicio(detalles = []) {
+  return normalizarDetallesServicio({ detalles }).map(item => item.opciones.length ? `${item.grupo}: ${item.opciones.map(opcion => opcion.nombre).join(", ")}` : `${item.grupo}:`).join("\n");
+}
+
+function leerDetallesServicioTexto(texto) {
+  return String(texto || "").split("\n").map(linea => linea.trim()).filter(Boolean).map(linea => {
+    const partes = linea.split(":");
+    if (partes.length === 1) return { grupo: "Detalles", seleccion: "varias", opciones: [datoOpcion(linea)] };
+    const grupo = partes.shift().trim();
+    const opciones = partes.join(":").split(",").map(item => datoOpcion(item)).filter(item => item.nombre);
+    return { grupo, seleccion: "varias", opciones };
+  }).filter(item => item.grupo);
+}
+
+function detalleSeleccionadoValor(grupo, opcion = "") {
+  const limpio = datoOpcion(opcion).nombre;
+  return limpio ? `${grupo}: ${limpio}` : "";
+}
+
+function renderOpcionesServicio(grupo, indiceServicio, indiceGrupo, detalleActual) {
+  if (!grupo.opciones.length) {
+    return `<input class="cita-detalle-text" data-service-index="${indiceServicio}" data-group="${escaparAtributo(grupo.grupo)}" value="${escaparAtributo([...detalleActual].find(item => item.startsWith(`${grupo.grupo}: `))?.replace(`${grupo.grupo}: `, "") || "")}" placeholder="Notas u observaciones" oninput="actualizarResumenServiciosCita()">`;
+  }
+  return grupo.opciones.map((opcion, indiceOpcion) => renderOpcionServicioRecursiva({
+    opcion: datoOpcion(opcion), indiceServicio, indiceGrupo, detalleActual,
+    etiquetaGrupo: grupo.grupo, tipo: grupo.seleccion === "una" ? "radio" : "checkbox",
+    nombreGrupo: `servicio-${indiceServicio}-grupo-${indiceGrupo}`, ruta: `${indiceGrupo}-${indiceOpcion}`, padreRuta: `raiz-${indiceGrupo}`
+  })).join("");
+}
+
+function renderOpcionServicioRecursiva({ opcion, indiceServicio, indiceGrupo, detalleActual, etiquetaGrupo, tipo, nombreGrupo, ruta, padreRuta }) {
+  const valor = detalleSeleccionadoValor(etiquetaGrupo, opcion);
+  const tieneHijas = opcion.subopciones.length > 0;
+  const control = `<label class="service-choice ${tieneHijas ? "has-children" : ""}"><input class="cita-detalle-check" data-service-index="${indiceServicio}" data-node-path="${ruta}" data-parent-path="${padreRuta}" data-price="${opcion.precio}" data-duration="${opcion.duracion}" name="${nombreGrupo}" type="${tipo}" value="${escaparAtributo(valor)}" ${detalleActual.has(valor) ? "checked" : ""} onchange="actualizarResumenServiciosCita()"><span>${opcion.nombre}<small>${tieneHijas ? `Selecciona ${opcion.subgrupo || "una subcategoría"}` : `${dinero(opcion.precio)} · ${opcion.duracion} min${opcion.nota ? ` · ${opcion.nota}` : ""}`}</small></span></label>`;
+  if (!tieneHijas) return control;
+  const hijas = opcion.subopciones.map((hija, indiceHija) => renderOpcionServicioRecursiva({
+    opcion: datoOpcion(hija), indiceServicio, indiceGrupo, detalleActual,
+    etiquetaGrupo: opcion.subgrupo || "Subcategoría", tipo: "radio",
+    nombreGrupo: `${nombreGrupo}-ruta-${ruta}`, ruta: `${ruta}-${indiceHija}`, padreRuta: ruta
+  })).join("");
+  return `${control}<div class="service-dependent-options" data-parent-path="${ruta}" hidden><strong>${opcion.subgrupo || "Subcategoría"}</strong>${hijas}</div>`;
+}
+
+function serviciosSeleccionadosFormulario() {
+  return [...document.querySelectorAll(".cita-servicio-check:checked")].map(input => {
+    const servicio = servicios[Number(input.value)];
+    const controles = [...document.querySelectorAll(`.cita-detalle-check[data-service-index="${input.value}"]:checked:not(:disabled)`)];
+    const detallesChecks = controles.map(item => item.value);
+    const detallesTexto = [...document.querySelectorAll(`.cita-detalle-text[data-service-index="${input.value}"]`)].map(item => detalleSeleccionadoValor(item.dataset.group || "Otros", item.value)).filter(Boolean);
+    const detalles = [...detallesChecks, ...detallesTexto];
+    const precioOpciones = controles.reduce((total, item) => total + Number(item.dataset.price || 0), 0);
+    const duracionOpciones = controles.reduce((total, item) => total + Number(item.dataset.duration || 0), 0);
+    return {
+      nombre: servicio.nombre,
+      detalle: detalles.join(" · "),
+      duracion: duracionOpciones > 0 ? duracionOpciones : Number(servicio.duracion),
+      precio: precioOpciones > 0 ? precioOpciones : Number(servicio.precio)
+    };
+  });
+}
+
+function actualizarResumenServiciosCita(actualizarPrecio = true) {
+  document.querySelectorAll(".appointment-service-option").forEach((contenedor, indice) => {
+    const activo = document.querySelector(`.cita-servicio-check[value="${indice}"]`)?.checked;
+    if (activo) {
+      contenedor.querySelectorAll('.service-subgroup').forEach((grupo, indiceGrupo) => {
+        const principales = [...grupo.querySelectorAll(`input[data-parent-path="raiz-${indiceGrupo}"][type="radio"]`)];
+        if (principales.length && !principales.some(input => input.checked)) principales[0].checked = true;
+      });
+    }
+    contenedor.querySelectorAll('.service-dependent-options').forEach(subgrupo => {
+      const rutaPadre = subgrupo.dataset.parentPath || "";
+      const padreActivo = !!contenedor.querySelector(`input[data-node-path="${rutaPadre}"]:checked:not(:disabled)`);
+      subgrupo.hidden = !activo || !padreActivo;
+      const hijasDirectas = [...subgrupo.querySelectorAll(`input[data-parent-path="${rutaPadre}"]`)];
+      hijasDirectas.forEach(input => input.disabled = !activo || !padreActivo);
+      if (!padreActivo) subgrupo.querySelectorAll("input").forEach(input => { input.disabled = true; input.checked = false; });
+      else if (hijasDirectas.length && !hijasDirectas.some(input => input.checked)) hijasDirectas[0].checked = true;
+    });
+  });
+  const seleccion = serviciosSeleccionadosFormulario();
+  const duracion = seleccion.reduce((suma, item) => suma + item.duracion, 0);
+  const subtotal = seleccion.reduce((suma, item) => suma + item.precio, 0);
+  const total = subtotal;
+  if (actualizarPrecio && document.getElementById("modalCitaPrecio")) document.getElementById("modalCitaPrecio").value = valorParaEntrada(total);
+  const resumen = document.getElementById("resumenServiciosCita");
+  document.querySelectorAll(".appointment-service-option").forEach((contenedor, indice) => {
+    const activo = document.querySelector(`.cita-servicio-check[value="${indice}"]`)?.checked;
+    contenedor.classList.toggle("servicio-elegido", !!activo);
+    contenedor.querySelectorAll(".cita-detalle-check").forEach(input => {
+      if ((input.dataset.parentPath || "").startsWith("raiz-")) input.disabled = !activo;
+    });
+    contenedor.querySelectorAll(".cita-detalle-text").forEach(input => input.disabled = !activo);
+  });
+  if (resumen) {
+    const nombres = seleccion.map(nombreDetalleServicio).join(" + ");
+    resumen.innerHTML = `<strong>${seleccion.length} servicio(s) · ${duracion} minutos</strong><span>${dinero(total)}</span>${nombres ? `<small>${nombres}</small>` : ""}`;
+  }
+}
+
+function horaAMinutos(hora) {
+  const [horas, minutos] = String(hora || "0:0").split(":").map(Number);
+  return horas * 60 + minutos;
+}
+
+function duracionDeCita(cita) {
+  if (Array.isArray(cita?.serviciosDetalle) && cita.serviciosDetalle.length) return cita.serviciosDetalle.reduce((suma, item) => suma + Number(item.duracion || 0), 0);
+  return Number(servicioPorNombre(cita?.servicio)?.duracion || cita?.duracion || 30);
+}
+
+function hayConflictoDeHorario(nuevaCita, ignorarId = null) {
+  const inicioNuevo = horaAMinutos(nuevaCita.hora);
+  const finNuevo = inicioNuevo + duracionDeCita(nuevaCita);
+  return citas.some(cita => {
+    if (cita.id === ignorarId || cita.estado === "Cancelada") return false;
+    if (cita.fecha !== nuevaCita.fecha || cita.personal !== nuevaCita.personal) return false;
+    const inicioExistente = horaAMinutos(cita.hora);
+    const finExistente = inicioExistente + duracionDeCita(cita);
+    return inicioNuevo < finExistente && finNuevo > inicioExistente;
+  });
+}
+
+function mostrarErrorCita(titulo, texto, campos = []) {
+  document.querySelectorAll("#modalFormulario .campo-error").forEach(campo => campo.classList.remove("campo-error"));
+  campos.forEach(id => document.getElementById(id)?.classList.add("campo-error"));
+  const primerCampo = document.getElementById(campos[0]);
+  if (primerCampo) {
+    primerCampo.focus();
+    primerCampo.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+  mostrarMensaje(titulo, texto, "alerta");
+}
+
+function guardarCitaModal(event, citaId = null) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  document.querySelectorAll("#modalFormulario .campo-error").forEach(campo => campo.classList.remove("campo-error"));
+  const citaAnterior = citaId === null ? null : citas.find(item => item.id === citaId);
+  const telefono = document.getElementById("modalCitaTelefono").value.trim();
+  const serviciosDetalle = serviciosSeleccionadosFormulario();
+  const cita = {
+    id: citaAnterior?.id || idNuevo(),
+    fecha: document.getElementById("modalCitaFecha").value,
+    hora: document.getElementById("modalCitaHora").value,
+    cliente: document.getElementById("modalCitaCliente").value.trim(),
+    telefono,
+    servicio: serviciosDetalle.map(nombreDetalleServicio).join(" + "),
+    serviciosDetalle,
+    duracion: serviciosDetalle.reduce((suma, item) => suma + item.duracion, 0),
+    precio: valorDesdeEntrada(document.getElementById("modalCitaPrecio").value),
+    metodoPago: document.getElementById("modalCitaPago").value,
+    anticipo: valorDesdeEntrada(document.getElementById("modalCitaAnticipo").value),
+    abonos: citaAnterior?.abonos || [],
+    liquidada: false,
+    estado: citaAnterior?.estado || "Pendiente",
+    canceladaEn: citaAnterior?.canceladaEn,
+    confirmacionToken: citaAnterior?.confirmacionToken || tokenConfirmacionNuevo(),
+    confirmadaCliente: !!citaAnterior?.confirmadaCliente,
+    confirmadaEn: citaAnterior?.confirmadaEn || null,
+    personal: document.getElementById("modalCitaPersonal").value
+  };
+  const faltantes = [
+    [cita.fecha, "fecha", "modalCitaFecha"],
+    [cita.hora, "hora", "modalCitaHora"],
+    [cita.cliente, "nombre de la clienta", "modalCitaCliente"],
+    [cita.telefono, "teléfono", "modalCitaTelefono"],
+    [cita.serviciosDetalle.length, "servicio", "resumenServiciosCita"],
+    [cita.personal, "personal", "modalCitaPersonal"],
+    [cita.metodoPago, "método de pago", "modalCitaPago"]
+  ].filter(([valor]) => !valor);
+  if (faltantes.length) {
+    return mostrarErrorCita("Faltan datos por completar", `Revisa: ${faltantes.map(([, nombre]) => nombre).join(", ")}.`, faltantes.map(([, , id]) => id));
+  }
+  if (cita.cliente.length < 2) return mostrarErrorCita("Datos incorrectos", "Escribe un nombre válido para la clienta.", ["modalCitaCliente"]);
+  if (!/^\d{10}$/.test(cita.telefono)) return mostrarErrorCita("Datos incorrectos", "El teléfono debe tener exactamente 10 números.", ["modalCitaTelefono"]);
+  const clientaDelTelefono = clientas.find(item => item.telefono === cita.telefono);
+  if (clientaDelTelefono && nombreComparable(clientaDelTelefono.nombre) !== nombreComparable(cita.cliente)) {
+    return mostrarErrorCita("Teléfono ya registrado", `Este número pertenece a ${clientaDelTelefono.nombre}. Usa ese nombre o edita su perfil en Clientas.`, ["modalCitaTelefono", "modalCitaCliente"]);
+  }
+  if (!Number.isFinite(cita.precio) || cita.precio <= 0) return mostrarErrorCita("Datos incorrectos", "El precio debe ser mayor que cero.", ["modalCitaPrecio"]);
+  if (!Number.isFinite(cita.anticipo) || cita.anticipo < 0 || cita.anticipo > cita.precio) return mostrarErrorCita("Datos incorrectos", "El anticipo no puede ser negativo ni mayor que el precio.", ["modalCitaAnticipo"]);
+  let clienta = clientas.find(item => item.telefono === cita.telefono);
+  const cambioHorario = !citaAnterior || citaAnterior.fecha !== cita.fecha || citaAnterior.hora !== cita.hora;
+  if (cambioHorario && bloqueos.some(item => item.fecha === cita.fecha && item.hora === cita.hora)) return mostrarErrorCita("Horario bloqueado", "Ese horario no está disponible.", ["modalCitaFecha", "modalCitaHora"]);
+  if (hayConflictoDeHorario(cita, citaAnterior?.id ?? null)) return mostrarErrorCita("Horario ocupado", `${cita.personal} ya tiene una cita que coincide con ese horario.`, ["modalCitaFecha", "modalCitaHora", "modalCitaPersonal"]);
+  cita.liquidada = cita.anticipo + totalAbonos(cita) >= cita.precio;
+  if (!clienta) {
+    configuracion.clientasEliminadas = (configuracion.clientasEliminadas || []).filter(numero => numero !== cita.telefono);
+    clienta = { id: idNuevo(), nombre: cita.cliente, telefono: cita.telefono, notas: "", creadaEn: new Date().toISOString() };
+    clientas.push(clienta);
+  } else {
+    clienta.nombre = cita.cliente;
+  }
+  cita.clienteId = clienta.id;
+  if (citaAnterior) citas[citas.findIndex(item => item.id === citaAnterior.id)] = cita;
+  else citas.push(cita);
+  guardar();
+  cerrarModalFormulario();
+  mostrarMensaje(citaAnterior ? "Cita actualizada" : "Cita guardada", citaAnterior ? "Los cambios quedaron guardados." : "La cita aparecerá en el calendario.", "ok");
+  mostrarInicio(cita.fecha);
+}
+
+function abrirDetalleCita(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return;
+  const visual = estadoVisualCita(cita);
+  abrirModal("Detalle de cita", `<div class="detalle-cita">
+    <div class="cita-status status-${visual.color}">${visual.texto}</div>
+    <p><strong>Cliente:</strong> ${cita.cliente}</p>
+    <div class="detail-services"><strong>Servicios:</strong>${detallesServiciosCita(cita).map(item => `<div><span>${item.nombre}</span><b>${item.duracion} min · ${dinero(item.precio)}</b></div>`).join("")}</div>
+    <p><strong>Duración total:</strong> ${duracionTotalCita(cita)} minutos</p>
+    <p><strong>Fecha:</strong> ${formatoFecha(cita.fecha)} ${cita.hora}</p>
+    <p><strong>Personal:</strong> ${cita.personal || "Sin asignar"}</p>
+    <p><strong>Precio:</strong> ${dinero(cita.precio)}</p>
+    <p><strong>Método de pago:</strong> ${cita.metodoPago || "-"}</p>
+    <p><strong>Anticipo:</strong> ${dinero(cita.anticipo || 0)}</p>
+    <p><strong>Saldo:</strong> ${dinero(saldoCita(cita))}</p>
+    <div class="client-confirmation ${cita.confirmadaCliente ? "confirmation-ok" : "confirmation-waiting"}">
+      <strong>${cita.confirmadaCliente ? "Confirmada por la clienta" : "Confirmación pendiente"}</strong>
+      <span>${cita.confirmadaCliente && cita.confirmadaEn ? `Confirmó el ${new Date(cita.confirmadaEn).toLocaleString("es-MX")}` : "Todavía no ha confirmado desde su enlace."}</span>
+    </div>
+    <div class="modal-actions">
+      <button type="button" onclick="cerrarModalFormulario()">Cerrar</button>
+      <button class="whatsapp-action" type="button" onclick="avisarClientaWhatsApp(${cita.id})">Avisar a la clienta</button>
+      ${puedeEditar() ? `<button type="button" onclick="cerrarModalFormulario(); abrirModalCita('${cita.fecha}', ${cita.id})">Editar cita</button>${cita.estado !== "Atendida" ? `<button type="button" onclick="cerrarModalFormulario(); marcarAtendida(${cita.id})">Servicio realizado</button>` : ""}${saldoCita(cita) > 0 ? `<button type="button" onclick="registrarAbono(${cita.id}); cerrarModalFormulario()">Abonar</button><button class="primary-action" type="button" onclick="cerrarModalFormulario(); liquidarCita(${cita.id})">Ya liquidaron</button>` : visual.color === "verde" ? `<button type="button" onclick="cerrarModalFormulario(); mostrarTicketPago(${cita.id})">Ver ticket</button>` : ""}<button type="button" onclick="cancelarCita(${cita.id}); cerrarModalFormulario()">Cancelar cita</button><button class="danger-action" type="button" onclick="eliminarCita(${cita.id}); cerrarModalFormulario()">Eliminar</button>` : ""}
+    </div>
+  </div>`);
+}
+
+async function avisarClientaWhatsApp(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return mostrarMensaje("Cita no encontrada", "Actualiza la agenda e inténtalo nuevamente.", "alerta");
+  const telefono = String(cita.telefono || "").replace(/\D/g, "");
+  if (!/^\d{10}$/.test(telefono)) return mostrarMensaje("Teléfono incorrecto", "La clienta debe tener un teléfono de 10 dígitos para abrir WhatsApp.", "alerta");
+
+  if (!cita.confirmacionToken) cita.confirmacionToken = tokenConfirmacionNuevo();
+  guardarLocal();
+  mostrarMensaje("Preparando confirmación", "Estamos guardando el enlace antes de abrir WhatsApp.", "ok");
+  const guardadaEnInternet = await guardarRemoto();
+  if (!guardadaEnInternet) {
+    return mostrarMensaje("No se pudo crear el enlace", "Revisa la conexión a internet e inténtalo nuevamente.", "alerta");
+  }
+  const confirmacionesActivas = await verificarServicioConfirmacion();
+  if (!confirmacionesActivas) {
+    return mostrarMensaje("Falta activar las confirmaciones", "Ejecuta el archivo supabase-confirmaciones.sql en el Editor SQL de Supabase antes de enviar el aviso.", "alerta");
+  }
+  const enlaceConfirmacion = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}confirmar.html?token=${encodeURIComponent(cita.confirmacionToken)}`;
+
+  const mensaje = [
+    `Hola ${cita.cliente}, te escribimos de ${NOMBRE_NEGOCIO} ${SUBTITULO_NEGOCIO}.`,
+    "",
+    "Te recordamos los datos de tu cita:",
+    `Fecha: ${formatoFecha(cita.fecha)}`,
+    `Hora: ${cita.hora}`,
+    `Servicio${detallesServiciosCita(cita).length > 1 ? "s" : ""}: ${nombresServiciosCita(cita)}`,
+    `Duración aproximada: ${duracionTotalCita(cita)} minutos`,
+    `Te atenderá: ${cita.personal || "nuestro personal"}`,
+    "",
+    "Por favor responde CONFIRMO para indicarnos que asistirás. ¡Te esperamos!"
+  ].slice(0, -1).concat([
+    "Confirma tu asistencia abriendo este enlace y tocando el botón:",
+    enlaceConfirmacion,
+    "",
+    "¡Te esperamos!"
+  ]).join("\n");
+  location.href = `https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`;
+}
+
+async function verificarServicioConfirmacion() {
+  try {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/rpc/confirmar_cita`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ p_token: `comprobacion-${Date.now()}` })
+    });
+    return respuesta.ok;
+  } catch {
+    return false;
+  }
+}
+
+function totalAbonos(cita) {
+  return (cita.abonos || []).reduce((s, abono) => s + Number(abono.monto || 0), 0);
+}
+
+function saldoCita(cita) {
+  if (cita.liquidada) return 0;
+  return Math.max(0, Number(cita.precio || 0) - Number(cita.anticipo || 0) - totalAbonos(cita));
+}
+
+function estadoVisualCita(cita) {
+  const atendida = cita.estado === "Atendida";
+  const pagada = saldoCita(cita) <= 0;
+  const tieneAbono = Number(cita.anticipo || 0) + totalAbonos(cita) > 0;
+  if (atendida && pagada) return { color: "verde", texto: "Pagada y servicio realizado" };
+  if (!atendida && pagada) return { color: "amarillo", texto: "Pagada · servicio pendiente" };
+  if (!atendida && tieneAbono) return { color: "amarillo", texto: "Con anticipo · servicio pendiente" };
+  if (atendida) return { color: "rojo", texto: "Servicio realizado · pago pendiente" };
+  return { color: "rojo", texto: "Sin abono · servicio pendiente" };
+}
+
+function citasPorLiquidar(fechaMes = hoy()) {
+  const mes = fechaMes.slice(0, 7);
+  return citasActivas()
+    .filter(cita => {
+      if (cita.fecha?.slice(0, 7) !== mes || saldoCita(cita) <= 0) return false;
+      return Number(cita.anticipo || 0) > 0 || cita.fecha <= hoy();
+    })
+    .sort((a, b) => `${a.fecha} ${a.hora}`.localeCompare(`${b.fecha} ${b.hora}`));
+}
+
+function vistaPagosPendientes(lista) {
+  if (!lista.length) return `<p class="vacio">No hay citas pendientes por liquidar en este periodo.</p>`;
+  return `<div class="pagos-lista">${lista.map(cita => {
+    const visual = estadoVisualCita(cita);
+    return `<article class="pago-item pago-${visual.color}">
+    <div><strong>${cita.cliente}</strong><span>${formatoFecha(cita.fecha)} ${cita.hora} · ${nombresServiciosCita(cita)}</span></div>
+    <div><small>Estado</small><b class="pago-estado status-${visual.color}">${visual.texto}</b></div>
+    <div><small>Anticipo</small><b>${dinero(cita.anticipo)}</b></div>
+    <div><small>Saldo</small><b>${dinero(saldoCita(cita))}</b></div>
+    ${puedeEditar() ? `<div class="pago-actions"><button type="button" onclick="registrarAbono(${cita.id})">Abonar</button><button class="primary-action" type="button" onclick="liquidarCita(${cita.id})">Ya liquidaron</button></div>` : ""}
+  </article>`;
+  }).join("")}</div>`;
+}
+
+function registrarAbono(id) {
+  if (!exigirEdicion()) return;
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return;
+  const cantidadMostrada = Number(prompt("¿Cuánto van a abonar en MXN?") || 0);
+  const cantidad = valorDesdeEntrada(cantidadMostrada);
+  if (!cantidadMostrada || cantidadMostrada <= 0) return mostrarMensaje("Completa los datos", "Escribe una cantidad válida para el abono.", "alerta");
+  cita.abonos = cita.abonos || [];
+  cita.abonos.push({ monto: cantidad, fecha: hoy() });
+  if (saldoCita(cita) <= 0) cita.liquidada = true;
+  guardar();
+  mostrarInicio(cita.fecha);
+  if (estadoVisualCita(cita).color === "verde") mostrarTicketPago(cita.id);
+  else mostrarMensaje("Abono guardado", "Se actualizó el saldo de la cita.", "ok");
+}
+
+function liquidarCita(id) {
+  if (!exigirEdicion()) return;
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return;
+  const saldo = saldoCita(cita);
+  cita.abonos = cita.abonos || [];
+  if (saldo > 0) cita.abonos.push({ monto: saldo, fecha: hoy() });
+  cita.liquidada = true;
+  cita.liquidadaEn = new Date().toISOString();
+  guardar();
+  mostrarInicio(cita.fecha);
+  if (cita.estado === "Atendida") mostrarTicketPago(cita.id);
+  else mostrarMensaje("Pago completado", "La cita está en amarillo. El ticket aparecerá al marcar el servicio como realizado.", "ok");
+}
+
+function mostrarTicketPago(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return mostrarMensaje("Cita no encontrada", "No fue posible generar el ticket.", "alerta");
+  if (estadoVisualCita(cita).color !== "verde") return mostrarMensaje("Ticket aún no disponible", "Completa el pago y marca el servicio como realizado.", "alerta");
+  const folio = String(cita.id).slice(-8).padStart(8, "0");
+  abrirModal("Ticket de pago", `<article class="ticket-pago">
+    <div class="ticket-brand"><img src="${configuracion.logo || LOGO_PREDETERMINADO}" alt="${NOMBRE_NEGOCIO}"><strong>${NOMBRE_NEGOCIO}</strong><span>${SUBTITULO_NEGOCIO}</span></div>
+    <div class="ticket-status">PAGADO</div>
+    <div class="ticket-line"><span>Folio</span><b>#${folio}</b></div>
+    <div class="ticket-line"><span>Fecha de pago</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div>
+    <div class="ticket-divider"></div>
+    <div class="ticket-line"><span>Clienta</span><b>${cita.cliente}</b></div>
+    <div class="ticket-divider"></div>
+    <div class="ticket-services">${detallesServiciosCita(cita).map(item => `<div><span>${item.nombre}<small>${item.duracion} min</small></span><b>${dinero(item.precio)}</b></div>`).join("")}</div>
+    <div class="ticket-line"><span>Duración total</span><b>${duracionTotalCita(cita)} min</b></div>
+    <div class="ticket-line"><span>Cita</span><b>${formatoFecha(cita.fecha)} · ${cita.hora}</b></div>
+    <div class="ticket-line"><span>Personal</span><b>${cita.personal || "Sin asignar"}</b></div>
+    <div class="ticket-line"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div>
+    <div class="ticket-divider"></div>
+    <div class="ticket-total"><span>Total pagado</span><strong>${dinero(cita.precio)}</strong></div>
+    <p>Gracias por tu visita</p>
+  </article>
+  <div class="modal-actions ticket-actions"><button type="button" onclick="cerrarModalFormulario()">Cerrar</button><button type="button" onclick="imprimirTicket(${cita.id})">Imprimir ticket</button><button class="primary-action" type="button" onclick="enviarTicketCliente(${cita.id})">Enviar a la clienta</button></div>`);
+}
+
+function imprimirTicket(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return;
+  const folio = String(cita.id).slice(-8).padStart(8, "0");
+  const logo = configuracion.logo || new URL(LOGO_PREDETERMINADO, window.location.href).href;
+  const ventana = window.open("", "_blank", "width=420,height=700");
+  if (!ventana) return mostrarMensaje("No se pudo imprimir", "Permite las ventanas emergentes para abrir el ticket.", "alerta");
+  const serviciosTicket = detallesServiciosCita(cita).map(item => `<div class="linea"><span>${item.nombre}<small> · ${item.duracion} min</small></span><b>${dinero(item.precio)}</b></div>`).join("");
+  ventana.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Ticket #${folio}</title><style>@page{size:80mm auto;margin:5mm}*{box-sizing:border-box}body{width:70mm;margin:0 auto;font-family:Arial,sans-serif;color:#272238}.marca{text-align:center}.marca img{width:52mm;height:24mm;object-fit:contain}.marca h1{font-size:20px;margin:2px}.marca p{margin:0;color:#746d7f}.pagado{width:max-content;margin:14px auto;padding:5px 12px;border:1px solid #2ca77a;color:#167854;border-radius:20px;font-weight:800}.linea,.total{display:flex;justify-content:space-between;gap:12px;padding:6px 0}.linea b{text-align:right}.linea small{display:block;color:#777}.separador{border-top:1px dashed #aaa;margin:9px 0}.total{font-size:18px;font-weight:800}.gracias{text-align:center;margin-top:20px;font-size:12px}</style></head><body><div class="marca"><img src="${logo}" alt="Logo"><h1>${NOMBRE_NEGOCIO}</h1><p>${SUBTITULO_NEGOCIO}</p></div><div class="pagado">PAGADO</div><div class="linea"><span>Folio</span><b>#${folio}</b></div><div class="linea"><span>Fecha</span><b>${formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10))}</b></div><div class="separador"></div><div class="linea"><span>Clienta</span><b>${cita.cliente}</b></div><div class="separador"></div>${serviciosTicket}<div class="linea"><span>Duración total</span><b>${duracionTotalCita(cita)} min</b></div><div class="separador"></div><div class="linea"><span>Cita</span><b>${formatoFecha(cita.fecha)} ${cita.hora}</b></div><div class="linea"><span>Personal</span><b>${cita.personal || "Sin asignar"}</b></div><div class="linea"><span>Método</span><b>${cita.metodoPago || "No especificado"}</b></div><div class="separador"></div><div class="total"><span>Total</span><strong>${dinero(cita.precio)}</strong></div><p class="gracias">Gracias por tu visita</p></body></html>`);
+  ventana.document.close();
+  setTimeout(() => ventana.print(), 300);
+}
+
+function cargarImagenTicket(origen) {
+  return new Promise(resolve => {
+    const imagen = new Image();
+    imagen.onload = () => resolve(imagen);
+    imagen.onerror = () => resolve(null);
+    imagen.src = origen;
+  });
+}
+
+async function crearImagenTicket(cita) {
+  const serviciosTicket = detallesServiciosCita(cita);
+  const canvas = document.createElement("canvas");
+  canvas.width = 900;
+  canvas.height = 1120 + serviciosTicket.length * 82;
+  const ctx = canvas.getContext("2d");
+  const folio = String(cita.id).slice(-8).padStart(8, "0");
+  ctx.fillStyle = "#fffdf9";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "#d8c5a2";
+  ctx.lineWidth = 5;
+  ctx.strokeRect(28, 28, canvas.width - 56, canvas.height - 56);
+
+  const logo = await cargarImagenTicket(configuracion.logo || LOGO_PREDETERMINADO);
+  if (logo) ctx.drawImage(logo, 245, 55, 410, 150);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#342540";
+  ctx.font = "700 36px Arial";
+  ctx.fillText("OH, MA BELLE", 450, 240);
+  ctx.font = "24px Arial";
+  ctx.fillStyle = "#806b70";
+  ctx.fillText(SUBTITULO_NEGOCIO, 450, 278);
+
+  ctx.fillStyle = "#e9f8ef";
+  ctx.fillRect(325, 310, 250, 58);
+  ctx.fillStyle = "#18724d";
+  ctx.font = "700 28px Arial";
+  ctx.fillText("PAGADO", 450, 349);
+
+  let y = 420;
+  const linea = (etiqueta, valor, negrita = false) => {
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#786f7e";
+    ctx.font = "24px Arial";
+    ctx.fillText(etiqueta, 90, y);
+    ctx.textAlign = "right";
+    ctx.fillStyle = "#30273a";
+    ctx.font = `${negrita ? "700 " : "600 "}24px Arial`;
+    ctx.fillText(String(valor), 810, y);
+    y += 58;
+  };
+  const separador = () => {
+    ctx.strokeStyle = "#d9d2dc";
+    ctx.setLineDash([10, 9]);
+    ctx.beginPath(); ctx.moveTo(90, y); ctx.lineTo(810, y); ctx.stroke();
+    ctx.setLineDash([]);
+    y += 40;
+  };
+
+  linea("Folio", `#${folio}`);
+  linea("Fecha de pago", formatoFecha((cita.liquidadaEn || hoy()).slice(0, 10)));
+  separador();
+  linea("Clienta", cita.cliente, true);
+  separador();
+  serviciosTicket.forEach(item => {
+    linea(`${item.nombre} · ${item.duracion} min`, dinero(item.precio));
+  });
+  separador();
+  linea("Duración total", `${duracionTotalCita(cita)} min`);
+  linea("Cita", `${formatoFecha(cita.fecha)} · ${cita.hora}`);
+  linea("Personal", cita.personal || "Sin asignar");
+  linea("Método", cita.metodoPago || "No especificado");
+  separador();
+  ctx.font = "700 28px Arial";
+  linea("TOTAL PAGADO", dinero(cita.precio), true);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#806b70";
+  ctx.font = "24px Arial";
+  ctx.fillText("Gracias por tu visita", 450, canvas.height - 85);
+  return new Promise(resolve => canvas.toBlob(resolve, "image/png", 0.95));
+}
+
+async function enviarTicketCliente(id) {
+  const cita = citas.find(item => item.id === id);
+  if (!cita) return mostrarMensaje("Cita no encontrada", "No fue posible preparar el comprobante.", "alerta");
+  const clienta = clientas.find(item => item.id === cita.clienteId || item.telefono === cita.telefono);
+  const telefono = String(cita.telefono || clienta?.telefono || "").replace(/\D/g, "");
+  if (!/^\d{10}$/.test(telefono)) {
+    return mostrarMensaje("Teléfono incorrecto", "El ticket necesita el teléfono registrado de 10 dígitos para abrir WhatsApp.", "alerta");
+  }
+  mostrarMensaje("Preparando ticket", "Se abrirá WhatsApp con el número de la clienta registrada.", "ok");
+  const imagen = await crearImagenTicket(cita);
+  if (!imagen) return mostrarMensaje("No se pudo crear", "Inténtalo nuevamente.", "alerta");
+  const archivo = new File([imagen], `ticket-beloved-body-${cita.id}.png`, { type: "image/png" });
+  const enlace = URL.createObjectURL(imagen);
+  const descarga = document.createElement("a");
+  descarga.href = enlace;
+  descarga.download = archivo.name;
+  descarga.click();
+  setTimeout(() => URL.revokeObjectURL(enlace), 2000);
+  const mensaje = [
+    `Hola ${cita.cliente}, te compartimos tu comprobante de pago de ${NOMBRE_NEGOCIO} ${SUBTITULO_NEGOCIO}.`,
+    "",
+    `Servicio${detallesServiciosCita(cita).length > 1 ? "s" : ""}: ${nombresServiciosCita(cita)}`,
+    `Fecha: ${formatoFecha(cita.fecha)} ${cita.hora}`,
+    `Total pagado: ${dinero(cita.precio)}`,
+    "",
+    "El ticket se descargó en este dispositivo para adjuntarlo en este chat. Gracias por tu visita."
+  ].join("\n");
+  window.open(`https://wa.me/52${telefono}?text=${encodeURIComponent(mensaje)}`, "_blank");
+  mostrarMensaje("WhatsApp abierto", "Adjunta el ticket descargado en el chat de la clienta.", "ok");
+}
+
+let vistaServiciosActual = "servicios";
+
+mostrarServicios = function (vista = vistaServiciosActual) {
+  activarMenu("servicios");
+  vistaServiciosActual = vista;
+  const esServicios = vista === "servicios";
+  document.getElementById("contenido").innerHTML = `
+    <section class="servicios-page">
+      <div class="servicios-toolbar">
+        <div class="tabs-app">
+          <button class="${esServicios ? "activo" : ""}" type="button" onclick="mostrarServicios('servicios')"><span class="services-icon nav-icon"></span>Servicios</button>
+          <button class="${!esServicios ? "activo" : ""}" type="button" onclick="mostrarServicios('personal')"><span class="stats-icon nav-icon"></span>Personal</button>
+        </div>
+        ${puedeEditar() ? `<button class="primary-action" type="button" onclick="${esServicios ? "abrirNuevoServicio()" : "abrirNuevoPersonal()"}">+ Nuevo ${esServicios ? "Servicio" : "Personal"}</button>` : ""}
+      </div>
+      ${esServicios ? vistaServicios() : vistaPersonal()}
+    </section>`;
+};
+
+function vistaServicios() {
+  if (!servicios.length) return `<div class="empty-state"><span class="empty-icon services-icon nav-icon"></span><h2>No hay servicios registrados</h2><p>Comienza agregando servicios con el boton "Nuevo Servicio"</p></div>`;
+  return `<div class="cards-grid">${servicios.map((servicio, indice) => `<article class="service-card">
+    <div class="service-image service-image-empty ${servicio.color}"><span>${servicio.nombre}</span></div>
+    <div class="service-body">
+      <h3>${servicio.nombre}</h3>
+      <p class="service-time">Opciones desde ${duracionMinimaServicio(servicio)} minutos</p>
+      ${normalizarDetallesServicio(servicio).length ? `<div class="service-detail-tags">${normalizarDetallesServicio(servicio).map(grupo => `<span><strong>${grupo.grupo}</strong>${grupo.opciones.length ? `<small>${grupo.opciones.slice(0, 4).map(opcionOriginal => { const opcion = datoOpcion(opcionOriginal); return `${opcion.nombre}${opcion.subopciones.length ? ` (${opcion.subopciones.length} variantes)` : ""}`; }).join(" · ")}${grupo.opciones.length > 4 ? ` · +${grupo.opciones.length - 4} más` : ""}</small>` : `<small>Campo libre</small>`}</span>`).join("")}</div>` : `<p>Sin detalles agregados.</p>`}
+      <div class="service-foot">
+        <strong>Desde ${dinero(precioMinimoServicio(servicio))}</strong>
+        ${puedeEditar() ? `<span class="service-actions"><button class="edit-service" type="button" onclick="abrirEditarServicio(${indice})">Editar</button><button class="trash" type="button" onclick="eliminarServicio(${indice})">Eliminar</button></span>` : ""}
+      </div>
+    </div>
+  </article>`).join("")}</div>`;
+}
+
+function opcionesPlanasServicio(servicio) {
+  const resultado = [];
+  const recorrer = opciones => (opciones || []).forEach(opcionOriginal => {
+    const opcion = datoOpcion(opcionOriginal);
+    resultado.push(opcion);
+    recorrer(opcion.subopciones);
+  });
+  normalizarDetallesServicio(servicio).forEach(grupo => recorrer(grupo.opciones));
+  return resultado;
+}
+
+function precioMinimoServicio(servicio) {
+  const valores = [Number(servicio.precio || 0), ...opcionesPlanasServicio(servicio).map(opcion => opcion.precio)].filter(valor => valor > 0);
+  return valores.length ? Math.min(...valores) : 0;
+}
+
+function duracionMinimaServicio(servicio) {
+  const valores = [Number(servicio.duracion || 0), ...opcionesPlanasServicio(servicio).map(opcion => opcion.duracion)].filter(valor => valor > 0);
+  return valores.length ? Math.min(...valores) : 0;
+}
+
+function vistaPersonal() {
+  if (!personal.length) return `<div class="empty-state"><span class="empty-icon user-group-icon"></span><h2>No hay personal registrado</h2><p>Comienza agregando personal con el boton "Nuevo Personal"</p></div>`;
+  return `<div class="cards-grid">${personal.map((persona, indice) => `<article class="person-card">
+    <div class="person-photo" ${persona.foto ? `style="background-image:url('${persona.foto}')"` : ""}></div>
+    <div class="service-body">
+      <h3>${persona.nombre}</h3>
+      ${persona.telefono ? `<p class="service-time">WhatsApp: ${persona.telefono}</p>` : ""}
+      <div class="service-foot"><strong class="activo-dot">Activo</strong>${puedeEditar() ? `<span><button type="button" onclick="abrirEditarPersonal(${indice})">Editar</button><button class="trash" type="button" onclick="eliminarPersonal(${indice})">Eliminar</button></span>` : ""}</div>
+    </div>
+  </article>`).join("")}</div>`;
+}
+
+function camposHorarios(prefix, datos = horariosBase()) {
+  const normalizados = normalizarHorarios(datos);
+  return `<div class="horarios-box" id="${prefix}Horarios">${normalizados.map((item, indice) => `<div class="horario-row" data-day-index="${indice}" data-day="${item.dia}">
+    <label><input type="checkbox" class="horario-dia-activo" ${item.activo ? "checked" : ""}> ${item.dia}</label>
+    <div class="horario-intervalos">${item.intervalos.map(intervalo => filaIntervaloHorario(intervalo)).join("")}</div>
+    <button class="add-schedule" type="button" onclick="agregarIntervaloHorario('${prefix}', ${indice})">+ Agregar otro horario</button>
+  </div>`).join("")}</div>`;
+}
+
+function filaIntervaloHorario(intervalo = { inicio: "09:00", fin: "18:00" }) {
+  return `<div class="horario-intervalo"><input class="horario-inicio" type="time" value="${intervalo.inicio || "09:00"}"><span>a</span><input class="horario-fin" type="time" value="${intervalo.fin || "18:00"}"><button type="button" title="Eliminar horario" onclick="eliminarIntervaloHorario(this)">−</button></div>`;
+}
+
+function agregarIntervaloHorario(prefix, indiceDia) {
+  const contenedor = document.querySelector(`#${prefix}Horarios [data-day-index="${indiceDia}"] .horario-intervalos`);
+  if (contenedor) contenedor.insertAdjacentHTML("beforeend", filaIntervaloHorario());
+}
+
+function eliminarIntervaloHorario(boton) {
+  const contenedor = boton.closest(".horario-intervalos");
+  if (!contenedor) return;
+  if (contenedor.children.length === 1) return mostrarMensaje("Horario necesario", "Cada día debe conservar al menos un horario.", "alerta");
+  boton.closest(".horario-intervalo")?.remove();
+}
+
+function leerHorarios(prefix) {
+  return [...document.querySelectorAll(`#${prefix}Horarios .horario-row`)].map(fila => {
+    const intervalos = [...fila.querySelectorAll(".horario-intervalo")].map(intervalo => ({
+      inicio: intervalo.querySelector(".horario-inicio").value,
+      fin: intervalo.querySelector(".horario-fin").value
+    }));
+    return {
+      dia: fila.dataset.day,
+      activo: fila.querySelector(".horario-dia-activo").checked,
+      inicio: intervalos[0]?.inicio || "09:00",
+      fin: intervalos[0]?.fin || "18:00",
+      intervalos
+    };
+  });
+}
+
+function horariosCorrectos(horarios) {
+  return horarios.every(dia => !dia.activo || dia.intervalos.every((intervalo, indice, lista) => {
+    if (!intervalo.inicio || !intervalo.fin || horaAMinutos(intervalo.inicio) >= horaAMinutos(intervalo.fin)) return false;
+    return !lista.some((otro, otroIndice) => otroIndice !== indice && horaAMinutos(intervalo.inicio) < horaAMinutos(otro.fin) && horaAMinutos(intervalo.fin) > horaAMinutos(otro.inicio));
+  }));
+}
+
+function abrirNuevoPersonal(indice = null) {
+  if (!exigirEdicion()) return;
+  const persona = indice !== null ? personal[indice] : { horarios: horariosBase(), fraccion: 30 };
+  abrirModal(indice !== null ? "Editar Personal" : "Nuevo Personal", `<form class="modal-stack" novalidate onsubmit="guardarPersonalModal(event, ${indice === null ? "null" : indice})">
+    <label>Nombre completo</label><input id="personalNombre" value="${persona.nombre || ""}" placeholder="Sebastián Pérez" required>
+    <label>Foto</label><input id="personalFoto" type="file" accept="image/*">
+    <label>Email para notificaciones (opcional)</label><input id="personalEmail" type="email" value="${persona.email || ""}" placeholder="ejemplo@email.com">
+    <label>Número de WhatsApp</label><input id="personalTelefono" type="tel" inputmode="numeric" maxlength="10" value="${persona.telefono || ""}" placeholder="10 dígitos" oninput="this.value=this.value.replace(/\\D/g,'').slice(0,10)" required>
+    <h3>Horario de trabajo</h3>${camposHorarios("personal", persona.horarios || horariosBase())}
+    <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar Personal</button></div>
+  </form>`);
+}
+
+function abrirEditarPersonal(indice) {
+  abrirNuevoPersonal(indice);
+}
+
+function guardarPersonalModal(event, indice) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+  const inputFoto = document.getElementById("personalFoto");
+  leerArchivo(inputFoto, fotoNueva => {
+    const actual = indice !== null ? personal[indice] : {};
+    const horarios = leerHorarios("personal");
+    const persona = {
+      id: actual.id || idNuevo(),
+      nombre: document.getElementById("personalNombre").value.trim(),
+      descripcion: actual.descripcion || "",
+      email: document.getElementById("personalEmail").value.trim(),
+      telefono: document.getElementById("personalTelefono").value.trim(),
+      fraccion: actual.fraccion || 30,
+      foto: fotoNueva || actual.foto || "",
+      activo: true,
+      horarios
+    };
+    if (!persona.nombre) return mostrarMensaje("Completa los datos", "Agrega el nombre del personal.", "alerta");
+    if (!/^\d{10}$/.test(persona.telefono)) return mostrarMensaje("WhatsApp incorrecto", "El número de WhatsApp debe tener exactamente 10 dígitos.", "alerta");
+    if (!horariosCorrectos(horarios)) return mostrarMensaje("Revisa los horarios", "La hora final debe ser posterior a la inicial y los horarios del mismo día no pueden cruzarse.", "alerta");
+    if (indice !== null) personal[indice] = persona;
+    else personal.push(persona);
+    guardar();
+    cerrarModalFormulario();
+    mostrarServicios("personal");
+  });
+}
+
+function eliminarPersonal(indice) {
+  if (!exigirEdicion()) return;
+  personal.splice(indice, 1);
+  guardar();
+  mostrarServicios("personal");
+}
+
+function opcionEdicionPorRuta(ruta) {
+  const partes = String(ruta).split(".").map(Number);
+  let opciones = servicioDetallesEdicion[partes.shift()]?.opciones;
+  let opcion = null;
+  for (const indice of partes) {
+    opcion = opciones?.[indice];
+    opciones = opcion?.subopciones;
+  }
+  return opcion;
+}
+
+function actualizarGrupoServicioEdicion(indice, campo, valor) {
+  if (servicioDetallesEdicion[indice]) servicioDetallesEdicion[indice][campo] = valor;
+}
+
+function actualizarOpcionServicioEdicion(ruta, campo, valor) {
+  const opcion = opcionEdicionPorRuta(ruta);
+  if (!opcion) return;
+  opcion[campo] = ["precio", "duracion"].includes(campo) ? Number(valor || 0) : valor;
+}
+
+function renderOpcionEditor(opcionOriginal, ruta, nivel = 0) {
+  const opcion = datoOpcion(opcionOriginal);
+  return `<div class="catalog-option-editor" style="--catalog-level:${nivel}">
+    <div class="catalog-option-fields">
+      <input value="${escaparAtributo(opcion.nombre)}" placeholder="Nombre de la opción" oninput="actualizarOpcionServicioEdicion('${ruta}','nombre',this.value)">
+      <label>Precio<input type="number" min="0" step="0.01" value="${valorParaEntrada(opcion.precio)}" oninput="actualizarOpcionServicioEdicion('${ruta}','precio',this.value)"></label>
+      <label>Minutos<input type="number" min="0" value="${opcion.duracion}" oninput="actualizarOpcionServicioEdicion('${ruta}','duracion',this.value)"></label>
+      <button class="trash" type="button" title="Eliminar opción" onclick="eliminarOpcionServicioEdicion('${ruta}')">Eliminar</button>
+    </div>
+    ${opcion.subopciones.length ? `<label class="catalog-subgroup-name">Nombre de la subcategoría<input value="${escaparAtributo(opcion.subgrupo)}" placeholder="Ej. Largo, efecto o acabado" oninput="actualizarOpcionServicioEdicion('${ruta}','subgrupo',this.value)"></label>` : ""}
+    <div class="catalog-children">${opcion.subopciones.map((hija, indice) => renderOpcionEditor(hija, `${ruta}.${indice}`, nivel + 1)).join("")}</div>
+    <button class="catalog-add-child" type="button" onclick="agregarSubopcionServicioEdicion('${ruta}')">+ Agregar subcategoría a esta opción</button>
+  </div>`;
+}
+
+function renderEditorDetallesServicio() {
+  const contenedor = document.getElementById("editorDetallesServicio");
+  if (!contenedor) return;
+  contenedor.innerHTML = servicioDetallesEdicion.map((grupo, indiceGrupo) => `<section class="catalog-group-editor">
+    <div class="catalog-group-head">
+      <input value="${escaparAtributo(grupo.grupo)}" placeholder="Nombre de la categoría" oninput="actualizarGrupoServicioEdicion(${indiceGrupo},'grupo',this.value)">
+      <select onchange="actualizarGrupoServicioEdicion(${indiceGrupo},'seleccion',this.value)"><option value="una" ${grupo.seleccion === "una" ? "selected" : ""}>Elegir una</option><option value="varias" ${grupo.seleccion === "varias" ? "selected" : ""}>Permitir varias</option><option value="texto" ${grupo.seleccion === "texto" ? "selected" : ""}>Texto libre</option></select>
+      <button class="trash" type="button" onclick="eliminarGrupoServicioEdicion(${indiceGrupo})">Eliminar categoría</button>
+    </div>
+    <div class="catalog-options">${(grupo.opciones || []).map((opcion, indice) => renderOpcionEditor(opcion, `${indiceGrupo}.${indice}`)).join("")}</div>
+    ${grupo.seleccion !== "texto" ? `<button type="button" onclick="agregarOpcionServicioEdicion(${indiceGrupo})">+ Agregar opción</button>` : ""}
+  </section>`).join("") || `<p class="texto-suave">Aún no hay categorías. Agrega una para comenzar.</p>`;
+}
+
+function agregarGrupoServicioEdicion() {
+  servicioDetallesEdicion.push({ grupo: "Nueva categoría", seleccion: "una", opciones: [] });
+  renderEditorDetallesServicio();
+}
+
+function eliminarGrupoServicioEdicion(indice) {
+  servicioDetallesEdicion.splice(indice, 1);
+  renderEditorDetallesServicio();
+}
+
+function agregarOpcionServicioEdicion(indiceGrupo) {
+  servicioDetallesEdicion[indiceGrupo]?.opciones.push(datoOpcion({ nombre: "Nueva opción", precio: 0, duracion: 0 }));
+  renderEditorDetallesServicio();
+}
+
+function agregarSubopcionServicioEdicion(ruta) {
+  const opcion = opcionEdicionPorRuta(ruta);
+  if (!opcion) return;
+  if (!opcion.subgrupo) opcion.subgrupo = "Subcategoría";
+  opcion.subopciones.push(datoOpcion({ nombre: "Nueva subcategoría", precio: 0, duracion: 0 }));
+  renderEditorDetallesServicio();
+}
+
+function eliminarOpcionServicioEdicion(ruta) {
+  const partes = String(ruta).split(".").map(Number);
+  const indiceGrupo = partes.shift();
+  const indiceOpcion = partes.pop();
+  let opciones = servicioDetallesEdicion[indiceGrupo]?.opciones;
+  for (const indice of partes) opciones = opciones?.[indice]?.subopciones;
+  if (opciones) opciones.splice(indiceOpcion, 1);
+  renderEditorDetallesServicio();
+}
+
+function abrirNuevoServicio(indice = null) {
+  if (!exigirEdicion()) return;
+  const servicio = indice !== null ? servicios[indice] : { horarios: horariosBase(), capacidad: 1, duracion: 30, precio: 0, anticipo: 0, pagoEfectivo: true };
+  servicioDetallesEdicion = clonarDetalles(normalizarDetallesServicio(servicio));
+  abrirModal(indice !== null ? "Editar Servicio" : "Nuevo Servicio", `<form class="modal-stack" novalidate onsubmit="guardarServicioModal(event, ${indice === null ? "null" : indice})">
+    <label>Nombre del Servicio</label><input id="servicioNombreModal" value="${servicio.nombre || ""}" required>
+    <label>Precio base (MXN)</label><div class="input-addon"><span>${simboloMoneda()}</span><input id="servicioPrecioModal" type="number" min="0" step="0.01" value="${valorParaEntrada(servicio.precio || 0)}" required></div>
+    <label>Duración base (minutos)</label><input id="servicioDuracionModal" type="number" min="0" value="${servicio.duracion || 0}" required>
+    <div class="catalog-editor-title"><div><h3>Categorías y subcategorías</h3><p class="texto-suave">Puedes agregar tantos niveles como necesites. Cada opción puede tener su propio precio y tiempo.</p></div><button type="button" onclick="agregarGrupoServicioEdicion()">+ Categoría</button></div>
+    <div id="editorDetallesServicio" class="catalog-editor"></div>
+    <h3>Personal Asignado</h3>
+    <div class="check-grid">${personal.map(p => `<label class="check-line"><input class="servicioPersonalModal" type="checkbox" value="${p.nombre}" ${(servicio.personalAsignado || []).includes(p.nombre) ? "checked" : ""}> ${p.nombre}</label>`).join("") || `<p class="texto-suave">No hay personal agregado todavía.</p>`}</div>
+    <h3>Horarios</h3>${camposHorarios("servicio", servicio.horarios || horariosBase())}
+    <label>Anticipación mínima para reservar</label><select id="servicioAnticipacionModal"><option>Sin anticipación</option><option>1 hora antes</option><option>24 horas antes</option></select>
+    <div class="modal-actions"><button type="button" onclick="cerrarModalFormulario()">Cancelar</button><button class="primary-action" type="submit">Guardar Servicio</button></div>
+  </form>`);
+  renderEditorDetallesServicio();
+}
+
+function abrirEditarServicio(indice) {
+  abrirNuevoServicio(indice);
+}
+
+function guardarServicioModal(event, indice) {
+  event.preventDefault();
+  if (!exigirEdicion()) return;
+    const actual = indice !== null ? servicios[indice] : {};
+    const horarios = leerHorarios("servicio");
+    const servicio = {
+      nombre: document.getElementById("servicioNombreModal").value.trim(),
+      descripcion: actual.descripcion || "",
+      confirmacion: actual.confirmacion || "",
+      imagen: "",
+      precio: valorDesdeEntrada(document.getElementById("servicioPrecioModal").value),
+      capacidad: actual.capacidad || 1,
+      anticipo: actual.anticipo || 0,
+      duracion: Number(document.getElementById("servicioDuracionModal").value || 30),
+      pagoEfectivo: actual.pagoEfectivo !== false,
+      pagoTransferencia: !!actual.pagoTransferencia,
+      personalAsignado: [...document.querySelectorAll(".servicioPersonalModal:checked")].map(item => item.value),
+      detalles: clonarDetalles(servicioDetallesEdicion).filter(grupo => grupo.grupo),
+      horarios,
+      color: actual.color || ["rosa", "dorado", "uva", "verde"][servicios.length % 4]
+    };
+    if (!servicio.nombre || servicio.precio < 0 || servicio.duracion < 0) return mostrarMensaje("Completa los datos", "Agrega un nombre y revisa que precio y duración no sean negativos.", "alerta");
+    if (precioMinimoServicio(servicio) <= 0 || duracionMinimaServicio(servicio) <= 0) return mostrarMensaje("Faltan precios o tiempos", "Agrega precio y duración al servicio base o a sus opciones.", "alerta");
+    if (!horariosCorrectos(horarios)) return mostrarMensaje("Revisa los horarios", "La hora final debe ser posterior a la inicial y los horarios del mismo día no pueden cruzarse.", "alerta");
+    if (indice !== null) servicios[indice] = servicio;
+    else servicios.push(servicio);
+    guardar();
+    cerrarModalFormulario();
+    mostrarServicios("servicios");
+}
