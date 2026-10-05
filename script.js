@@ -66,7 +66,8 @@ const configuracionBase = {
   moneda: "MXN",
   tipoCambio: 17.6087,
   tipoCambioFecha: "",
-  tipoCambioConsultadoEn: ""
+  tipoCambioConsultadoEn: "",
+  metasMensuales: {}
 };
 const usuariosBase = [
   { usuario: "maria", rol: "editora", nombre: "Maestra Maria" },
@@ -898,6 +899,129 @@ function calcularEstadisticas(tipoPeriodo, valor) {
     porServicio: resumir(nombresServicios, "servicio"),
     porPersonal: resumir(nombresPersonal, "personal")
   };
+}
+
+function diasDelMes(mes) {
+  const [anio, numeroMes] = mes.split("-").map(Number);
+  return new Date(anio, numeroMes, 0).getDate();
+}
+
+function metaMensual(mes) {
+  return Math.max(0, Number(configuracion.metasMensuales?.[mes] || 0));
+}
+
+function mesAnterior(mes) {
+  const [anio, numeroMes] = mes.split("-").map(Number);
+  const fecha = new Date(anio, numeroMes - 2, 1);
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function saldoArrastradoAntesDe(mes) {
+  const metas = configuracion.metasMensuales || {};
+  const meses = [];
+  let cursor = mesAnterior(mes);
+  while (metaMensual(cursor) > 0) {
+    meses.unshift(cursor);
+    cursor = mesAnterior(cursor);
+  }
+  return meses.reduce((saldo, mesCalculado) => {
+    const ventasMes = calcularEstadisticas("mes", mesCalculado).ingresos;
+    return saldo + ventasMes - metaMensual(mesCalculado);
+  }, 0);
+}
+
+function datosMetaMensual(mes) {
+  const estadisticas = calcularEstadisticas("mes", mes);
+  const meta = metaMensual(mes);
+  const ventas = estadisticas.ingresos;
+  const faltante = Math.max(0, meta - ventas);
+  const saldoAnterior = saldoArrastradoAntesDe(mes);
+  const pendienteAnterior = Math.max(0, -saldoAnterior);
+  const creditoAnterior = Math.max(0, saldoAnterior);
+  const objetivoAcumulado = meta + pendienteAnterior;
+  const saldoAcumulado = saldoAnterior + ventas - meta;
+  const faltanteAcumulado = Math.max(0, -saldoAcumulado);
+  const diasMes = diasDelMes(mes);
+  const hoyMes = hoy().slice(0, 7);
+  const esMesActual = mes === hoyMes;
+  const esMesFuturo = mes > hoyMes;
+  const diasRestantes = esMesActual ? Math.max(1, diasMes - Number(hoy().slice(8, 10)) + 1) : (esMesFuturo ? diasMes : 0);
+  const porcentaje = objetivoAcumulado ? Math.min(100, (ventas + creditoAnterior) / objetivoAcumulado * 100) : 0;
+  const diasTranscurridos = esMesActual ? Number(hoy().slice(8, 10)) : (mes < hoyMes ? diasMes : 0);
+  const fechaCorte = mes < hoyMes ? `${mes}-${String(diasMes).padStart(2, "0")}` : hoy();
+  const ventasHastaHoy = esMesFuturo ? 0 : estadisticas.activas
+    .filter(cita => cita.fecha <= fechaCorte)
+    .reduce((suma, cita) => suma + Number(cita.precio || 0), 0);
+  const esperadoHoy = objetivoAcumulado && diasTranscurridos ? objetivoAcumulado * diasTranscurridos / diasMes : 0;
+  const proyeccion = diasTranscurridos ? ventasHastaHoy / diasTranscurridos * diasMes : 0;
+  const estadoRitmo = !meta ? "sin-meta" : saldoAcumulado >= 0 ? (ventas >= meta ? "superada" : "con-credito") : mes < hoyMes ? "cerrada" : esMesFuturo ? "planeada" : ventasHastaHoy + creditoAnterior >= esperadoHoy ? "en-ruta" : "atencion";
+  const liderVentas = estadisticas.porServicio.slice().sort((a, b) => b.dinero - a.dinero || b.total - a.total)[0] || null;
+  const liderCitas = estadisticas.porServicio[0] || null;
+  return { meta, ventas, faltante, saldoAnterior, pendienteAnterior, creditoAnterior, objetivoAcumulado, saldoAcumulado, faltanteAcumulado, porcentaje, diasMes, diasRestantes, diasTranscurridos, ventasHastaHoy, esperadoHoy, proyeccion, estadoRitmo, diarioPlaneado: objetivoAcumulado ? objetivoAcumulado / diasMes : 0, diarioNecesario: diasRestantes ? faltanteAcumulado / diasRestantes : faltanteAcumulado, liderVentas, liderCitas, citas: estadisticas.activas.length };
+}
+
+function mostrarMetas(mes = hoy().slice(0, 7)) {
+  activarMenu("metas");
+  const datos = datosMetaMensual(mes);
+  const hayMeta = datos.meta > 0;
+  const nombre = nombreMes(`${mes}-01`);
+  const avance = Math.round(datos.porcentaje);
+  const mensajeRitmo = !hayMeta
+    ? "Define una meta para ver el plan diario de este mes."
+    : datos.faltante <= 0
+      ? "La meta ya fue alcanzada. Todo lo adicional será ganancia sobre el objetivo."
+      : datos.diasRestantes
+        ? `Faltan ${datos.diasRestantes} día${datos.diasRestantes === 1 ? "" : "s"} para cerrar el mes.`
+        : "Este mes ya terminó; puedes revisar el resultado final.";
+  const aporteLider = datos.liderVentas && datos.ventas ? Math.round(datos.liderVentas.dinero / datos.ventas * 100) : 0;
+  const estadoRitmo = {
+    "sin-meta": { titulo: "Define tu punto de partida", texto: "Escribe una meta clara y la agenda hará el cálculo diario por ti." },
+    "planeada": { titulo: "Meta lista para empezar", texto: "Cuando inicie el mes, el termómetro mostrará tu ritmo real." },
+    "en-ruta": { titulo: "Vas en buen ritmo", texto: "Tus ventas hasta hoy están al nivel que necesitas para cumplir la meta." },
+    "atencion": { titulo: "Hay que recuperar ritmo", texto: "No es una alarma: significa que conviene impulsar citas o servicios esta semana." },
+    "superada": { titulo: "Meta superada", texto: "Ya alcanzaste el objetivo. Cada venta adicional es crecimiento sobre tu plan." },
+    "con-credito": { titulo: "El saldo a favor te respalda", texto: "La venta real del mes aún no llega a su meta, pero el saldo acumulado positivo cubre la diferencia." },
+    "cerrada": { titulo: "Mes cerrado", texto: "Este es el resultado final del mes seleccionado." }
+  }[datos.estadoRitmo];
+  document.getElementById("contenido").innerHTML = `
+    <section class="meta-hero">
+      <div class="meta-hero-copy"><span class="meta-eyebrow">OBJETIVO DE VENTAS</span><h1>Meta de ${nombre}</h1><p>${mensajeRitmo}</p></div>
+      <form class="meta-form" onsubmit="guardarMetaMensual(event)">
+        <label class="meta-field"><span>Mes que vas a medir</span><input id="metaMes" type="month" value="${mes}" onchange="mostrarMetas(this.value)"></label>
+        <label class="meta-field meta-field-money"><span>¿Cuánto quieres vender?</span><div class="meta-amount"><b>$</b><input id="metaMonto" type="number" min="0" step="100" value="${hayMeta ? datos.meta : ""}" placeholder="100000" ${puedeEditar() ? "" : "readonly"}></div><small>Ejemplo: 100,000 pesos</small></label>
+        ${puedeEditar() ? `<button class="primary-action" type="submit">Guardar meta</button>` : ""}
+      </form>
+    </section>
+    <section class="meta-progress-panel">
+      <div class="meta-progress-layout"><div class="meta-ring ${datos.estadoRitmo}" style="--avance:${datos.porcentaje}%"><div><b>${avance}%</b><span>acumulado</span></div></div><div class="meta-progress-copy"><div class="meta-progress-head"><div><span>VENTAS REALES DE ${nombre.toUpperCase()}</span><strong>${dinero(datos.ventas)}</strong></div><b>${estadoRitmo.titulo}</b></div><div class="meta-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${avance}"><span style="width:${datos.porcentaje}%"></span></div><div class="meta-progress-footer"><span>${datos.creditoAnterior ? `Objetivo con crédito: ${dinero(Math.max(0, datos.meta - datos.creditoAnterior))}` : `Objetivo acumulado: ${hayMeta ? dinero(datos.objetivoAcumulado) : "una meta por definir"}`}</span><strong>${datos.faltanteAcumulado > 0 && hayMeta ? `Faltan ${dinero(datos.faltanteAcumulado)}` : hayMeta ? `Saldo a favor ${dinero(datos.saldoAcumulado)}` : "Sin meta aún"}</strong></div><p class="meta-rhythm-text">${estadoRitmo.texto}</p></div></div>
+    </section>
+    ${hayMeta ? `<section class="meta-balance-grid"><article><span>META PROPIA DEL MES</span><strong>${dinero(datos.meta)}</strong><small>La venta que quieres lograr en ${nombre}.</small></article><article class="${datos.pendienteAnterior ? "pending" : datos.creditoAnterior ? "credit" : "neutral"}"><span>${datos.pendienteAnterior ? "PENDIENTE DE MESES ANTERIORES" : datos.creditoAnterior ? "SALDO A FAVOR ANTERIOR" : "SALDO ARRASTRADO"}</span><strong>${datos.pendienteAnterior ? `+${dinero(datos.pendienteAnterior)}` : datos.creditoAnterior ? `-${dinero(datos.creditoAnterior)}` : "$0 MXN"}</strong><small>${datos.pendienteAnterior ? "Se suma al objetivo, no borra la meta de este mes." : datos.creditoAnterior ? "Puede cubrir parte del objetivo acumulado, sin cambiar la venta real del mes." : "No hay pendiente ni crédito previo."}</small></article><article class="total"><span>${datos.creditoAnterior ? "OBJETIVO DESPUÉS DEL CRÉDITO" : "OBJETIVO ACUMULADO"}</span><strong>${dinero(datos.creditoAnterior ? Math.max(0, datos.meta - datos.creditoAnterior) : datos.objetivoAcumulado)}</strong><small>${datos.pendienteAnterior ? "Meta propia + pendiente anterior." : datos.creditoAnterior ? "La venta real del mes seguirá mostrándose por separado." : "Es igual a tu meta propia este mes."}</small></article></section>` : ""}
+    <section class="meta-cards">
+      <article class="meta-card goal"><span>Meta diaria planeada</span><strong>${hayMeta ? dinero(datos.diarioPlaneado) : "-"}</strong><p>Promedio necesario por cada día del mes.</p></article>
+      <article class="meta-card pace"><span>Necesitas desde hoy</span><strong>${hayMeta && datos.faltanteAcumulado > 0 ? dinero(datos.diarioNecesario) : hayMeta ? "$0 MXN" : "-"}</strong><p>${datos.diasRestantes ? "Por día para cumplir el objetivo acumulado." : "Resultado del periodo seleccionado."}</p></article>
+      <article class="meta-card appointments"><span>Si mantienes este ritmo</span><strong>${hayMeta && datos.diasTranscurridos ? dinero(datos.proyeccion) : "-"}</strong><p>${datos.diasTranscurridos ? `Proyección de cierre · ${datos.citas} citas activas en ${nombre}.` : `Hay ${datos.citas} citas activas programadas en ${nombre}.`}</p></article>
+    </section>
+    <section class="meta-insights">
+      <article class="panel meta-leader"><span class="meta-kicker">SERVICIO DESTACADO</span><h2>${datos.liderVentas ? escaparTexto(datos.liderVentas.nombre) : "Aún sin ventas"}</h2><p>${datos.liderVentas ? `${dinero(datos.liderVentas.dinero)} en ventas · ${aporteLider}% del total mensual.` : "Al registrar citas aparecerá el servicio con más ventas."}</p>${datos.liderVentas ? `<div class="leader-line"><b>${datos.liderVentas.total}</b><span>cita${datos.liderVentas.total === 1 ? "" : "s"} registradas</span></div>` : ""}</article>
+      <article class="panel meta-leader secondary"><span class="meta-kicker">MÁS SOLICITADO</span><h2>${datos.liderCitas ? escaparTexto(datos.liderCitas.nombre) : "Aún sin citas"}</h2><p>${datos.liderCitas ? `${datos.liderCitas.total} cita${datos.liderCitas.total === 1 ? "" : "s"} · ${dinero(datos.liderCitas.dinero)} en ventas.` : "Aquí verás cuál es el favorito de tus clientas."}</p></article>
+    </section>
+    <section class="meta-scenarios">
+      <article class="meta-scenario ${datos.estadoRitmo === "atencion" ? "active" : ""}"><span>SI NO ALCANZAS LA META</span><h2>No significa que fallaste</h2><p>${hayMeta && datos.faltanteAcumulado > 0 ? `Hoy faltan ${dinero(datos.faltanteAcumulado)} en el objetivo acumulado. Si el mes termina así, quedará visible como pendiente para el siguiente, sin ocultar la meta nueva.` : "Compara lo vendido con tus costos y usa el resultado para ajustar la siguiente meta."}</p></article>
+      <article class="meta-scenario ${datos.estadoRitmo === "superada" ? "active success" : ""}"><span>SI SUPERAS LA META</span><h2>Convierte el excedente en crecimiento</h2><p>${hayMeta && datos.ventas > datos.meta ? `Llevas ${dinero(datos.ventas - datos.meta)} arriba de la meta. Separa una parte para gastos, ahorro e inventario antes de aumentar compromisos.` : "El excedente puede ayudarte a crear un fondo, comprar inventario o premiar al equipo sin comprometer el dinero de operación."}</p></article>
+    </section>
+    <section class="panel meta-objectives"><div><span class="meta-kicker">PLAN PARA CUMPLIRLA</span><h2>${hayMeta ? "Tu siguiente objetivo" : "Primero define tu meta"}</h2></div><p>${hayMeta ? (datos.faltanteAcumulado > 0 ? `Para cerrar ${nombre} con tu objetivo acumulado, busca registrar ${dinero(datos.diarioNecesario)} al día durante los ${datos.diasRestantes || "días restantes"}.` : datos.creditoAnterior && datos.ventas < datos.meta ? `Tu meta real de ${nombre} aún tiene un faltante de ${dinero(datos.faltante)}, pero el crédito anterior lo cubre. Por transparencia, ambas cifras se muestran separadas.` : `Superaste el objetivo acumulado por ${dinero(datos.saldoAcumulado)}. Puedes apartar ese excedente o usarlo como crédito para la meta siguiente.`) : "Escribe el monto que quieres alcanzar y la agenda preparará los objetivos diarios por ti."}</p></section>`;
+}
+
+function guardarMetaMensual(evento) {
+  evento.preventDefault();
+  if (!exigirEdicion()) return;
+  const mes = document.getElementById("metaMes")?.value;
+  const monto = Number(document.getElementById("metaMonto")?.value || 0);
+  if (!/^\d{4}-\d{2}$/.test(mes) || monto < 0) return mostrarMensaje("Revisa la meta", "Elige un mes y escribe un monto válido.", "alerta");
+  configuracion.metasMensuales = { ...(configuracion.metasMensuales || {}), [mes]: monto };
+  guardar();
+  mostrarMetas(mes);
+  mostrarMensaje("Meta guardada", "La agenda actualizará el avance con cada venta registrada.", "ok");
 }
 
 function periodoEstadisticasActual() {
